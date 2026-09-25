@@ -8,6 +8,7 @@ const menuItems = [
   { href: "/penggarap", label: "Penggarap", icon: "👨‍🌾" },
   { href: "/gabah", label: "Penimbangan Gabah", icon: "⚖️" },
   { href: "/keuangan", label: "Keuangan", icon: "💰" },
+  { href: "/export", label: "Export Data", icon: "📥" },
 ];
 
 export default function DashboardLayout({
