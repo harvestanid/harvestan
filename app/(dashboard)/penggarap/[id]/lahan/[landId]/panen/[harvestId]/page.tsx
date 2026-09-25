@@ -48,6 +48,10 @@ export default async function DetailPanenPage({
     .eq("id", id)
     .single();
 
+  const potonganHutang = Number(panen.potongan_hutang || 0);
+  const totalHutangSebelum = Number(panen.total_hutang_sebelum || 0);
+  const sisaHutangSesudah = Number(panen.sisa_hutang_sesudah || 0);
+
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
@@ -100,7 +104,10 @@ export default async function DetailPanenPage({
           <div>
             <p className="text-xs text-gray-500 uppercase">Produktivitas</p>
             <p className="font-semibold mt-1">
-              {lahan ? (Number(panen.hasil_kg) / Number(lahan.luas)).toFixed(0) : "-"} Kg/Ha
+              {lahan
+                ? (Number(panen.hasil_kg) / Number(lahan.luas)).toFixed(0)
+                : "-"}{" "}
+              Kg/Ha
             </p>
           </div>
         </div>
@@ -114,13 +121,19 @@ export default async function DetailPanenPage({
             </div>
             <div>Biaya panen:</div>
             <div className="text-right text-red-600">
-              − {formatRp(Number(panen.hasil_kg) * Number(panen.biaya_panen_per_kg))}
+              −{" "}
+              {formatRp(
+                Number(panen.hasil_kg) * Number(panen.biaya_panen_per_kg)
+              )}
             </div>
             {Number(panen.biaya_tambahan) > 0 && (
               <>
                 <div>
                   Biaya tambahan{" "}
-                  {panen.keterangan_biaya ? `(${panen.keterangan_biaya})` : ""}:
+                  {panen.keterangan_biaya
+                    ? `(${panen.keterangan_biaya})`
+                    : ""}
+                  :
                 </div>
                 <div className="text-right text-red-600">
                   − {formatRp(Number(panen.biaya_tambahan))}
@@ -157,6 +170,60 @@ export default async function DetailPanenPage({
             </div>
           </div>
         </div>
+
+        {/* Potongan Hutang */}
+        {potonganHutang > 0 && (
+          <div className="pt-4 border-t">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-xs text-red-700 uppercase font-bold mb-2">
+                💸 Potongan Hutang Otomatis
+              </p>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Hutang sebelum:</span>
+                  <span className="font-medium">
+                    {formatRp(totalHutangSebelum)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Dipotong dari profit:</span>
+                  <span className="font-bold text-red-600">
+                    − {formatRp(potonganHutang)}
+                  </span>
+                </div>
+                <div className="flex justify-between pt-2 border-t">
+                  <span className="text-gray-600 font-medium">
+                    Sisa hutang:
+                  </span>
+                  <span
+                    className={`font-bold ${
+                      sisaHutangSesudah > 0
+                        ? "text-red-600"
+                        : "text-green-600"
+                    }`}
+                  >
+                    {sisaHutangSesudah > 0
+                      ? formatRp(sisaHutangSesudah)
+                      : "LUNAS ✅"}
+                  </span>
+                </div>
+              </div>
+              <p className="text-xs text-red-700 mt-2 italic">
+                Potongan ini mengurangi profit penggarap dan menambah profit
+                owner (karena hutang dibayar ke owner).
+              </p>
+            </div>
+          </div>
+        )}
+
+        {potonganHutang === 0 && totalHutangSebelum > 0 && (
+          <div className="pt-4 border-t">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-800">
+              ℹ️ Saat panen ini, {penggarap?.nama} masih punya hutang{" "}
+              <strong>{formatRp(totalHutangSebelum)}</strong> (tidak dipotong).
+            </div>
+          </div>
+        )}
 
         {panen.catatan && (
           <div className="pt-4 border-t">
