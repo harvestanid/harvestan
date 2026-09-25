@@ -23,6 +23,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase
       .from('lands')
       .insert({
+        user_id: user.id,
         penggarap_id,
         nama,
         luas: parseFloat(luas),

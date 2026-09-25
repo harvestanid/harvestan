@@ -20,6 +20,7 @@ async function tambahLahan(formData: FormData) {
   }
 
   const { error } = await supabase.from('lands').insert({
+    user_id: user.id,
     penggarap_id,
     nama,
     luas,

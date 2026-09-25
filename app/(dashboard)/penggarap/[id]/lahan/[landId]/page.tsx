@@ -3,6 +3,26 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { TombolAksiLahan } from './tombol-aksi'
 
+const KOMODITAS_LABEL: Record<string, string> = {
+  padi: '🌾 Padi',
+  jagung: '🌽 Jagung',
+  kacang_tanah: '🥜 Kacang Tanah',
+  bawang_merah: '🧅 Bawang Merah',
+  cabai_rawit: '🌶️ Cabai Rawit',
+}
+
+const KOMODITAS_COLOR: Record<string, string> = {
+  padi: 'bg-green-100 text-green-800',
+  jagung: 'bg-yellow-100 text-yellow-800',
+  kacang_tanah: 'bg-purple-100 text-purple-800',
+  bawang_merah: 'bg-red-100 text-red-800',
+  cabai_rawit: 'bg-red-200 text-red-900',
+}
+
+function formatRp(n: number) {
+  return 'Rp ' + Math.round(n).toLocaleString('id-ID')
+}
+
 export default async function DetailLahanPage({
   params,
 }: {
@@ -30,6 +50,21 @@ export default async function DetailLahanPage({
     .eq('id', id)
     .single()
 
+  // Ambil riwayat panen
+  const { data: panenList } = await supabase
+    .from('harvests')
+    .select('*')
+    .eq('land_id', landId)
+    .order('tanggal', { ascending: false })
+
+  const panen = panenList || []
+
+  // Statistik
+  const totalHasil = panen.reduce((s, p) => s + Number(p.hasil_kg), 0)
+  const totalProfitOwner = panen.reduce((s, p) => s + Number(p.profit_owner || 0), 0)
+  const totalProfitPenggarap = panen.reduce((s, p) => s + Number(p.profit_penggarap || 0), 0)
+  const rataProduktivitas = panen.length > 0 ? totalHasil / panen.length / Number(lahan.luas) : 0
+
   const gpsUrl = lahan.lokasi_koordinat
     ? `https://www.google.com/maps?q=${lahan.lokasi_koordinat.replace(/\s/g, '')}`
     : null
@@ -48,7 +83,8 @@ export default async function DetailLahanPage({
         </h1>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+      {/* Info Lahan */}
+      <div className="bg-white rounded-xl shadow-sm p-6 space-y-4 mb-6">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-xs text-gray-500 uppercase tracking-wide">Nama Lahan</p>
@@ -85,6 +121,117 @@ export default async function DetailLahanPage({
             lokasiKoordinat={lahan.lokasi_koordinat || ''}
           />
         </div>
+      </div>
+
+      {/* Statistik Panen */}
+      {panen.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <p className="text-xs text-blue-700 font-medium">Total Panen</p>
+            <p className="text-lg font-bold text-blue-900 mt-1">
+              {panen.length}x
+            </p>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+            <p className="text-xs text-green-700 font-medium">Total Hasil</p>
+            <p className="text-lg font-bold text-green-900 mt-1">
+              {totalHasil.toLocaleString('id-ID')} Kg
+            </p>
+          </div>
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
+            <p className="text-xs text-purple-700 font-medium">Rata Prod</p>
+            <p className="text-lg font-bold text-purple-900 mt-1">
+              {rataProduktivitas.toFixed(0)} Kg/Ha
+            </p>
+          </div>
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3">
+            <p className="text-xs text-orange-700 font-medium">Profit Owner</p>
+            <p className="text-lg font-bold text-orange-900 mt-1">
+              {formatRp(totalProfitOwner)}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Riwayat Panen */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-bold text-gray-900">
+            🌾 Riwayat Panen ({panen.length})
+          </h2>
+          <Link
+            href={`/penggarap/${id}/lahan/${landId}/panen/baru`}
+            className="bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-800 transition"
+          >
+            + Tambah Panen
+          </Link>
+        </div>
+
+        {panen.length === 0 ? (
+          <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
+            <div className="text-6xl mb-4">🌾</div>
+            <h3 className="font-bold text-gray-900 mb-2">Belum ada panen</h3>
+            <p className="text-gray-600 text-sm mb-6">
+              Catat hasil panen dari lahan ini untuk melihat produktivitas & profit
+            </p>
+            <Link
+              href={`/penggarap/${id}/lahan/${landId}/panen/baru`}
+              className="inline-block bg-green-700 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-800 transition"
+            >
+              + Tambah Panen Pertama
+            </Link>
+          </div>
+        ) : (
+          <div className="grid gap-3">
+            {panen.map((p) => {
+              const kom = p.komoditas || 'padi'
+              const prod = Number(p.hasil_kg) / Number(lahan.luas)
+              const komColor = KOMODITAS_COLOR[kom] || 'bg-gray-100 text-gray-800'
+              return (
+                <Link
+                  key={p.id}
+                  href={`/penggarap/${id}/lahan/${landId}/panen/${p.id}`}
+                  className="bg-white border border-gray-200 rounded-xl p-4 hover:border-green-500 transition block"
+                >
+                  <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-gray-900">
+                        📅 {new Date(p.tanggal).toLocaleDateString('id-ID', {
+                          day: 'numeric',
+                          month: 'short',
+                          year: 'numeric',
+                        })}
+                      </span>
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${komColor}`}>
+                        {KOMODITAS_LABEL[kom] || kom}
+                      </span>
+                      <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 font-medium">
+                        💰 {p.persen_owner}:{p.persen_penggarap}
+                      </span>
+                    </div>
+                    <span className="font-bold text-green-700">
+                      {Number(p.hasil_kg).toLocaleString('id-ID')} Kg
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-xs text-gray-600">
+                    <div>
+                      <span className="text-gray-400">Produktivitas</span>
+                      <div className="font-medium text-gray-800">{prod.toFixed(0)} Kg/Ha</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Profit Owner</span>
+                      <div className="font-medium text-green-700">{formatRp(Number(p.profit_owner || 0))}</div>
+                    </div>
+                    <div>
+                      <span className="text-gray-400">Profit Penggarap</span>
+                      <div className="font-medium text-orange-700">{formatRp(Number(p.profit_penggarap || 0))}</div>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        )}
       </div>
     </div>
   )
