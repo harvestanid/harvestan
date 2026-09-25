@@ -1,6 +1,48 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
+  const router = useRouter();
+  const supabase = createClient();
+
+  const [nama, setNama] = useState("");
+  const [email, setEmail] = useState("");
+  const [whatsapp, setWhatsapp] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleRegister(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          nama: nama,
+          whatsapp: whatsapp,
+        },
+      },
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+      return;
+    }
+
+    // Berhasil daftar
+    router.push("/dashboard");
+    router.refresh();
+  }
+
   return (
     <div className="w-full max-w-md">
       <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
@@ -13,14 +55,23 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <form className="space-y-4">
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+            ❌ {error}
+          </div>
+        )}
+
+        <form onSubmit={handleRegister} className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Nama Lengkap
             </label>
             <input
               type="text"
+              value={nama}
+              onChange={(e) => setNama(e.target.value)}
               placeholder="Contoh: Budi Santoso"
+              required
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
             />
           </div>
@@ -31,7 +82,10 @@ export default function RegisterPage() {
             </label>
             <input
               type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               placeholder="nama@email.com"
+              required
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
             />
           </div>
@@ -42,6 +96,8 @@ export default function RegisterPage() {
             </label>
             <input
               type="tel"
+              value={whatsapp}
+              onChange={(e) => setWhatsapp(e.target.value)}
               placeholder="08123456789"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
             />
@@ -53,16 +109,21 @@ export default function RegisterPage() {
             </label>
             <input
               type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               placeholder="Minimal 8 karakter"
+              required
+              minLength={8}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
             />
           </div>
 
           <button
-            type="button"
-            className="w-full bg-green-700 text-white py-3 rounded-lg font-semibold hover:bg-green-800 transition"
+            type="submit"
+            disabled={loading}
+            className="w-full bg-green-700 text-white py-3 rounded-lg font-semibold hover:bg-green-800 transition disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Daftar Sekarang
+            {loading ? "Mendaftar..." : "Daftar Sekarang"}
           </button>
         </form>
 
@@ -75,18 +136,6 @@ export default function RegisterPage() {
             Masuk di sini
           </Link>
         </div>
-
-        <p className="mt-6 text-xs text-gray-500 text-center">
-          Dengan mendaftar, Anda menyetujui{" "}
-          <a href="/terms" className="text-green-700 hover:underline">
-            Syarat & Ketentuan
-          </a>{" "}
-          dan{" "}
-          <a href="/privacy" className="text-green-700 hover:underline">
-            Kebijakan Privasi
-          </a>{" "}
-          Harvestan.
-        </p>
       </div>
     </div>
   );
