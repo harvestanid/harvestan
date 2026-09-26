@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { TombolAksiPanen } from "./tombol-aksi";
+import { TombolDownloadInvoice } from "./tombol-download-invoice";
 
 function formatRp(n: number) {
   return "Rp " + Math.round(n).toLocaleString("id-ID");
@@ -44,7 +45,7 @@ export default async function DetailPanenPage({
 
   const { data: penggarap } = await supabase
     .from("penggaraps")
-    .select("id, nama")
+    .select("id, nama, alamat, kontak")
     .eq("id", id)
     .single();
 
@@ -56,15 +57,12 @@ export default async function DetailPanenPage({
   const persenPenggarap = Number(panen.persen_penggarap || 50);
   const profitBersih = Number(panen.profit_bersih || 0);
 
-  // ===== Hitung profit owner & penggarap MURNI (sebelum potong hutang) =====
   const profitOwnerMurni = profitBersih * (persenOwner / 100);
   const profitPenggarapMurni = profitBersih * (persenPenggarap / 100);
 
-  // ===== Profit final (setelah potong hutang) =====
   const profitOwnerFinal = Number(panen.profit_owner || 0);
   const profitPenggarapFinal = Number(panen.profit_penggarap || 0);
 
-  // Log perubahan hutang
   const log = Array.isArray(panen.potongan_hutang_log)
     ? panen.potongan_hutang_log
     : [];
@@ -86,6 +84,15 @@ export default async function DetailPanenPage({
         </p>
       </div>
 
+      {/* ===== TOMBOL DOWNLOAD PDF — di atas ===== */}
+      <div className="mb-4">
+        <TombolDownloadInvoice
+          panen={panen}
+          penggarap={penggarap || { nama: "?", alamat: null, kontak: null }}
+          lahan={lahan || { nama: "?", luas: 0 }}
+        />
+      </div>
+
       <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -104,6 +111,11 @@ export default async function DetailPanenPage({
             <p className="font-semibold mt-1">
               {KOMODITAS_LABEL[panen.komoditas] || panen.komoditas}
             </p>
+            {panen.musim && (
+              <p className="text-xs text-orange-600 font-medium mt-0.5">
+                🗓️ Musim: {panen.musim}
+              </p>
+            )}
           </div>
         </div>
 
@@ -121,7 +133,7 @@ export default async function DetailPanenPage({
           <div>
             <p className="text-xs text-gray-500 uppercase">Produktivitas</p>
             <p className="font-semibold mt-1">
-              {lahan
+              {lahan && Number(lahan.luas) > 0
                 ? (Number(panen.hasil_kg) / Number(lahan.luas)).toFixed(0)
                 : "-"}{" "}
               Kg/Ha
@@ -166,7 +178,6 @@ export default async function DetailPanenPage({
           </div>
         </div>
 
-        {/* ===== BAGI HASIL (MURNI) ===== */}
         <div className="pt-4 border-t bg-gray-50 -mx-6 px-6 py-4">
           <p className="text-xs text-gray-500 uppercase mb-1">
             Bagi Hasil (Sebelum Potong Hutang)
@@ -195,7 +206,6 @@ export default async function DetailPanenPage({
           </div>
         </div>
 
-        {/* ===== POTONGAN HUTANG ===== */}
         {potonganHutang > 0 && (
           <div className="pt-4 border-t">
             <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
@@ -236,7 +246,6 @@ export default async function DetailPanenPage({
                 </div>
               </div>
 
-              {/* ===== HASIL AKHIR SETELAH POTONG HUTANG ===== */}
               <div className="bg-white border-2 border-green-300 rounded-lg p-3">
                 <p className="text-xs font-bold text-green-800 uppercase mb-2">
                   ✅ Total Diterima (Setelah Potong Hutang)
@@ -286,7 +295,6 @@ export default async function DetailPanenPage({
           </div>
         )}
 
-        {/* ===== LOG AUDIT TRAIL ===== */}
         {log.length > 0 && (
           <div className="pt-4 border-t">
             <p className="text-xs text-gray-500 uppercase mb-3">
