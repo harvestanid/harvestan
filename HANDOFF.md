@@ -1,4 +1,4 @@
-📝 FULL UPDATE — HANDOFF.md (v1.1)
+📝 Update HANDOFF.md — FULL FILE (v1.5)
 
 Perintah:
 
@@ -23,7 +23,7 @@ Copy-paste isi file ini (atau link repo) ke chat baru untuk kasih konteks ke AI.
 - **Deskripsi**: SaaS manajemen pertanian Indonesia
 - **Repo**: https://github.com/harvestanid/harvestan
 - **Live**: https://harvestan.vercel.app
-- **Versi**: v1.1 (Google OAuth + GPS Walking + Panen Bertahap)
+- **Versi**: v1.5 (Laporan lengkap + Laporan Tahunan/5 Tahunan)
 - **User**: Pemula (tidak bisa coding), koding semua oleh AI
 - **Development**: Termux di Android
 
@@ -37,7 +37,7 @@ Copy-paste isi file ini (atau link repo) ke chat baru untuk kasih konteks ke AI.
 - **Auth**: Supabase Auth (Email + Google OAuth)
 - **Hosting**: Vercel
 - **Grafik**: Recharts
-- **PDF**: jsPDF
+- **PDF**: jsPDF + custom star drawing
 - **Excel**: xlsx (SheetJS)
 - **PNG**: html-to-image
 - **Maps**: Leaflet + OpenStreetMap (satelit via Esri)
@@ -54,31 +54,36 @@ app/
 ├── layout.tsx                        # Root layout + SEO metadata
 ├── auth/callback/route.ts            # Google OAuth callback
 ├── (auth)/
-│   ├── layout.tsx                    # Layout auth (centered)
+│   ├── layout.tsx
 │   ├── login/page.tsx                # Login (Email + Google)
 │   └── register/page.tsx             # Register (Email + Google)
 ├── (dashboard)/
-│   ├── layout.tsx                    # Sidebar + bottom nav
-│   ├── dashboard/page.tsx            # Dashboard utama
-│   ├── keuangan/page.tsx             # Keuangan & Laba
+│   ├── layout.tsx                    # Sidebar + bottom nav (scrollable mobile)
+│   ├── dashboard/page.tsx
+│   ├── keuangan/
+│   │   ├── page.tsx                  # Server (ambil data + musim)
+│   │   └── keuangan-client.tsx       # Client (filter tahun/komoditas/musim)
 │   ├── grafik/
 │   │   ├── page.tsx
-│   │   └── grafik-client.tsx
-│   ├── gabah/page.tsx                # Penimbangan Gabah
-│   ├── panen-multi/page.tsx          # Input panen multi-lahan
+│   │   ├── grafik-client.tsx
+│   │   └── grafik-cabai.tsx          # Grafik per musim cabai
+│   ├── gabah/page.tsx
+│   ├── panen-multi/page.tsx
 │   ├── ukur-lahan/
-│   │   ├── page.tsx                  # Server Component (baca searchParams)
-│   │   └── ukur-content.tsx          # Client Component (peta + GPS)
-│   ├── bantuan/page.tsx              # (belum ada, opsional)
+│   │   ├── page.tsx                  # Server (baca searchParams)
+│   │   └── ukur-content.tsx          # Client (peta + GPS)
+│   ├── laporan/
+│   │   ├── page.tsx                  # Server
+│   │   └── klien.tsx                 # Client (form download)
 │   ├── pengaturan/
 │   │   ├── page.tsx                  # Tab Akun + Kategori
 │   │   ├── akun-tab.tsx
 │   │   ├── kategori-tab.tsx
 │   │   ├── tab-container.tsx
 │   │   └── form.tsx
-│   ├── export/page.tsx               # Export Excel + PDF list
+│   ├── export/page.tsx
 │   ├── penggarap/
-│   │   ├── page.tsx                  # List penggarap + badge kategori
+│   │   ├── page.tsx                  # List + badge kategori
 │   │   ├── baru/page.tsx
 │   │   └── [id]/
 │   │       ├── page.tsx              # Detail + lahan + hutang
@@ -87,17 +92,18 @@ app/
 │   │       │   ├── page.tsx
 │   │       │   └── form.tsx
 │   │       ├── lahan/
-│   │       │   ├── baru/page.tsx     # Form (ada link GPS Walking)
+│   │       │   ├── baru/page.tsx     # Form + link GPS Walking
 │   │       │   └── [landId]/
-│   │       │       ├── page.tsx      # Detail + produktivitas per komoditas + mini-map
-│   │       │       ├── tombol-aksi.tsx  # Edit lahan + tombol GPS Walking
+│   │       │       ├── page.tsx      # Detail + produktivitas per komoditas + mini-map + breakdown musim cabai
+│   │       │       ├── tombol-aksi.tsx  # Edit + tombol GPS Walking
 │   │       │       └── panen/
 │   │       │           ├── baru/
-│   │       │           │   ├── page.tsx       # Server Component
+│   │       │           │   ├── page.tsx       # Server
 │   │       │           │   └── form-client.tsx  # Client (musim, skema)
 │   │       │           └── [harvestId]/
-│   │       │               ├── page.tsx     # Detail panen + log audit
+│   │       │               ├── page.tsx     # Detail panen + log + tombol PDF invoice
 │   │       │               ├── tombol-aksi.tsx
+│   │       │               ├── tombol-download-invoice.tsx  # PDF invoice
 │   │       │               └── edit/page.tsx
 │   │       └── hutang/
 │   │           ├── baru/page.tsx
@@ -105,15 +111,16 @@ app/
 │   │               ├── page.tsx
 │   │               └── tombol-aksi.tsx
 ├── api/
-│   ├── lahan/[id]/route.ts           # PUT, DELETE
-│   ├── panen/[id]/route.ts           # PUT, DELETE (auto-revert hutang)
-│   ├── hutang/[id]/route.ts          # PUT, DELETE
-│   ├── kategori/route.ts             # POST, DELETE
-│   ├── musim/route.ts                # POST, GET (musim cabai)
-│   ├── musim/[id]/route.ts           # PUT, DELETE
-│   ├── transfer-lahan/route.ts       # POST
+│   ├── lahan/[id]/route.ts
+│   ├── panen/[id]/route.ts
+│   ├── hutang/[id]/route.ts
+│   ├── kategori/route.ts
+│   ├── musim/route.ts                # CRUD musim cabai
+│   ├── musim/[id]/route.ts
+│   ├── transfer-lahan/route.ts
 │   ├── export/route.ts               # Excel (4 sheet)
-│   └── export-pdf/route.ts           # PDF per penggarap + grafik
+│   ├── export-pdf/route.ts           # PDF per penggarap + grafik
+│   └── export-laporan/route.ts       # PDF laporan tahunan/5 tahunan
 └── auth/logout/route.ts
 
 lib/
@@ -126,20 +133,19 @@ lib/
 │       ├── panen-server.ts
 │       ├── hutang-server.ts
 │       ├── kategori-server.ts
-│       └── musim-server.ts           # Query musim cabai
+│       └── musim-server.ts
 └── utils/
-├── grafik-helpers.ts             # Helper data grafik
-└── hitung-luas.ts                # Hitung luas polygon GPS
+├── grafik-helpers.ts
+└── hitung-luas.ts
 
 components/
-├── install-pwa.tsx                   # Install prompt + register SW
+├── install-pwa.tsx
 ├── skema-bagi-hasil-v2.tsx           # Dropdown skema bagi hasil
-├── musim-selector.tsx                # Dropdown musim cabai
-├── peta-ukur.tsx                     # Peta Leaflet tracking GPS
+├── peta-ukur.tsx                     # Leaflet tracking GPS
 ├── peta-mini.tsx                     # Mini-map preview polygon
-└── peta-mini-wrapper.tsx             # Wrapper client untuk peta-mini
+└── peta-mini-wrapper.tsx             # Wrapper client
 
-middleware.ts                         # Auth middleware
+middleware.ts
 
 ```
 
@@ -152,10 +158,7 @@ middleware.ts                         # Auth middleware
 
 id (uuid, PK)
 user_id (uuid, FK auth.users)
-nama (text, NOT NULL)
-alamat (text, nullable)
-usia (int, nullable)
-kontak (text, nullable)
+nama, alamat, usia, kontak
 created_at, updated_at
 
 ```
@@ -178,29 +181,18 @@ created_at, updated_at
 ```
 
 id (uuid, PK)
-user_id (uuid)
-land_id (uuid, FK lands)
+user_id, land_id (uuid)
 tanggal (date)
 komoditas (text, default 'padi')
-musim (text, nullable)  -- untuk cabai rawit (nama musim, bukan FK)
-hasil_kg (numeric)
-harga_gabah (numeric)
-harga_per_kg (numeric)  -- sync dengan harga_gabah
-biaya_panen_per_kg (numeric, default 0)
-biaya_tambahan (numeric, default 0)
-keterangan_biaya (text, nullable)
-bawa_penggarap (numeric, default 0)
-bawa_owner (numeric, default 0)
-bawa_lain (numeric, default 0)
-persen_owner (numeric, default 50)
-persen_penggarap (numeric, default 50)
-profit_bersih (numeric, default 0)
-profit_owner (numeric, default 0)
-profit_penggarap (numeric, default 0)
-potongan_hutang (numeric, default 0)
-potongan_hutang_log (jsonb, default '[]')
-total_hutang_sebelum (numeric, default 0)
-sisa_hutang_sesudah (numeric, default 0)
+musim (text, nullable)  -- untuk cabai rawit
+hasil_kg, harga_gabah, harga_per_kg
+biaya_panen_per_kg, biaya_tambahan, keterangan_biaya
+bawa_penggarap, bawa_owner, bawa_lain
+persen_owner (default 50)
+persen_penggarap (default 50)
+profit_bersih, profit_owner, profit_penggarap
+potongan_hutang, potongan_hutang_log (jsonb)
+total_hutang_sebelum, sisa_hutang_sesudah
 catatan (text, nullable)
 created_at, updated_at
 
@@ -210,13 +202,9 @@ created_at, updated_at
 ```
 
 id (uuid, PK)
-user_id (uuid)
-penggarap_id (uuid, FK penggaraps)
-tanggal (date)
-jumlah (numeric)
-keperluan (text, nullable)
-dibayar (numeric, default 0)
-sisa (numeric)
+user_id, penggarap_id
+tanggal, jumlah, keperluan
+dibayar (default 0), sisa
 log_perubahan (jsonb, default '[]')
 created_at
 
@@ -226,62 +214,58 @@ created_at
 ```
 
 id (uuid, PK)
-user_id (uuid)
-komoditas (text)
-cukup (numeric, nullable)
-baik (numeric, nullable)
-sangat_baik (numeric, nullable)
+user_id, komoditas
+cukup, baik, sangat_baik (numeric, nullable)
 created_at, updated_at
 
 ```
 
-### `musim_cabai` (BARU)
+### `musim_cabai`
 ```
 
 id (uuid, PK)
-user_id (uuid, FK auth.users)
+user_id (FK auth.users)
 nama (text, NOT NULL)
-tanggal_mulai (date, nullable)
-tanggal_selesai (date, nullable)
-catatan (text, nullable)
+tanggal_mulai, tanggal_selesai (date)
+catatan (text)
 created_at, updated_at
 UNIQUE(user_id, nama)
 
 ```
 
-**RLS**: Semua tabel **aktif** dengan policy `auth.uid() = user_id`.
+**RLS**: Semua tabel aktif dengan policy `auth.uid() = user_id`.
 
 ---
 
 ## ⚠️ ATURAN PENTING
 
 ### 1. **RLS Policy — WAJIB kirim `user_id`**
-Setiap `insert()` **wajib** ada `user_id: user.id`. Kalau lupa → error `new row violates row-level security policy`.
+Setiap `insert()` wajib ada `user_id: user.id`.
 
 ### 2. **Server Action vs API Route**
-- **Form tambah**: pakai **Server Action** (`'use server'` di dalam function)
-- **Edit/Hapus**: pakai **API Route** (`app/api/.../route.ts`)
+- **Form tambah**: Server Action (`'use server'`)
+- **Edit/Hapus**: API Route
 
 ### 3. **Pola Jawaban AI**
-- User pemula, jangan kasih **potongan kode** atau **cari baris X**
-- **Selalu kirim FULL FILE** → user tinggal Ctrl+A → Delete → Paste
-- Kalau panjang, kasih patokan `wc -l` untuk cek apakah paste lengkap
+- User pemula, **JANGAN** kasih potongan kode / "cari baris X"
+- **SELALU FULL FILE** → user Ctrl+A → Delete → Paste
+- Kasih patokan `wc -l` untuk verifikasi
 - Kalau error, minta screenshot + `wc -l`
 
 ### 4. **micro (Termux)**
-- `Ctrl+S` = simpan, `Ctrl+Q` = keluar
-- Kalau ada `"use client"`, **HARUS** di baris 1
-- Paste kode panjang: **tunggu 10 detik**, scroll ke bawah cek `}` terakhir
+- `Ctrl+S` simpan, `Ctrl+Q` keluar
+- `"use client"` **HARUS** di baris 1
+- Paste kode panjang: tunggu 10 detik, scroll cek `}` terakhir
 
 ### 5. **Path dengan `[ ]` atau `( )`**
-Wajib pakai **tanda kutip**:
+Wajib pakai tanda kutip:
 ```bash
 micro "app/(dashboard)/penggarap/[id]/page.tsx"
 ```
 
 6. Nama Kolom Tabel
 
-· Konsisten: hasil_kg, harga_gabah, profit_owner, persen_penggarap
+· hasil_kg, harga_gabah, profit_owner, persen_penggarap
 · harga_gabah = harga_per_kg (sync)
 · Kategori: cukup, baik, sangat_baik (BUKAN cukup_min)
 
@@ -291,41 +275,43 @@ Setiap komoditas dihitung terpisah.
 
 8. JANGAN BIKIN NESTED <form>
 
-Modal yang ada di dalam <form> utama JANGAN pakai <form> juga. Pakai <div> + tombol dengan onClick.
+Modal di dalam <form> utama JANGAN pakai <form> juga. Pakai <div> + tombol dengan onClick.
 
 9. JANGAN pakai useSearchParams() di page.tsx
 
-Di Next.js 16, useSearchParams() di Server Component tidak reliable. Pakai props dari Server Component:
-
-```typescript
-// page.tsx (Server Component)
-export default async function Page({ searchParams }) {
-  const { param1 } = await searchParams;
-  return <ClientContent param1={param1} />;
-}
-```
+Di Next.js 16, tidak reliable. Pakai props dari Server Component.
 
 10. JANGAN taruh Client Component di dalam Server Component tanpa wrapper
 
-Kalau butuh useState, useEffect, dll → pisahkan ke Client Component ("use client" di baris 1), lalu import dari Server Component.
+Kalau butuh useState, useEffect, dll → pisahkan ke Client Component ("use client" baris 1).
 
 11. Sebelum Push, WAJIB npm run build
-
-Kode jalan di npm run dev ≠ build sukses di Vercel.
 
 12. <script> di Server Component = ERROR
 
 Pakai <Script> dari next/script atau taruh di Client Component useEffect.
 
-13. Next.js Cache Stale
+13. WAJIB: Kill Node Sebelum Clear Cache
 
 Kalau ubah file tapi tidak ke-load:
 
 ```bash
+pkill -9 node
+pkill -9 next
 rm -rf .next
 rm -rf node_modules/.cache
 npm run dev
 ```
+
+JANGAN cuma Ctrl+C — proses Next.js sering nyangkut dan pegang file .next.
+
+14. @/components/... Import di Server Component
+
+Kalau file Client Component ("use client") dipakai di Server Component, WAJIB:
+
+· File punya "use client" di baris 1
+· Pisahkan Client Component ke file sendiri
+· JANGAN inline di Server Component
 
 ---
 
@@ -335,22 +321,20 @@ Google Cloud Console
 
 · Project: Harvestan
 · OAuth Client: Harvestan Web
-· Client ID: 873471878429-....apps.googleusercontent.com (sudah di Supabase)
 · Authorized JS Origins: https://harvestan.vercel.app, http://localhost:3000
 · Authorized Redirect URI: https://qfggoqcdaiokfluewple.supabase.co/auth/v1/callback
 
 Supabase
 
 · Authentication → Sign In / Providers → Google (Enabled)
-· Client ID + Secret sudah di-paste
 
 Kode
 
-· app/auth/callback/route.ts — handle OAuth callback
+· app/auth/callback/route.ts
 · app/(auth)/login/page.tsx — tombol "Masuk dengan Google"
 · app/(auth)/register/page.tsx — tombol "Daftar dengan Google"
 
-⚠️ Kalau setup OAuth baru lagi: copy Client ID/Secret langsung dari Google Cloud (jangan ketik manual), compare per karakter.
+⚠️ Kalau setup OAuth baru lagi: copy Client ID/Secret langsung dari Google Cloud (jangan ketik manual).
 
 ---
 
@@ -366,7 +350,6 @@ Potong Hutang Otomatis dari Panen
    - Update tiap hutang: dibayar += potong, sisa -= potong
    - profitPenggarap -= potongan; profitOwner += potongan
    - Simpan log di debts.log_perubahan + harvests.potongan_hutang_log
-4. Kalau TIDAK centang: potongan = 0
 ```
 
 Edit Panen
@@ -374,7 +357,7 @@ Edit Panen
 ```
 1. Ambil panen lama → cek potongan_hutang_lama
 2. Ambil hutang aktif SEKARANG
-3. Kalau user CENTANG: potong dari hutang aktif (langsung)
+3. Kalau user CENTANG: potong dari hutang aktif
 4. Kalau user UNCHECK: revert potongan lama ke hutang
 5. Update panen dengan nilai baru
 ```
@@ -391,7 +374,7 @@ Transfer Lahan
 
 ```
 1. Update lands.penggarap_id → penggarap baru
-2. Riwayat panen TETAP (karena terikat land_id)
+2. Riwayat panen TETAP
 3. Opsional: transfer hutang aktif
 ```
 
@@ -401,7 +384,7 @@ Kategori Produktivitas
 - Threshold per komoditas: cukup, baik, sangat_baik (Kg/Ha)
 - Kategori: < cukup = Kurang, ≥ cukup = Cukup, ≥ baik = Baik, ≥ sangat_baik = Sangat Baik
 - WAJIB dihitung per komoditas, TIDAK DICAMPUR
-- Komoditas tanpa data panen → tidak ditampilkan
+- Komoditas tanpa threshold → tidak dinilai
 ```
 
 GPS Walking
@@ -415,7 +398,7 @@ GPS Walking
 6. Simpan polygon dalam format GeoJSON
 ```
 
-Panen Bertahap Cabai (Musim)
+Panen Bertahap Cabai
 
 ```
 1. Tabel musim_cabai menyimpan master data musim user
@@ -423,100 +406,125 @@ Panen Bertahap Cabai (Musim)
 3. Satu musim bisa punya banyak panen (10-20x)
 4. Total produktivitas musim = total hasil / luas lahan
 5. Di detail lahan, breakdown per musim
+6. Di grafik, ada 2 chart per musim (total hasil & produktivitas)
+7. Di keuangan, filter musim cabai
+```
+
+Laporan Tahunan/5 Tahunan
+
+```
+1. User buka /laporan
+2. Pilih tahun, jenis (tahunan/5 tahunan), mode (rata-rata/panen terakhir)
+3. Generate PDF dengan:
+   - Ringkasan kondisi lahan + kategori produktivitas per komoditas (dengan keterangan: Kurang Optimal/Cukup/Baik/Sangat Baik)
+   - Leaderboard (bintang di samping angka produktivitas, TIDAK ada kolom evaluasi)
+   - Rekomendasi reward (⭐⭐⭐) & pendampingan (⚠️) — hanya kalau kategori di-set
+   - Ringkasan setiap panen (bagi hasil, potong hutang, biaya) — BARU
+   - Ringkasan profit per penggarap
+```
+
+PDF Invoice Detail Panen
+
+```
+1. Buka detail panen
+2. Klik tombol "📄 Download Invoice PDF (Bagi Hasil)"
+3. Generate PDF dengan: header, info panen, perhitungan, bagi hasil, potong hutang, total diterima, tanda tangan
 ```
 
 ---
 
-📊 PROGRESS FINAL v1.1
+📊 PROGRESS FINAL v1.5
 
-✅ Sudah Selesai (100%)
+✅ Sudah Selesai
 
-· ✅ Auth: Register + Login (Email + Google OAuth) + Logout
-· ✅ CRUD Penggarap (list, tambah, detail, edit, hapus)
+· ✅ Auth: Register + Login (Email + Google OAuth)
+· ✅ CRUD Penggarap, Lahan, Panen, Hutang
 · ✅ CRUD Lahan + GPS koordinat + polygon (GPS Walking)
-· ✅ CRUD Panen (tambah, detail, edit, hapus)
-· ✅ CRUD Hutang (tambah, detail, edit, lunasi, hapus)
 · ✅ Dashboard (statistik, top 5, produksi 6 bulan)
-· ✅ Keuangan & Laba (profit bulanan, per komoditas, per lahan)
-· ✅ Halaman Grafik Recharts (produksi & produktivitas per komoditas, kinerja penggarap)
+· ✅ Keuangan & Laba (filter tahun, komoditas, musim cabai)
+· ✅ Grafik Recharts:
+  · Produksi & produktivitas per komoditas
+  · Kinerja penggarap
+  · Grafik per musim cabai (total hasil & produktivitas)
 · ✅ Export Excel (4 sheet)
-· ✅ Export PDF per Penggarap + grafik
+· ✅ Export PDF per Penggarap + grafik + kategori
 · ✅ Potong Hutang Otomatis + Log Audit
 · ✅ Edit Panen + Auto-Revert Hapus Panen
-· ✅ Transfer Lahan (dengan opsi transfer hutang)
+· ✅ Transfer Lahan
 · ✅ Landing Page + SEO
-· ✅ Halaman Gabah (multi-sesi timbang, export PNG)
+· ✅ Halaman Gabah (multi-sesi timbang)
 · ✅ Kategori Produktivitas (editable, badge di preview & PDF)
 · ✅ PWA (install di HP, offline mode)
 · ✅ Settings (profil, ganti password, hapus akun)
 · ✅ Bagi Hasil Custom (panen & gabah)
-· ✅ Panen Multi-Lahan (gabung panen dari beberapa lahan)
-· ✅ GPS Walking (ukur lahan + preview mini-map)
-· ✅ Login & Register Google OAuth
-· ✅ Panen Bertahap Cabai — TAHAP 1 & 2:
-  · Tabel musim_cabai ✅
-  · Query + API musim ✅
-  · Form input panen dengan dropdown musim ✅
-  · Modal bikin musim baru ✅
+· ✅ Panen Multi-Lahan
+· ✅ GPS Walking (ukur lahan + mini-map)
+· ✅ Panen Bertahap Cabai (TAHAP 1-5):
+  · Tabel musim_cabai + API + Query
+  · Form input panen dropdown musim + modal bikin musim
+  · Detail lahan: breakdown per musim (expandable)
+  · Grafik per musim (bar chart total hasil & produktivitas)
+  · Filter musim di halaman keuangan
+· ✅ PDF Invoice Bagi Hasil di detail panen
+· ✅ Laporan Tahunan/5 Tahunan:
+  · Ringkasan kondisi + kategori produktivitas per komoditas (keterangan lengkap)
+  · Leaderboard dengan bintang ⭐⭐⭐ di samping angka (TIDAK ada kolom evaluasi)
+  · Rekomendasi reward & pendampingan
+  · Ringkasan setiap panen (bagi hasil, potong hutang, biaya)
+  · Ringkasan profit owner & penggarap per penggarap
+· ✅ Bottom Nav Mobile Scrollable (semua 11 menu accessible)
+· ✅ Fix glitch huruf doubling di PDF penggarap (kolom komoditas)
 
-### ✅ Sudah Selesai (tambahan)
-
-- ✅ **PDF Invoice Bagi Hasil** di detail panen (download per panen)
-
-### ⏳ Belum Selesai (update)
-
-- ⏳ **Laporan Tahunan & 5 Tahunan**: produktivitas lahan + kinerja petani, 
-  reward & pendampingan berdasarkan kategori produktivitas (ikon bintang), 
-  profit owner + penggarap, hutang, biaya
-- ⏳ **Update Laporan Kinerja Penggarap**: tambah cakupan yang sama 
-  (reward & pendampingan, kategori bintang, rincian biaya)
 ⏳ Belum Selesai
 
-· ⏳ Panen Bertahap Cabai — TAHAP 3: Detail lahan breakdown per musim (khusus cabai)
-· ⏳ Panen Bertahap Cabai — TAHAP 4: Grafik per musim
-· ⏳ Panen Bertahap Cabai — TAHAP 5: Filter musim di halaman grafik & keuangan
-· ⏳ Halaman Bantuan (belum ada, opsional)
-· ⏳ Email Notifikasi (opsional, butuh Resend/Mailgun)
+· ⏳ TAHAP 3: Update Laporan Kinerja Penggarap Existing:
+  · Tambah kategori produktivitas dengan bintang ⭐
+  · Tambah rekomendasi reward & pendampingan
+  · Tambah rincian biaya & hutang lengkap
+  · Konsisten dengan Laporan Tahunan yang baru
+· ⏳ Halaman Bantuan (belum ada)
+· ⏳ Email Notifikasi (butuh Resend/Mailgun)
 · ⏳ Katalog Produk (foto/video, butuh storage)
 · ⏳ Monetisasi (payment gateway)
-· ⏳ Fix Highlight Menu Active (menu sidebar tidak highlight saat aktif — karena bug hydration)
+· ⏳ Fix Highlight Menu Active (menu tidak highlight saat aktif)
 
 ---
 
 🎯 Next Feature — Prioritas
 
-🅰️ Panen Bertahap Cabai — TAHAP 3 (rekomendasi)
+🅰️ TAHAP 3: Update Laporan Kinerja Penggarap (rekomendasi)
 
 Effort: Sedang (~1-2 jam)
-Value: ⭐⭐⭐⭐
 
-Yang perlu dibuat:
+Yang perlu diupdate di app/api/export-pdf/route.ts:
 
-· Di halaman detail lahan (/penggarap/[id]/lahan/[landId]/page.tsx):
-  · Kalau lahan punya panen cabai → tampilkan breakdown per musim
-  · Setiap musim: total hasil, frekuensi panen, produktivitas
-  · Bisa expand/collapse detail panen per musim
+· Tambah kategori produktivitas dengan bintang ⭐ di samping nilai
+· Tambah rekomendasi reward & pendampingan (kalau kategori di-set)
+· Tambah rincian biaya lengkap per panen
+· Tambah rincian hutang lengkap
+· Konsisten dengan Laporan Tahunan
 
-🅱️ TAHAP 4 & 5 — Grafik & Filter
+🅱️ Halaman Bantuan
 
-Effort: Sedang (~2-3 jam)
+· Panduan step-by-step
+· FAQ
+· Kontak support
 
-🅲️ Halaman Bantuan
+🅲️ Email Notifikasi
 
-Effort: Kecil (~1-2 jam)
-Value: ⭐⭐⭐⭐
+· Welcome email
+· Reminder hutang
+· Butuh Resend/Mailgun
 
-🅳️ Email Notifikasi
+🅳️ Katalog Produk
 
-Effort: Sedang (~2-3 jam)
+· Upload foto/video
+· Butuh Supabase Storage
 
-🅴️ Katalog Produk
+🅴️ Monetisasi
 
-Effort: Besar (~6-8 jam)
-
-🅵️ Monetisasi
-
-Effort: Besar (~8-10 jam)
+· Payment gateway
+· Paket Free vs Premium
 
 ---
 
@@ -527,26 +535,38 @@ Buka chat baru, paste pesan ini:
 ```
 Halo! Saya lanjut project Harvestan (SaaS pertanian Indonesia).
 
-Konteks lengkap ada di:
+Konteks lengkap:
 https://github.com/harvestanid/harvestan/blob/main/HANDOFF.md
 
-Tolong baca file itu dulu sebelum kita mulai.
+Tolong baca dulu sebelum mulai.
 
-Status: v1.1 — Login Google, GPS Walking, Panen Multi-Lahan, 
-Panen Bertahap Cabai (TAHAP 1 & 2) sudah selesai.
+Status: v1.5
+- ✅ Login Google OAuth
+- ✅ GPS Walking (ukur lahan + mini-map)
+- ✅ Panen Multi-Lahan
+- ✅ Panen Bertahap Cabai (TAHAP 1-5)
+- ✅ PDF Invoice Bagi Hasil di detail panen
+- ✅ Laporan Tahunan/5 Tahunan (kategori lengkap, leaderboard bintang, ringkasan panen)
+- ✅ Bottom nav mobile scrollable
+- ✅ Fix glitch PDF penggarap
 
-Sekarang mau lanjut TAHAP 3: Detail lahan breakdown per musim (khusus cabai).
+Yang mau dilanjutkan:
+- 📄 TAHAP 3: Update Laporan Kinerja Penggarap Existing
+  - Tambah kategori produktivitas dengan bintang ⭐ di samping nilai
+  - Tambah rekomendasi reward & pendampingan
+  - Tambah rincian biaya & hutang lengkap
+  - Konsisten dengan Laporan Tahunan
 
 Aturan main:
-1. Saya pemula, TIDAK BISA coding
-2. Selalu kirim FULL FILE, bukan potongan kode
-3. Jangan suruh saya cari line kode
-4. Kalau error, saya screenshot
-5. JANGAN bikin nested <form>
-6. JANGAN pakai useSearchParams di page.tsx (pakai props dari server)
-7. Client Component harus dipisah ke file sendiri
+1. Saya pemula, kirim FULL FILE, bukan potongan kode
+2. Jangan suruh cari line kode
+3. JANGAN bikin nested <form>
+4. JANGAN pakai useSearchParams di page.tsx
+5. Client Component dipisah ke file sendiri
+6. WAJIB: pkill -9 node sebelum rm -rf .next
+7. Kalau error, saya screenshot
 
-Mulai dari mana?
+Mulai TAHAP 3?
 ```
 
 ---
@@ -563,14 +583,13 @@ Mulai dari mana?
 
 🚨 Known Issues
 
-🟡 Middleware Deprecated
-
-Next.js warning: middleware file convention is deprecated, use "proxy" instead.
-Belum urgent. Bisa migrasi nanti.
-
 🟡 Highlight Menu Active Tidak Jalan
 
 Menu sidebar tidak highlight saat aktif. Ini karena bug hydration — kita hapus usePathname() dari layout. Bisa ditambahkan lagi dengan ActiveLink component kecil.
+
+🟡 Middleware Deprecated
+
+Next.js warning: middleware file convention is deprecated, use "proxy" instead.
 
 🟡 Edit Panen + Hutang Manual
 
@@ -580,17 +599,17 @@ Kalau hutang sudah dilunasi manual oleh user setelah panen potong hutang, revert
 
 📈 Statistik Project
 
-· 30+ halaman Next.js
-· 15+ API routes
+· 35+ halaman Next.js
+· 20+ API routes
 · 6 tabel database + RLS
-· ~12000+ baris kode TypeScript
-· ~18 library terintegrasi
+· ~18000+ baris kode TypeScript
+· ~20 library terintegrasi
 · 3 dokumentasi: CHANGELOG.md, HANDOFF.md (ini), PROJECT.md
 · Live di production
 
 ---
 
-Status: ✅ v1.1 — Login Google + GPS Walking + Panen Bertahap Cabai (partial)
+Status: ✅ v1.5 — Laporan Lengkap + Laporan Tahunan/5 Tahunan
 Tanggal update: 2026-09-27
 Dibuat dengan: ❤️ + AI, dari nol, tanpa bisa coding 🇮🇩
 
@@ -603,10 +622,11 @@ Dibuat dengan: ❤️ + AI, dari nol, tanpa bisa coding 🇮🇩
 ## ✅ Cek Baris
 
 ```bash
+cd ~/projects/harvestan
 wc -l HANDOFF.md
 ```
 
-Harusnya ≥ 500 baris.
+Harusnya ≥ 480 baris.
 
 ---
 
@@ -615,39 +635,17 @@ Harusnya ≥ 500 baris.
 ```bash
 cd ~/projects/harvestan
 git add .
-git commit -m "docs: update HANDOFF.md ke v1.1 — Google OAuth + GPS Walking + Panen Bertahap"
+git commit -m "docs: update HANDOFF.md ke v1.5 — laporan lengkap + laporan tahunan"
 git push
 ```
 
 ---
 
-🎯 Setelah Push
+📸 Kabari
 
-Buka chat baru, paste pesan ini:
+Setelah push:
 
-```
-Halo! Saya lanjut project Harvestan.
+1. ✅ wc -l HANDOFF.md ≥ 480?
+2. ✅ Sudah git push?
 
-Konteks lengkap ada di:
-https://github.com/harvestanid/harvestan/blob/main/HANDOFF.md
-
-Tolong baca dulu sebelum kita mulai.
-
-Status: v1.1 — Login Google, GPS Walking, Panen Multi-Lahan, 
-Panen Bertahap Cabai (TAHAP 1 & 2) sudah selesai.
-
-Mau lanjut TAHAP 3: Detail lahan breakdown per musim (khusus cabai).
-
-Aturan:
-1. Saya pemula, kirim FULL FILE
-2. Jangan suruh cari line kode
-3. JANGAN bikin nested <form>
-4. JANGAN pakai useSearchParams di page.tsx
-5. Client Component harus dipisah ke file sendiri
-
-Mulai dari mana?
-```
-
----
-
-Eksekusi, push, buka chat baru! Kabari kalau ada yang bingung. 🌾✨
+Kalau berhasil, HANDOFF.md siap untuk chat baru. 🌾✨
