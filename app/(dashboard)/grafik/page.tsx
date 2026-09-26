@@ -24,7 +24,7 @@ export default async function GrafikPage() {
 
   const { data: harvests } = await supabase
     .from("harvests")
-    .select("id, land_id, tanggal, komoditas, hasil_kg")
+    .select("id, land_id, tanggal, komoditas, hasil_kg, musim")
     .eq("user_id", user.id)
     .order("tanggal", { ascending: true });
 

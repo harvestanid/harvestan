@@ -13,6 +13,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { GrafikCabai } from "./grafik-cabai";
 import {
   siapkanDataPerTanggal,
   siapkanKinerjaPenggarap,
@@ -41,7 +42,6 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
   const [penggarapDetail, setPenggarapDetail] = useState<string>("");
   const [komoditasDetail, setKomoditasDetail] = useState<string>("");
 
-  // ===== Data untuk grafik 1 & 2 =====
   const dataPerTanggal = useMemo(
     () => siapkanDataPerTanggal(harvests, lands, filterPenggarap || null),
     [harvests, lands, filterPenggarap]
@@ -57,21 +57,18 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
     [harvests, lands, filterPenggarap]
   );
 
-  // Set komoditas default untuk kinerja penggarap
   useMemo(() => {
     if (!komoditasKinerja && komoditasTersedia.length > 0) {
       setKomoditasKinerja(komoditasTersedia[0]);
     }
   }, [komoditasTersedia]);
 
-  // Set penggarap default untuk detail
   useMemo(() => {
     if (!penggarapDetail && penggaraps.length > 0) {
       setPenggarapDetail(penggaraps[0].id);
     }
   }, [penggaraps]);
 
-  // ===== Data untuk grafik 3 =====
   const dataKinerja = useMemo(
     () =>
       komoditasKinerja
@@ -85,7 +82,6 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
     [harvests, lands, penggaraps, komoditasKinerja]
   );
 
-  // ===== Data untuk grafik 4 =====
   const dataDetail = useMemo(
     () =>
       penggarapDetail
@@ -99,13 +95,15 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
     [harvests, lands, penggarapDetail, komoditasDetail]
   );
 
-  // Komoditas untuk detail penggarap
   const komoditasPenggarapDetail = useMemo(() => {
     if (!penggarapDetail) return [];
     return getKomoditasDenganData(harvests, penggarapDetail, lands);
   }, [harvests, lands, penggarapDetail]);
 
   const adaData = harvests.length > 0;
+  const adaDataCabai = harvests.some(
+    (h) => (h.komoditas || "padi") === "cabai_rawit"
+  );
 
   if (!adaData) {
     return (
@@ -235,8 +233,7 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
             ⚡ Produktivitas Panen per Komoditas
           </h2>
           <p className="text-xs text-gray-500 mt-1">
-            Grafik garis produktivitas (Kg/Ha) — setiap komoditas dipisah,
-            TIDAK dicampur
+            Grafik garis produktivitas (Kg/Ha) — setiap komoditas dipisah
           </p>
         </div>
 
@@ -444,7 +441,6 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Grafik Produksi */}
             <div>
               <div className="text-sm font-medium text-gray-800 mb-2">
                 📈 Produksi (Kg)
@@ -490,7 +486,6 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
               </div>
             </div>
 
-            {/* Grafik Produktivitas */}
             <div>
               <div className="text-sm font-medium text-gray-800 mb-2">
                 ⚡ Produktivitas (Kg/Ha)
@@ -538,6 +533,29 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
           </div>
         )}
       </div>
+
+      {/* ===== GRAFIK 5: CABAI PER MUSIM ===== */}
+      {adaDataCabai && (
+        <div className="bg-gradient-to-br from-red-50 to-orange-50 border-2 border-orange-300 rounded-xl p-5">
+          <div className="mb-4">
+            <h2 className="font-bold text-orange-900 text-lg">
+              🌶️ Cabai Rawit — Per Musim Tanam
+            </h2>
+            <p className="text-xs text-orange-700 mt-1">
+              Cabai dipanen bertahap — bandingkan performa antar musim tanam
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            <GrafikCabai harvests={harvests} lands={lands} mode="produksi" />
+            <GrafikCabai
+              harvests={harvests}
+              lands={lands}
+              mode="produktivitas"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
