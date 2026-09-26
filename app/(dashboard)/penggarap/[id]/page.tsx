@@ -52,19 +52,37 @@ export default async function DetailPenggarapPage({
             {lands.length} lahan &middot; {totalLuas.toFixed(2)} Ha total
             {hutangList.length > 0 && (
               <>
-                {" "}&middot;{" "}
-                <span className={totalHutang > 0 ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-                  {totalHutang > 0 ? `Hutang ${formatRp(totalHutang)}` : "Lunas ✅"}
+                {" "}
+                &middot;{" "}
+                <span
+                  className={
+                    totalHutang > 0
+                      ? "text-red-600 font-medium"
+                      : "text-green-600 font-medium"
+                  }
+                >
+                  {totalHutang > 0
+                    ? `Hutang ${formatRp(totalHutang)}`
+                    : "Lunas ✅"}
                 </span>
               </>
             )}
           </p>
         </div>
-        <TombolAksiPenggarap
-          penggarap={penggarap}
-          totalLuas={totalLuas}
-          landsCount={lands.length}
-        />
+        <div className="flex gap-2 flex-wrap">
+          <TombolAksiPenggarap
+            penggarap={penggarap}
+            totalLuas={totalLuas}
+            landsCount={lands.length}
+          />
+          <a
+            href={`/api/export-pdf?penggarap_id=${id}`}
+            download
+            className="bg-red-600 hover:bg-red-700 text-white font-medium px-5 py-2 rounded-lg transition text-sm"
+          >
+            📄 Laporan PDF
+          </a>
+        </div>
       </div>
 
       {/* Info Penggarap */}
@@ -176,7 +194,6 @@ export default async function DetailPenggarapPage({
           </div>
         ) : (
           <>
-            {/* Summary Hutang */}
             {jumlahHutangAktif > 0 && (
               <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-3">
                 <div className="flex items-center justify-between flex-wrap gap-2">
@@ -190,7 +207,6 @@ export default async function DetailPenggarapPage({
               </div>
             )}
 
-            {/* List Hutang */}
             <div className="grid gap-3">
               {hutangList.map((h) => {
                 const sisa = Number(h.sisa || 0);
