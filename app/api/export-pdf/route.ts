@@ -11,11 +11,19 @@ const KOMODITAS_LABEL: Record<string, string> = {
 };
 
 const KOMODITAS_ICON: Record<string, string> = {
-  padi: "🌾",
-  jagung: "🌽",
-  kacang_tanah: "🥜",
-  bawang_merah: "🧅",
-  cabai_rawit: "🌶️",
+  padi: "Padi",
+  jagung: "Jagung",
+  kacang_tanah: "Kacang Tanah",
+  bawang_merah: "Bawang Merah",
+  cabai_rawit: "Cabai Rawit",
+};
+
+const KOMODITAS_COLOR_RGB: Record<string, [number, number, number]> = {
+  padi: [39, 174, 96],
+  jagung: [243, 156, 18],
+  kacang_tanah: [142, 68, 173],
+  bawang_merah: [231, 76, 60],
+  cabai_rawit: [192, 57, 43],
 };
 
 function formatRp(n: number) {
@@ -34,7 +42,6 @@ function formatTanggal(t: string) {
   });
 }
 
-// Helper: hitung kategori dari produktivitas + kategori user
 function hitungKategoriPDF(
   produktivitas: number,
   kategori: any
@@ -59,7 +66,6 @@ function hitungKategoriPDF(
   return { label: "KURANG OPTIMAL", color: [220, 40, 40] };
 }
 
-// Helper: hitung produktivitas per komoditas
 function hitungProduktivitasPerKomoditasPDF(
   harvests: any[],
   lands: { id: string; luas: number }[],
@@ -71,7 +77,7 @@ function hitungProduktivitasPerKomoditasPDF(
       totalHasil: number;
       totalProdSum: number;
       jmlPanen: number;
-      panenList: { tanggal: string; prod: number }[];
+      panenList: { tanggal: string; prod: number; hasil: number }[];
     }
   > = {};
 
@@ -93,7 +99,11 @@ function hitungProduktivitasPerKomoditasPDF(
     data[kom].totalHasil += Number(h.hasil_kg);
     data[kom].totalProdSum += prod;
     data[kom].jmlPanen += 1;
-    data[kom].panenList.push({ tanggal: h.tanggal, prod });
+    data[kom].panenList.push({
+      tanggal: h.tanggal,
+      prod,
+      hasil: Number(h.hasil_kg),
+    });
   });
 
   const hasil: any[] = [];
@@ -105,6 +115,11 @@ function hitungProduktivitasPerKomoditasPDF(
     const terakhir = sorted[0]?.prod || 0;
     const kat = kategoriList.find((k) => k.komoditas === kom) || null;
 
+    // Sort panenList by tanggal ascending untuk chart
+    const panenAsc = [...d.panenList].sort(
+      (a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime()
+    );
+
     hasil.push({
       komoditas: kom,
       produktivitasTerakhir: terakhir,
@@ -113,6 +128,7 @@ function hitungProduktivitasPerKomoditasPDF(
       totalHasilKg: d.totalHasil,
       kategoriTerakhir: hitungKategoriPDF(terakhir, kat),
       kategoriRata: hitungKategoriPDF(rata, kat),
+      panenAsc,
     });
   });
 
@@ -127,6 +143,122 @@ function hitungProduktivitasPerKomoditasPDF(
   });
 
   return hasil;
+}
+
+// ===================================================
+// Helper: Gambar Line Chart pakai jsPDF primitives
+// ===================================================
+function gambarLineChart(
+  pdf: jsPDF,
+  data: { x: string; y: number }[],
+  options: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    color: [number, number, number];
+    yLabel: string;
+    yFormat?: (n: number) => string;
+    maxPoints?: number;
+  }
+) {
+  const { x, y, width, height, color, yLabel, yFormat, maxPoints } = options;
+
+  if (data.length === 0) return;
+
+  // Kalau terlalu banyak, sample
+  let displayData = data;
+  if (maxPoints && data.length > maxPoints) {
+    const step = Math.ceil(data.length / maxPoints);
+    displayData = data.filter((_, i) => i % step === 0);
+    if (displayData[displayData.length - 1] !== data[data.length - 1]) {
+      displayData.push(data[data.length - 1]);
+    }
+  }
+
+  // Hitung range Y
+  const maxY = Math.max(...displayData.map((d) => d.y), 1);
+  const minY = 0;
+
+  // Background chart
+  pdf.setFillColor(250, 250, 250);
+  pdf.rect(x, y, width, height, "F");
+  pdf.setDrawColor(230, 230, 230);
+  pdf.rect(x, y, width, height);
+
+  // Y-axis label
+  pdf.setFontSize(7);
+  pdf.setTextColor(120, 120, 120);
+  pdf.setFont("helvetica", "normal");
+  pdf.text(yLabel, x + 2, y - 2);
+
+  // Grid horizontal (3 lines)
+  const numGridLines = 3;
+  for (let i = 1; i <= numGridLines; i++) {
+    const gy = y + height - (i / numGridLines) * height;
+    pdf.setDrawColor(240, 240, 240);
+    pdf.line(x, gy, x + width, gy);
+
+    // Label Y
+    const val = (maxY / numGridLines) * i;
+    pdf.setFontSize(6);
+    pdf.setTextColor(150, 150, 150);
+    const label = yFormat ? yFormat(val) : Math.round(val).toLocaleString("id-ID");
+    pdf.text(label, x - 1, gy + 1, { align: "right" });
+  }
+
+  // X-axis baseline
+  pdf.setDrawColor(180, 180, 180);
+  pdf.line(x, y + height, x + width, y + height);
+
+  // Plot points
+  const padding = 8;
+  const innerW = width - padding * 2;
+  const innerH = height - padding;
+  const stepX = innerW / Math.max(displayData.length - 1, 1);
+
+  pdf.setDrawColor(color[0], color[1], color[2]);
+  pdf.setLineWidth(0.6);
+
+  // Draw lines
+  for (let i = 0; i < displayData.length - 1; i++) {
+    const p1x = x + padding + i * stepX;
+    const p1y = y + height - padding - ((displayData[i].y - minY) / (maxY - minY)) * innerH;
+    const p2x = x + padding + (i + 1) * stepX;
+    const p2y = y + height - padding - ((displayData[i + 1].y - minY) / (maxY - minY)) * innerH;
+    pdf.line(p1x, p1y, p2x, p2y);
+  }
+
+  // Draw dots
+  pdf.setFillColor(color[0], color[1], color[2]);
+  displayData.forEach((d, i) => {
+    const px = x + padding + i * stepX;
+    const py = y + height - padding - ((d.y - minY) / (maxY - minY)) * innerH;
+    pdf.circle(px, py, 0.8, "F");
+  });
+
+  // X-axis labels (first, middle, last)
+  pdf.setFontSize(6);
+  pdf.setTextColor(120, 120, 120);
+  if (displayData.length > 0) {
+    pdf.text(displayData[0].x, x + padding, y + height + 3);
+    if (displayData.length > 2) {
+      const midIdx = Math.floor(displayData.length / 2);
+      pdf.text(
+        displayData[midIdx].x,
+        x + padding + midIdx * stepX,
+        y + height + 3
+      );
+    }
+    if (displayData.length > 1) {
+      pdf.text(
+        displayData[displayData.length - 1].x,
+        x + width - padding,
+        y + height + 3,
+        { align: "right" }
+      );
+    }
+  }
 }
 
 export async function GET(request: Request) {
@@ -180,7 +312,7 @@ export async function GET(request: Request) {
         .select("*")
         .in("land_id", landIds)
         .eq("user_id", user.id)
-        .order("tanggal", { ascending: false });
+        .order("tanggal", { ascending: true });
       harvests = data || [];
     }
 
@@ -191,7 +323,6 @@ export async function GET(request: Request) {
       .eq("user_id", user.id)
       .order("tanggal", { ascending: false });
 
-    // Ambil kategori user
     const { data: kategoriList } = await supabase
       .from("categories")
       .select("*")
@@ -223,7 +354,6 @@ export async function GET(request: Request) {
       0
     );
 
-    // Produktivitas per komoditas
     const produktivitasPerKom = hitungProduktivitasPerKomoditasPDF(
       harvests,
       lands || [],
@@ -322,7 +452,6 @@ export async function GET(request: Request) {
     const cardWidth = (contentWidth - 6) / 2;
     const cardHeight = 18;
 
-    // Card 1: Profit Owner
     pdf.setFillColor(232, 245, 233);
     pdf.rect(margin, yPos, cardWidth, cardHeight, "F");
     pdf.setDrawColor(200, 230, 201);
@@ -336,7 +465,6 @@ export async function GET(request: Request) {
     pdf.setTextColor(21, 87, 36);
     pdf.text(formatRp(totalProfitOwner), margin + 3, yPos + 13);
 
-    // Card 2: Profit Penggarap
     pdf.setFillColor(255, 243, 224);
     pdf.rect(margin + cardWidth + 6, yPos, cardWidth, cardHeight, "F");
     pdf.setDrawColor(255, 224, 178);
@@ -356,7 +484,6 @@ export async function GET(request: Request) {
 
     yPos += cardHeight + 4;
 
-    // Card 3: Hutang Aktif
     pdf.setFillColor(255, 235, 238);
     pdf.rect(margin, yPos, cardWidth, cardHeight, "F");
     pdf.setDrawColor(255, 205, 210);
@@ -374,7 +501,6 @@ export async function GET(request: Request) {
     pdf.setTextColor(183, 28, 28);
     pdf.text(formatRp(totalHutangAktif), margin + 3, yPos + 13);
 
-    // Card 4: Total Panen
     pdf.setFillColor(227, 242, 253);
     pdf.rect(margin + cardWidth + 6, yPos, cardWidth, cardHeight, "F");
     pdf.setDrawColor(187, 222, 251);
@@ -394,7 +520,6 @@ export async function GET(request: Request) {
 
     yPos += cardHeight + 6;
 
-    // Info tambahan
     pdf.setFontSize(9);
     pdf.setFont("helvetica", "normal");
     pdf.setTextColor(100, 100, 100);
@@ -407,7 +532,6 @@ export async function GET(request: Request) {
 
     // ===== EVALUASI PRODUKTIVITAS PER KOMODITAS =====
     if (produktivitasPerKom.length > 0) {
-      // Pastikan cukup ruang, kalau tidak pindah halaman
       if (yPos > pageHeight - 80) {
         pdf.addPage();
         yPos = margin;
@@ -422,7 +546,6 @@ export async function GET(request: Request) {
 
       yPos += 6;
 
-      // Info kecil
       pdf.setFontSize(8);
       pdf.setFont("helvetica", "italic");
       pdf.setTextColor(120, 120, 120);
@@ -433,7 +556,6 @@ export async function GET(request: Request) {
       );
       yPos += 5;
 
-      // Header tabel
       pdf.setFillColor(240, 247, 237);
       pdf.rect(margin, yPos, contentWidth, 8, "F");
       pdf.setFontSize(8);
@@ -474,7 +596,8 @@ export async function GET(request: Request) {
 
         pdf.setFont("helvetica", "normal");
         pdf.setTextColor(60, 60, 60);
-        pdf.text(`${icon} ${label}`, kc1, yPos + 5);
+        pdf.text(`${icon}`, kc1, yPos + 5);
+        pdf.text(label, kc1 + 4, yPos + 5);
         pdf.text(String(pk.jmlPanen), kc2, yPos + 5);
         pdf.text(
           Number(pk.totalHasilKg).toLocaleString("id-ID"),
@@ -487,7 +610,6 @@ export async function GET(request: Request) {
           yPos + 5
         );
 
-        // Kategori rata-rata
         if (pk.kategoriRata) {
           const c = pk.kategoriRata.color;
           pdf.setTextColor(c[0], c[1], c[2]);
@@ -502,45 +624,100 @@ export async function GET(request: Request) {
         yPos += 7;
       });
 
-      yPos += 5;
+      yPos += 8;
+    }
 
-      // Info tambahan: kategori per panen terakhir
-      const adaTerakhir = produktivitasPerKom.some(
-        (pk: any) => pk.kategoriTerakhir
-      );
-      if (adaTerakhir) {
-        pdf.setFontSize(8);
-        pdf.setFont("helvetica", "normal");
-        pdf.setTextColor(100, 100, 100);
-        pdf.text("Detail Kategori per Panen Terakhir:", margin, yPos);
-        yPos += 4;
-
-        produktivitasPerKom.forEach((pk: any) => {
-          if (!pk.kategoriTerakhir) return;
-          if (yPos > pageHeight - 20) {
-            pdf.addPage();
-            yPos = margin;
-          }
-          const icon = KOMODITAS_ICON[pk.komoditas] || "";
-          const label = KOMODITAS_LABEL[pk.komoditas] || pk.komoditas;
-          pdf.setFont("helvetica", "normal");
-          pdf.setTextColor(60, 60, 60);
-          pdf.text(
-            `• ${icon} ${label}: ${pk.produktivitasTerakhir.toFixed(
-              0
-            )} Kg/Ha — `,
-            margin + 2,
-            yPos
-          );
-          const c = pk.kategoriTerakhir.color;
-          pdf.setTextColor(c[0], c[1], c[2]);
-          pdf.setFont("helvetica", "bold");
-          pdf.text(pk.kategoriTerakhir.label, margin + 70, yPos);
-          yPos += 4;
-        });
-      }
+    // ===== GRAFIK PRODUKSI & PRODUKTIVITAS PER KOMODITAS =====
+    if (produktivitasPerKom.length > 0) {
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(44, 94, 46);
+      pdf.text("GRAFIK PRODUKSI & PRODUKTIVITAS", margin, yPos);
+      pdf.setDrawColor(44, 94, 46);
+      pdf.line(margin, yPos + 1.5, margin + 70, yPos + 1.5);
 
       yPos += 6;
+
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "italic");
+      pdf.setTextColor(120, 120, 120);
+      pdf.text(
+        "* Setiap komoditas memiliki grafik sendiri (tidak dicampur)",
+        margin,
+        yPos
+      );
+      yPos += 6;
+
+      // Untuk setiap komoditas yang punya data
+      produktivitasPerKom.forEach((pk: any) => {
+        const panenList = pk.panenAsc || [];
+        if (panenList.length === 0) return;
+
+        const color = KOMODITAS_COLOR_RGB[pk.komoditas] || [100, 100, 100];
+        const label = KOMODITAS_LABEL[pk.komoditas] || pk.komoditas;
+
+        // Perlu ~90mm untuk 2 grafik (produksi & produktivitas) + header
+        if (yPos > pageHeight - 100) {
+          pdf.addPage();
+          yPos = margin;
+        }
+
+        // Header komoditas
+        pdf.setFillColor(color[0], color[1], color[2]);
+        pdf.rect(margin, yPos, contentWidth, 6, "F");
+        pdf.setFontSize(9);
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFont("helvetica", "bold");
+        pdf.text(
+          `${label} — ${pk.jmlPanen} panen — Total ${Number(
+            pk.totalHasilKg
+          ).toLocaleString("id-ID")} Kg — Rata-rata ${pk.produktivitasRata.toFixed(
+            0
+          )} Kg/Ha`,
+          margin + 3,
+          yPos + 4
+        );
+        yPos += 8;
+
+        // Chart Produksi
+        const chartWidth = contentWidth;
+        const chartHeight = 35;
+
+        const dataProd = panenList.map((p: any) => ({
+          x: formatTanggal(p.tanggal),
+          y: p.hasil,
+        }));
+
+        gambarLineChart(pdf, dataProd, {
+          x: margin,
+          y: yPos,
+          width: chartWidth,
+          height: chartHeight,
+          color: color,
+          yLabel: "Produksi (Kg)",
+          yFormat: (n) => Math.round(n).toLocaleString("id-ID"),
+          maxPoints: 15,
+        });
+        yPos += chartHeight + 6;
+
+        // Chart Produktivitas
+        const dataProdv = panenList.map((p: any) => ({
+          x: formatTanggal(p.tanggal),
+          y: p.prod,
+        }));
+
+        gambarLineChart(pdf, dataProdv, {
+          x: margin,
+          y: yPos,
+          width: chartWidth,
+          height: chartHeight,
+          color: color,
+          yLabel: "Produktivitas (Kg/Ha)",
+          yFormat: (n) => Math.round(n).toLocaleString("id-ID"),
+          maxPoints: 15,
+        });
+        yPos += chartHeight + 8;
+      });
     }
 
     // ===== DAFTAR LAHAN =====
@@ -648,7 +825,12 @@ export async function GET(request: Request) {
       pdf.setTextColor(60, 60, 60);
       pdf.setFontSize(8);
 
-      harvests.forEach((h, idx) => {
+      // Sort riwayat panen descending
+      const harvestsSorted = [...harvests].sort(
+        (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+      );
+
+      harvestsSorted.forEach((h, idx) => {
         if (yPos > pageHeight - 30) {
           pdf.addPage();
           yPos = margin;

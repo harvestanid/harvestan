@@ -8,6 +8,7 @@ const menuItems = [
   { href: "/penggarap", label: "Penggarap", icon: "👨‍🌾" },
   { href: "/gabah", label: "Penimbangan Gabah", icon: "⚖️" },
   { href: "/keuangan", label: "Keuangan", icon: "💰" },
+  { href: "/grafik", label: "Grafik", icon: "📈" },
   { href: "/export", label: "Export Data", icon: "📥" },
   { href: "/pengaturan", label: "Pengaturan", icon: "⚙️" },
 ];
@@ -69,7 +70,7 @@ export default function DashboardLayout({
       </div>
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 z-40">
-        <div className="flex justify-around">
+        <div className="flex justify-around overflow-x-auto">
           {menuItems.map((item) => {
             const isActive =
               pathname === item.href || pathname.startsWith(item.href + "/");
@@ -77,12 +78,14 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs transition ${
+                className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs transition flex-shrink-0 ${
                   isActive ? "text-green-700" : "text-gray-500"
                 }`}
               >
                 <span className="text-xl">{item.icon}</span>
-                <span className="text-[10px]">{item.label.split(" ")[0]}</span>
+                <span className="text-[10px] whitespace-nowrap">
+                  {item.label.split(" ")[0]}
+                </span>
               </Link>
             );
           })}
