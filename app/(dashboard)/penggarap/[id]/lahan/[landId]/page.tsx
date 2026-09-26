@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { TombolAksiLahan } from "./tombol-aksi";
+import PetaMiniWrapper from "@/components/peta-mini-wrapper";
 import {
   getKategoriList,
   hitungProduktivitasPerKomoditas,
@@ -64,21 +65,14 @@ export default async function DetailLahanPage({
 
   const panen = panenList || [];
 
-  // Ambil kategori user
   const kategoriList = await getKategoriList();
 
-  // ====== STATISTIK TOTAL (semua komoditas, untuk ringkasan) ======
   const totalHasil = panen.reduce((s, p) => s + Number(p.hasil_kg), 0);
   const totalProfitOwner = panen.reduce(
     (s, p) => s + Number(p.profit_owner || 0),
     0
   );
-  const totalProfitPenggarap = panen.reduce(
-    (s, p) => s + Number(p.profit_penggarap || 0),
-    0
-  );
 
-  // ====== PRODUKTIVITAS PER KOMODITAS (JANGAN DICAMPUR!) ======
   const produktivitasPerKom = hitungProduktivitasPerKomoditas(
     panen,
     [{ id: lahan.id, luas: Number(lahan.luas) }],
@@ -88,6 +82,11 @@ export default async function DetailLahanPage({
   const gpsUrl = lahan.lokasi_koordinat
     ? `https://www.google.com/maps?q=${lahan.lokasi_koordinat.replace(/\s/g, "")}`
     : null;
+
+  const hasPolygon =
+    lahan.polygon &&
+    typeof lahan.polygon === "object" &&
+    Array.isArray(lahan.polygon?.coordinates);
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
@@ -103,7 +102,6 @@ export default async function DetailLahanPage({
         </h1>
       </div>
 
-      {/* Info Lahan */}
       <div className="bg-white rounded-xl shadow-sm p-6 space-y-4 mb-6">
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -116,7 +114,9 @@ export default async function DetailLahanPage({
             <p className="text-xs text-gray-500 uppercase tracking-wide">
               Luas
             </p>
-            <p className="font-semibold text-gray-800 mt-1">{lahan.luas} Ha</p>
+            <p className="font-semibold text-gray-800 mt-1">
+              {Number(lahan.luas).toFixed(3)} Ha
+            </p>
           </div>
         </div>
 
@@ -140,6 +140,20 @@ export default async function DetailLahanPage({
           )}
         </div>
 
+        {hasPolygon && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-xs text-gray-500 uppercase tracking-wide">
+                🗺️ Preview Peta Lahan
+              </p>
+              <span className="text-[10px] bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                📍 GPS Walking
+              </span>
+            </div>
+            <PetaMiniWrapper polygon={lahan.polygon} luas={Number(lahan.luas)} />
+          </div>
+        )}
+
         <div className="pt-4 border-t">
           <TombolAksiLahan
             landId={lahan.id}
@@ -151,7 +165,6 @@ export default async function DetailLahanPage({
         </div>
       </div>
 
-      {/* Statistik Total (semua komoditas) */}
       {panen.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -183,7 +196,6 @@ export default async function DetailLahanPage({
         </div>
       )}
 
-      {/* ====== PRODUKTIVITAS PER KOMODITAS (JANGAN DICAMPUR) ====== */}
       {produktivitasPerKom.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
           <h2 className="font-bold text-gray-900 mb-1 text-sm uppercase tracking-wide">
@@ -208,12 +220,12 @@ export default async function DetailLahanPage({
                       {KOMODITAS_LABEL[pk.komoditas] || pk.komoditas}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {pk.jmlPanen}x panen · {pk.totalHasilKg.toLocaleString("id-ID")} Kg
+                      {pk.jmlPanen}x panen ·{" "}
+                      {pk.totalHasilKg.toLocaleString("id-ID")} Kg
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    {/* Rata-rata */}
                     <div className="bg-white rounded-lg p-3 border border-gray-100">
                       <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
                         Rata-rata
@@ -237,7 +249,6 @@ export default async function DetailLahanPage({
                       )}
                     </div>
 
-                    {/* Panen terakhir */}
                     <div className="bg-white rounded-lg p-3 border border-gray-100">
                       <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
                         Panen Terakhir
@@ -268,7 +279,6 @@ export default async function DetailLahanPage({
         </div>
       )}
 
-      {/* Riwayat Panen */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-gray-900">
@@ -305,7 +315,6 @@ export default async function DetailLahanPage({
               const komColor =
                 KOMODITAS_COLOR[kom] || "bg-gray-100 text-gray-800";
 
-              // Cari kategori komoditas ini
               const kat = produktivitasPerKom.find(
                 (pk) => pk.komoditas === kom
               );

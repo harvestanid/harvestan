@@ -57,6 +57,13 @@ export default function DashboardLayout({
                 <span>Panen Multi</span>
               </Link>
               <Link
+                href="/ukur-lahan"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                <span className="text-lg">📍</span>
+                <span>Ukur Lahan GPS</span>
+              </Link>
+              <Link
                 href="/keuangan"
                 className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
               >
@@ -127,6 +134,13 @@ export default function DashboardLayout({
           >
             <span className="text-xl">🌾</span>
             <span className="text-[10px] whitespace-nowrap">Panen</span>
+          </Link>
+          <Link
+            href="/ukur-lahan"
+            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
+          >
+            <span className="text-xl">📍</span>
+            <span className="text-[10px] whitespace-nowrap">Ukur</span>
           </Link>
           <Link
             href="/keuangan"

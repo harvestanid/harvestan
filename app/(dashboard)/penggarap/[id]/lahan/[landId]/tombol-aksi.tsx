@@ -1,15 +1,16 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 type Props = {
-  landId: string
-  penggarapId: string
-  nama: string
-  luas: number
-  lokasiKoordinat: string
-}
+  landId: string;
+  penggarapId: string;
+  nama: string;
+  luas: number;
+  lokasiKoordinat: string;
+};
 
 export function TombolAksiLahan({
   landId,
@@ -18,56 +19,61 @@ export function TombolAksiLahan({
   luas,
   lokasiKoordinat,
 }: Props) {
-  const router = useRouter()
-  const [showEdit, setShowEdit] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const [showEdit, setShowEdit] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     nama,
     luas: luas.toString(),
     lokasi_koordinat: lokasiKoordinat,
-  })
+  });
 
   async function handleUpdate(e: React.FormEvent) {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
     const res = await fetch(`/api/lahan/${landId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         nama: form.nama,
         luas: parseFloat(form.luas),
         lokasi_koordinat: form.lokasi_koordinat,
       }),
-    })
+    });
 
-    const json = await res.json()
-    setLoading(false)
+    const json = await res.json();
+    setLoading(false);
 
     if (!res.ok) {
-      alert('❌ Gagal update: ' + (json.error || 'Unknown error'))
-      return
+      alert("❌ Gagal update: " + (json.error || "Unknown error"));
+      return;
     }
 
-    alert('✅ Lahan berhasil diupdate!')
-    setShowEdit(false)
-    router.refresh()
+    alert("✅ Lahan berhasil diupdate!");
+    setShowEdit(false);
+    router.refresh();
   }
 
   async function handleDelete() {
-    if (!confirm(`Hapus lahan "${nama}"? Data panen terkait juga akan terhapus.`)) return
+    if (
+      !confirm(
+        `Hapus lahan "${nama}"? Data panen terkait juga akan terhapus.`
+      )
+    )
+      return;
 
-    setLoading(true)
-    const res = await fetch(`/api/lahan/${landId}`, { method: 'DELETE' })
-    setLoading(false)
+    setLoading(true);
+    const res = await fetch(`/api/lahan/${landId}`, { method: "DELETE" });
+    setLoading(false);
 
     if (!res.ok) {
-      alert('❌ Gagal hapus')
-      return
+      alert("❌ Gagal hapus");
+      return;
     }
 
-    alert('✅ Lahan berhasil dihapus!')
-    router.push(`/penggarap/${penggarapId}`)
+    alert("✅ Lahan berhasil dihapus!");
+    router.push(`/penggarap/${penggarapId}`);
   }
 
   return (
@@ -89,11 +95,37 @@ export function TombolAksiLahan({
       </div>
 
       {showEdit && (
-        <form onSubmit={handleUpdate} className="mt-4 space-y-3 bg-yellow-50 p-4 rounded-lg">
+        <form
+          onSubmit={handleUpdate}
+          className="mt-4 space-y-3 bg-yellow-50 p-4 rounded-lg"
+        >
           <h3 className="font-semibold text-gray-800">Edit Lahan</h3>
 
+          {/* ===== TOMBOL GPS WALKING ===== */}
+          <div className="bg-yellow-100 border-2 border-yellow-400 rounded-lg p-3">
+            <div className="flex items-start gap-2">
+              <span className="text-xl flex-shrink-0">📍</span>
+              <div className="flex-1">
+                <div className="font-bold text-yellow-900 text-xs mb-1">
+                  Ukur Ulang dengan GPS Walking
+                </div>
+                <p className="text-[11px] text-yellow-800 mb-2">
+                  Jalan keliling lahan → luas & koordinat otomatis terhitung
+                </p>
+                <Link
+                  href={`/ukur-lahan?penggarap_id=${penggarapId}`}
+                  className="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition"
+                >
+                  📍 Ukur Ulang GPS
+                </Link>
+              </div>
+            </div>
+          </div>
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Nama</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nama
+            </label>
             <input
               type="text"
               value={form.nama}
@@ -104,7 +136,9 @@ export function TombolAksiLahan({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Luas (Ha)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Luas (Ha)
+            </label>
             <input
               type="number"
               step="0.01"
@@ -123,7 +157,9 @@ export function TombolAksiLahan({
             <input
               type="text"
               value={form.lokasi_koordinat}
-              onChange={(e) => setForm({ ...form, lokasi_koordinat: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, lokasi_koordinat: e.target.value })
+              }
               placeholder="-6.994303,112.174348"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-500"
             />
@@ -135,7 +171,7 @@ export function TombolAksiLahan({
               disabled={loading}
               className="bg-green-700 hover:bg-green-800 text-white font-medium px-5 py-2 rounded-lg disabled:opacity-50"
             >
-              {loading ? 'Menyimpan...' : '💾 Simpan'}
+              {loading ? "Menyimpan..." : "💾 Simpan"}
             </button>
             <button
               type="button"
@@ -148,5 +184,5 @@ export function TombolAksiLahan({
         </form>
       )}
     </>
-  )
+  );
 }
