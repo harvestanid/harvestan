@@ -1,14 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { PengaturanForm } from "./form";
-
-const KOMODITAS_LABEL: Record<string, string> = {
-  padi: "🌾 Padi",
-  jagung: "🌽 Jagung",
-  kacang_tanah: "🥜 Kacang Tanah",
-  bawang_merah: "🧅 Bawang Merah",
-  cabai_rawit: "🌶️ Cabai Rawit",
-};
+import { AkunTab } from "./akun-tab";
+import { KategoriTab } from "./kategori-tab";
 
 export default async function PengaturanPage() {
   const supabase = await createClient();
@@ -18,40 +11,75 @@ export default async function PengaturanPage() {
 
   if (!user) redirect("/login");
 
-  // Ambil kategori existing
+  // ===== DATA UNTUK TAB AKUN =====
+  // Statistik user
+  const { count: penggarapCount } = await supabase
+    .from("penggaraps")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
+  const { count: lahanCount } = await supabase
+    .from("lands")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
+  const { count: panenCount } = await supabase
+    .from("harvests")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
+  const { data: hutangData } = await supabase
+    .from("debts")
+    .select("sisa")
+    .eq("user_id", user.id)
+    .gt("sisa", 0);
+
+  const totalHutangAktif = (hutangData || []).reduce(
+    (s, h) => s + Number(h.sisa || 0),
+    0
+  );
+
+  // ===== DATA UNTUK TAB KATEGORI =====
   const { data: kategoriList } = await supabase
     .from("categories")
     .select("*")
     .eq("user_id", user.id);
 
-  // Ambil komoditas yang ada di panen (untuk menampilkan di list)
   const { data: harvests } = await supabase
     .from("harvests")
     .select("komoditas")
     .eq("user_id", user.id);
 
-  // Kumpulkan komoditas unik dari panen
+  const KOMODITAS_LABEL: Record<string, string> = {
+    padi: "🌾 Padi",
+    jagung: "🌽 Jagung",
+    kacang_tanah: "🥜 Kacang Tanah",
+    bawang_merah: "🧅 Bawang Merah",
+    cabai_rawit: "🌶️ Cabai Rawit",
+  };
+
+  const KOMODITAS_DEFAULT = [
+    "padi",
+    "jagung",
+    "kacang_tanah",
+    "bawang_merah",
+    "cabai_rawit",
+  ];
+
   const komoditasSet = new Set<string>();
+  KOMODITAS_DEFAULT.forEach((k) => komoditasSet.add(k));
   (harvests || []).forEach((h) => {
-    komoditasSet.add(h.komoditas || "padi");
+    if (h.komoditas) komoditasSet.add(h.komoditas);
   });
-
-  // Tambahkan komoditas yang sudah punya kategori
   (kategoriList || []).forEach((k) => {
-    komoditasSet.add(k.komoditas);
+    if (k.komoditas) komoditasSet.add(k.komoditas);
   });
 
-  // Kalau kosong, tampilkan default 5 komoditas
-  if (komoditasSet.size === 0) {
-    ["padi", "jagung", "kacang_tanah", "bawang_merah", "cabai_rawit"].forEach(
-      (k) => komoditasSet.add(k)
-    );
-  }
-
+  const order = KOMODITAS_DEFAULT;
   const komoditasList = Array.from(komoditasSet).sort((a, b) => {
-    const order = ["padi", "jagung", "kacang_tanah", "bawang_merah", "cabai_rawit"];
     const ia = order.indexOf(a);
     const ib = order.indexOf(b);
+    if (ia === -1 && ib === -1) return a.localeCompare(b);
     if (ia === -1) return 1;
     if (ib === -1) return -1;
     return ia - ib;
@@ -60,41 +88,44 @@ export default async function PengaturanPage() {
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">
-          ⚙️ Pengaturan Kategori
-        </h1>
+        <h1 className="text-3xl font-bold text-gray-900">⚙️ Pengaturan</h1>
         <p className="text-gray-600 text-sm mt-1">
-          Atur threshold produktivitas (Kg/Ha) untuk setiap komoditas
+          Kelola akun & preferensi aplikasi
         </p>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-800">
-        <strong>ℹ️ Cara kerja:</strong> Threshold ini digunakan untuk
-        mengkategorikan produktivitas penggarap secara otomatis di laporan.
-        <ul className="list-disc list-inside mt-2 space-y-0.5">
-          <li>
-            <strong>⚠️ Kurang Optimal</strong> → di bawah nilai Cukup
-          </li>
-          <li>
-            <strong>⭐ Cukup</strong> → ≥ nilai Cukup
-          </li>
-          <li>
-            <strong>⭐⭐ Baik</strong> → ≥ nilai Baik
-          </li>
-          <li>
-            <strong>⭐⭐⭐ Sangat Baik</strong> → ≥ nilai Sangat Baik
-          </li>
-        </ul>
-        <p className="mt-2 text-xs italic">
-          Kosongkan nilai kalau komoditas belum ingin dikategorikan.
-        </p>
-      </div>
-
-      <PengaturanForm
-        komoditasList={komoditasList}
-        kategoriList={kategoriList || []}
-        komoditasLabel={KOMODITAS_LABEL}
+      {/* Tab Navigation */}
+      <TabContainer
+        akunContent={
+          <AkunTab
+            user={{
+              id: user.id,
+              email: user.email || "",
+              nama:
+                (user.user_metadata?.nama as string) ||
+                user.email?.split("@")[0] ||
+                "Petani",
+              createdAt: user.created_at,
+            }}
+            stats={{
+              penggarapCount: penggarapCount || 0,
+              lahanCount: lahanCount || 0,
+              panenCount: panenCount || 0,
+              totalHutangAktif,
+            }}
+          />
+        }
+        kategoriContent={
+          <KategoriTab
+            komoditasList={komoditasList}
+            kategoriList={kategoriList || []}
+            komoditasLabel={KOMODITAS_LABEL}
+          />
+        }
       />
     </div>
   );
 }
+
+// Client component untuk tab switching
+import { TabContainer } from "./tab-container";
