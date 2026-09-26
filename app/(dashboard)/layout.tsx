@@ -9,6 +9,7 @@ const menuItems = [
   { href: "/gabah", label: "Penimbangan Gabah", icon: "⚖️" },
   { href: "/keuangan", label: "Keuangan", icon: "💰" },
   { href: "/export", label: "Export Data", icon: "📥" },
+  { href: "/pengaturan", label: "Pengaturan", icon: "⚙️" },
 ];
 
 export default function DashboardLayout({
@@ -20,7 +21,6 @@ export default function DashboardLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Top navbar */}
       <nav className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2">
@@ -39,7 +39,6 @@ export default function DashboardLayout({
       </nav>
 
       <div className="max-w-7xl mx-auto flex gap-6 px-4 py-6">
-        {/* Sidebar */}
         <aside className="hidden md:block w-64 flex-shrink-0">
           <div className="bg-white rounded-xl border border-gray-200 p-3 sticky top-20">
             <nav className="space-y-1">
@@ -66,11 +65,9 @@ export default function DashboardLayout({
           </div>
         </aside>
 
-        {/* Main content */}
         <main className="flex-1 min-w-0">{children}</main>
       </div>
 
-      {/* Bottom nav (mobile) */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 z-40">
         <div className="flex justify-around">
           {menuItems.map((item) => {
@@ -80,7 +77,7 @@ export default function DashboardLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-1 px-3 py-1 rounded-lg text-xs transition ${
+                className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs transition ${
                   isActive ? "text-green-700" : "text-gray-500"
                 }`}
               >
@@ -92,7 +89,6 @@ export default function DashboardLayout({
         </div>
       </nav>
 
-      {/* Padding bottom untuk mobile nav */}
       <div className="h-20 md:h-0" />
     </div>
   );

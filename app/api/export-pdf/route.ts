@@ -10,6 +10,14 @@ const KOMODITAS_LABEL: Record<string, string> = {
   cabai_rawit: "Cabai Rawit",
 };
 
+const KOMODITAS_ICON: Record<string, string> = {
+  padi: "🌾",
+  jagung: "🌽",
+  kacang_tanah: "🥜",
+  bawang_merah: "🧅",
+  cabai_rawit: "🌶️",
+};
+
 function formatRp(n: number) {
   return "Rp " + Math.round(n).toLocaleString("id-ID");
 }
@@ -24,6 +32,101 @@ function formatTanggal(t: string) {
     month: "short",
     year: "numeric",
   });
+}
+
+// Helper: hitung kategori dari produktivitas + kategori user
+function hitungKategoriPDF(
+  produktivitas: number,
+  kategori: any
+): { label: string; color: [number, number, number] } | null {
+  if (!kategori || kategori.cukup === null || kategori.cukup === undefined) {
+    return null;
+  }
+  const cukup = Number(kategori.cukup);
+  const baik = kategori.baik !== null ? Number(kategori.baik) : null;
+  const sangatBaik =
+    kategori.sangat_baik !== null ? Number(kategori.sangat_baik) : null;
+
+  if (sangatBaik !== null && produktivitas >= sangatBaik) {
+    return { label: "SANGAT BAIK", color: [44, 94, 46] };
+  }
+  if (baik !== null && produktivitas >= baik) {
+    return { label: "BAIK", color: [30, 100, 200] };
+  }
+  if (produktivitas >= cukup) {
+    return { label: "CUKUP", color: [230, 126, 34] };
+  }
+  return { label: "KURANG OPTIMAL", color: [220, 40, 40] };
+}
+
+// Helper: hitung produktivitas per komoditas
+function hitungProduktivitasPerKomoditasPDF(
+  harvests: any[],
+  lands: { id: string; luas: number }[],
+  kategoriList: any[]
+) {
+  const data: Record<
+    string,
+    {
+      totalHasil: number;
+      totalProdSum: number;
+      jmlPanen: number;
+      panenList: { tanggal: string; prod: number }[];
+    }
+  > = {};
+
+  harvests.forEach((h) => {
+    const kom = h.komoditas || "padi";
+    const land = lands.find((l) => l.id === h.land_id);
+    if (!land || Number(land.luas) <= 0) return;
+
+    const prod = Number(h.hasil_kg) / Number(land.luas);
+
+    if (!data[kom]) {
+      data[kom] = {
+        totalHasil: 0,
+        totalProdSum: 0,
+        jmlPanen: 0,
+        panenList: [],
+      };
+    }
+    data[kom].totalHasil += Number(h.hasil_kg);
+    data[kom].totalProdSum += prod;
+    data[kom].jmlPanen += 1;
+    data[kom].panenList.push({ tanggal: h.tanggal, prod });
+  });
+
+  const hasil: any[] = [];
+  Object.entries(data).forEach(([kom, d]) => {
+    const rata = d.jmlPanen > 0 ? d.totalProdSum / d.jmlPanen : 0;
+    const sorted = [...d.panenList].sort(
+      (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+    );
+    const terakhir = sorted[0]?.prod || 0;
+    const kat = kategoriList.find((k) => k.komoditas === kom) || null;
+
+    hasil.push({
+      komoditas: kom,
+      produktivitasTerakhir: terakhir,
+      produktivitasRata: rata,
+      jmlPanen: d.jmlPanen,
+      totalHasilKg: d.totalHasil,
+      kategoriTerakhir: hitungKategoriPDF(terakhir, kat),
+      kategoriRata: hitungKategoriPDF(rata, kat),
+    });
+  });
+
+  const order = ["padi", "jagung", "kacang_tanah", "bawang_merah", "cabai_rawit"];
+  hasil.sort((a, b) => {
+    const ia = order.indexOf(a.komoditas);
+    const ib = order.indexOf(b.komoditas);
+    if (ia === -1 && ib === -1) return a.komoditas.localeCompare(b.komoditas);
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+
+  return hasil;
 }
 
 export async function GET(request: Request) {
@@ -88,6 +191,12 @@ export async function GET(request: Request) {
       .eq("user_id", user.id)
       .order("tanggal", { ascending: false });
 
+    // Ambil kategori user
+    const { data: kategoriList } = await supabase
+      .from("categories")
+      .select("*")
+      .eq("user_id", user.id);
+
     // ========== HITUNG STATISTIK ==========
     const totalLuas = (lands || []).reduce((s, l) => s + Number(l.luas), 0);
     const totalHasil = harvests.reduce((s, h) => s + Number(h.hasil_kg), 0);
@@ -114,8 +223,12 @@ export async function GET(request: Request) {
       0
     );
 
-    const rataProduktivitas =
-      harvests.length > 0 ? totalHasil / harvests.length / (totalLuas || 1) : 0;
+    // Produktivitas per komoditas
+    const produktivitasPerKom = hitungProduktivitasPerKomoditasPDF(
+      harvests,
+      lands || [],
+      kategoriList || []
+    );
 
     // ========== GENERATE PDF ==========
     const pdf = new jsPDF({
@@ -165,7 +278,6 @@ export async function GET(request: Request) {
     pdf.setFontSize(10);
     pdf.setTextColor(60, 60, 60);
 
-    // Baris 1
     pdf.setFont("helvetica", "bold");
     pdf.text("Nama:", margin, yPos);
     pdf.setFont("helvetica", "normal");
@@ -178,7 +290,6 @@ export async function GET(request: Request) {
 
     yPos += 6;
 
-    // Baris 2
     pdf.setFont("helvetica", "bold");
     pdf.text("Kontak:", margin, yPos);
     pdf.setFont("helvetica", "normal");
@@ -191,7 +302,6 @@ export async function GET(request: Request) {
 
     yPos += 6;
 
-    // Baris 3
     pdf.setFont("helvetica", "bold");
     pdf.text("Alamat:", margin, yPos);
     pdf.setFont("helvetica", "normal");
@@ -209,7 +319,6 @@ export async function GET(request: Request) {
 
     yPos += 7;
 
-    // Card ringkasan
     const cardWidth = (contentWidth - 6) / 2;
     const cardHeight = 18;
 
@@ -273,27 +382,174 @@ export async function GET(request: Request) {
     pdf.setTextColor(21, 101, 192);
     pdf.setFontSize(8);
     pdf.setFont("helvetica", "normal");
-    pdf.text(`TOTAL PANEN (${harvests.length}x)`, margin + cardWidth + 9, yPos + 5);
+    pdf.text(
+      `TOTAL PANEN (${harvests.length}x)`,
+      margin + cardWidth + 9,
+      yPos + 5
+    );
     pdf.setFontSize(13);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(13, 71, 161);
     pdf.text(formatKg(totalHasil), margin + cardWidth + 9, yPos + 13);
 
-    yPos += cardHeight + 8;
+    yPos += cardHeight + 6;
 
     // Info tambahan
     pdf.setFontSize(9);
     pdf.setFont("helvetica", "normal");
     pdf.setTextColor(100, 100, 100);
     pdf.text(
-      `Rata-rata Produktivitas: ${rataProduktivitas.toFixed(0)} Kg/Ha | Total Potongan Hutang dari Panen: ${formatRp(totalPotonganHutang)} | Total Hutang Dibayar: ${formatRp(totalHutangDibayar)}`,
+      `Total Potongan Hutang dari Panen: ${formatRp(totalPotonganHutang)} | Total Hutang Dibayar: ${formatRp(totalHutangDibayar)}`,
       margin,
       yPos
     );
-    yPos += 10;
+    yPos += 12;
+
+    // ===== EVALUASI PRODUKTIVITAS PER KOMODITAS =====
+    if (produktivitasPerKom.length > 0) {
+      // Pastikan cukup ruang, kalau tidak pindah halaman
+      if (yPos > pageHeight - 80) {
+        pdf.addPage();
+        yPos = margin;
+      }
+
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "bold");
+      pdf.setTextColor(44, 94, 46);
+      pdf.text("EVALUASI PRODUKTIVITAS PER KOMODITAS", margin, yPos);
+      pdf.setDrawColor(44, 94, 46);
+      pdf.line(margin, yPos + 1.5, margin + 90, yPos + 1.5);
+
+      yPos += 6;
+
+      // Info kecil
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "italic");
+      pdf.setTextColor(120, 120, 120);
+      pdf.text(
+        "* Setiap komoditas dihitung terpisah (tidak dicampur)",
+        margin,
+        yPos
+      );
+      yPos += 5;
+
+      // Header tabel
+      pdf.setFillColor(240, 247, 237);
+      pdf.rect(margin, yPos, contentWidth, 8, "F");
+      pdf.setFontSize(8);
+      pdf.setTextColor(44, 94, 46);
+      pdf.setFont("helvetica", "bold");
+
+      const kc1 = margin + 2;
+      const kc2 = margin + 45;
+      const kc3 = margin + 75;
+      const kc4 = margin + 105;
+      const kc5 = margin + 135;
+
+      pdf.text("Komoditas", kc1, yPos + 5);
+      pdf.text("Jml Panen", kc2, yPos + 5);
+      pdf.text("Total (Kg)", kc3, yPos + 5);
+      pdf.text("Rata-rata (Kg/Ha)", kc4, yPos + 5);
+      pdf.text("Kategori", kc5, yPos + 5);
+
+      yPos += 8;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(60, 60, 60);
+      pdf.setFontSize(9);
+
+      produktivitasPerKom.forEach((pk: any, idx: number) => {
+        if (yPos > pageHeight - 30) {
+          pdf.addPage();
+          yPos = margin;
+        }
+
+        if (idx % 2 === 0) {
+          pdf.setFillColor(249, 250, 251);
+          pdf.rect(margin, yPos, contentWidth, 7, "F");
+        }
+
+        const icon = KOMODITAS_ICON[pk.komoditas] || "";
+        const label = KOMODITAS_LABEL[pk.komoditas] || pk.komoditas;
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(60, 60, 60);
+        pdf.text(`${icon} ${label}`, kc1, yPos + 5);
+        pdf.text(String(pk.jmlPanen), kc2, yPos + 5);
+        pdf.text(
+          Number(pk.totalHasilKg).toLocaleString("id-ID"),
+          kc3,
+          yPos + 5
+        );
+        pdf.text(
+          `${pk.produktivitasRata.toFixed(0)} Kg/Ha`,
+          kc4,
+          yPos + 5
+        );
+
+        // Kategori rata-rata
+        if (pk.kategoriRata) {
+          const c = pk.kategoriRata.color;
+          pdf.setTextColor(c[0], c[1], c[2]);
+          pdf.setFont("helvetica", "bold");
+          pdf.text(pk.kategoriRata.label, kc5, yPos + 5);
+        } else {
+          pdf.setTextColor(160, 160, 160);
+          pdf.setFont("helvetica", "italic");
+          pdf.text("(belum diatur)", kc5, yPos + 5);
+        }
+
+        yPos += 7;
+      });
+
+      yPos += 5;
+
+      // Info tambahan: kategori per panen terakhir
+      const adaTerakhir = produktivitasPerKom.some(
+        (pk: any) => pk.kategoriTerakhir
+      );
+      if (adaTerakhir) {
+        pdf.setFontSize(8);
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(100, 100, 100);
+        pdf.text("Detail Kategori per Panen Terakhir:", margin, yPos);
+        yPos += 4;
+
+        produktivitasPerKom.forEach((pk: any) => {
+          if (!pk.kategoriTerakhir) return;
+          if (yPos > pageHeight - 20) {
+            pdf.addPage();
+            yPos = margin;
+          }
+          const icon = KOMODITAS_ICON[pk.komoditas] || "";
+          const label = KOMODITAS_LABEL[pk.komoditas] || pk.komoditas;
+          pdf.setFont("helvetica", "normal");
+          pdf.setTextColor(60, 60, 60);
+          pdf.text(
+            `• ${icon} ${label}: ${pk.produktivitasTerakhir.toFixed(
+              0
+            )} Kg/Ha — `,
+            margin + 2,
+            yPos
+          );
+          const c = pk.kategoriTerakhir.color;
+          pdf.setTextColor(c[0], c[1], c[2]);
+          pdf.setFont("helvetica", "bold");
+          pdf.text(pk.kategoriTerakhir.label, margin + 70, yPos);
+          yPos += 4;
+        });
+      }
+
+      yPos += 6;
+    }
 
     // ===== DAFTAR LAHAN =====
     if (lands && lands.length > 0) {
+      if (yPos > pageHeight - 60) {
+        pdf.addPage();
+        yPos = margin;
+      }
+
       pdf.setFontSize(11);
       pdf.setFont("helvetica", "bold");
       pdf.setTextColor(44, 94, 46);
@@ -303,7 +559,6 @@ export async function GET(request: Request) {
 
       yPos += 6;
 
-      // Header tabel
       pdf.setFillColor(240, 247, 237);
       pdf.rect(margin, yPos, contentWidth, 7, "F");
       pdf.setFontSize(8);
@@ -365,7 +620,6 @@ export async function GET(request: Request) {
 
       yPos += 6;
 
-      // Header tabel panen
       pdf.setFillColor(44, 94, 46);
       pdf.rect(margin, yPos, contentWidth, 7, "F");
       pdf.setFontSize(7.5);
@@ -400,7 +654,6 @@ export async function GET(request: Request) {
           yPos = margin;
         }
 
-        // Zebra stripe
         if (idx % 2 === 0) {
           pdf.setFillColor(249, 250, 251);
           pdf.rect(margin, yPos, contentWidth, 6, "F");
@@ -451,7 +704,6 @@ export async function GET(request: Request) {
 
       yPos += 6;
 
-      // Header tabel hutang
       pdf.setFillColor(155, 89, 182);
       pdf.rect(margin, yPos, contentWidth, 7, "F");
       pdf.setFontSize(8);
@@ -493,11 +745,7 @@ export async function GET(request: Request) {
         const lunas = sisa <= 0;
 
         pdf.text(formatTanggal(d.tanggal), hc1, yPos + 4);
-        pdf.text(
-          (d.keperluan || "-").substring(0, 22),
-          hc2,
-          yPos + 4
-        );
+        pdf.text((d.keperluan || "-").substring(0, 22), hc2, yPos + 4);
         pdf.text(
           formatRp(Number(d.jumlah)).replace("Rp ", ""),
           hc3,
@@ -508,11 +756,7 @@ export async function GET(request: Request) {
           hc4,
           yPos + 4
         );
-        pdf.text(
-          formatRp(sisa).replace("Rp ", ""),
-          hc5,
-          yPos + 4
-        );
+        pdf.text(formatRp(sisa).replace("Rp ", ""), hc5, yPos + 4);
 
         if (lunas) {
           pdf.setTextColor(39, 174, 96);
