@@ -31,22 +31,31 @@ type Penggarap = {
 
 type Props = {
   penggarapIdFromURL: string | null;
+  mode: "new" | "edit";
+  landId: string | null;
+  namaLama?: string | null;
 };
 
-export default function UkurLahanContent({ penggarapIdFromURL }: Props) {
+export default function UkurLahanContent({
+  penggarapIdFromURL,
+  mode,
+  landId,
+  namaLama,
+}: Props) {
   const router = useRouter();
 
   const [penggarapId, setPenggarapId] = useState(penggarapIdFromURL || "");
   const [penggaraps, setPenggaraps] = useState<Penggarap[]>([]);
   const [loadingPenggaraps, setLoadingPenggaraps] = useState(false);
 
-  const [nama, setNama] = useState("");
+  const [nama, setNama] = useState(namaLama || "");
   const [titik, setTitik] = useState<Coordinate[]>([]);
   const [isTracking, setIsTracking] = useState(false);
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [posisiSekarang, setPosisiSekarang] = useState<Coordinate | null>(null);
   const [pesanError, setPesanError] = useState("");
   const [infoGPS, setInfoGPS] = useState("");
+  const [sedangSimpan, setSedangSimpan] = useState(false);
 
   const watchIdRef = useRef<number | null>(null);
 
@@ -194,6 +203,56 @@ export default function UkurLahanContent({ penggarapIdFromURL }: Props) {
     const polygon = keGeoJSONPolygon(titik);
     const koordinatStr = titikTengah ? koordinatKeString(titikTengah) : "";
 
+    // ===== MODE EDIT: Update lahan lama =====
+    if (mode === "edit" && landId) {
+      if (
+        !confirm(
+          `Update lahan dengan data baru?\n\n` +
+            `Nama: ${nama}\n` +
+            `Luas baru: ${luasHa.toFixed(3)} Ha\n` +
+            `Titik GPS: ${titik.length}\n\n` +
+            `Riwayat panen & data lain tetap.`
+        )
+      )
+        return;
+
+      setSedangSimpan(true);
+
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) throw new Error("Unauthorized");
+
+        const { error } = await supabase
+          .from("lands")
+          .update({
+            nama: nama.trim(),
+            luas: parseFloat(luasHa.toFixed(3)),
+            lokasi_koordinat: koordinatStr,
+            polygon: polygon,
+          })
+          .eq("id", landId)
+          .eq("user_id", user.id);
+
+        if (error) throw error;
+
+        alert(
+          `✅ Lahan "${nama}" berhasil diupdate!\n\nLuas baru: ${luasHa.toFixed(3)} Ha`
+        );
+        router.push(`/penggarap/${penggarapId}/lahan/${landId}`);
+        router.refresh();
+      } catch (err: any) {
+        console.error("Error update lahan:", err);
+        alert("❌ Gagal update: " + (err.message || "Unknown error"));
+      } finally {
+        setSedangSimpan(false);
+      }
+      return;
+    }
+
+    // ===== MODE NEW: Redirect ke form tambah lahan =====
     const params = new URLSearchParams({
       gps_nama: nama.trim(),
       gps_luas: luasHa.toFixed(3),
@@ -291,6 +350,8 @@ export default function UkurLahanContent({ penggarapIdFromURL }: Props) {
   }
 
   // ===== TAMPILAN 2: TRACKING =====
+  const isEditMode = mode === "edit" && landId;
+
   return (
     <div className="fixed inset-0 bg-gray-900 z-50 flex flex-col">
       <div className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between flex-shrink-0">
@@ -302,9 +363,13 @@ export default function UkurLahanContent({ penggarapIdFromURL }: Props) {
             ←
           </button>
           <div>
-            <h1 className="font-bold text-gray-900">📍 Ukur Lahan GPS</h1>
+            <h1 className="font-bold text-gray-900">
+              {isEditMode ? "🔄 Ukur Ulang Lahan" : "📍 Ukur Lahan GPS"}
+            </h1>
             <p className="text-xs text-gray-500">
-              Jalan keliling lahan untuk ukur luas
+              {isEditMode
+                ? "Jalan keliling lahan untuk update luas"
+                : "Jalan keliling lahan untuk ukur luas"}
             </p>
           </div>
         </div>
@@ -317,6 +382,19 @@ export default function UkurLahanContent({ penggarapIdFromURL }: Props) {
           </button>
         )}
       </div>
+
+      {isEditMode && (
+        <div className="bg-blue-50 border-b border-blue-200 px-4 py-2 text-xs text-blue-800 flex-shrink-0">
+          <div className="flex items-start gap-2 max-w-3xl mx-auto">
+            <span className="text-base flex-shrink-0">ℹ️</span>
+            <div>
+              <strong>Mode Update Lahan:</strong> Setelah selesai ukur, luas &
+              polygon lahan ini akan <strong>diupdate</strong>. Nama, riwayat
+              panen, dan data lain tetap.
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="bg-yellow-50 border-b border-yellow-200 px-4 py-2 text-xs text-yellow-800 flex-shrink-0">
         <div className="flex items-start gap-2 max-w-3xl mx-auto">
@@ -435,11 +513,24 @@ export default function UkurLahanContent({ penggarapIdFromURL }: Props) {
                 />
                 <button
                   onClick={handleSimpan}
-                  disabled={!nama.trim() || titik.length < 3}
-                  className="w-full mt-2 bg-green-700 hover:bg-green-800 text-white font-bold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={sedangSimpan || !nama.trim() || titik.length < 3}
+                  className={`w-full mt-2 font-bold py-3 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isEditMode
+                      ? "bg-blue-700 hover:bg-blue-800 text-white"
+                      : "bg-green-700 hover:bg-green-800 text-white"
+                  }`}
                 >
-                  💾 Simpan & Lanjut
+                  {sedangSimpan
+                    ? "⏳ Menyimpan..."
+                    : isEditMode
+                    ? "🔄 Update Lahan Ini"
+                    : "💾 Simpan & Lanjut"}
                 </button>
+                {isEditMode && (
+                  <p className="text-[10px] text-blue-700 mt-1 text-center">
+                    Luas & polygon akan diupdate. Riwayat panen tetap.
+                  </p>
+                )}
               </div>
             </div>
           )}

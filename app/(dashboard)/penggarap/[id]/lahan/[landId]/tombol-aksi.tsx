@@ -110,10 +110,11 @@ export function TombolAksiLahan({
                   Ukur Ulang dengan GPS Walking
                 </div>
                 <p className="text-[11px] text-yellow-800 mb-2">
-                  Jalan keliling lahan → luas & koordinat otomatis terhitung
+                  Ukur ulang luas lahan ini dengan GPS. Data lahan (nama,
+                  riwayat panen) tetap, hanya luas & polygon yang diupdate.
                 </p>
                 <Link
-                  href={`/ukur-lahan?penggarap_id=${penggarapId}`}
+                  href={`/ukur-lahan?penggarap_id=${penggarapId}&mode=edit&landId=${landId}`}
                   className="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-3 py-1.5 rounded-lg text-xs transition"
                 >
                   📍 Ukur Ulang GPS
