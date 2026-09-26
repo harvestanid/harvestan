@@ -113,6 +113,74 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // ========== STEP 1: Ambil data panen dulu ==========
+    const { data: panen, error: fetchError } = await supabase
+      .from("harvests")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !panen) {
+      return NextResponse.json(
+        { error: "Data panen tidak ditemukan" },
+        { status: 404 }
+      );
+    }
+
+    const potonganHutang = Number(panen.potongan_hutang || 0);
+    const penggarapId = panen.land_id
+      ? await getPenggarapIdFromLand(supabase, panen.land_id)
+      : null;
+
+    // ========== STEP 2: Kalau ada potongan hutang, REVERT dulu ==========
+    if (potonganHutang > 0 && penggarapId) {
+      // Ambil hutang penggarap urut TERBARU dulu
+      // (karena waktu potong urutan TERLAMA dulu → revert TERBARU dulu)
+      const { data: hutangList } = await supabase
+        .from("debts")
+        .select("*")
+        .eq("penggarap_id", penggarapId)
+        .eq("user_id", user.id)
+        .order("tanggal", { ascending: false });
+
+      let sisaRevert = potonganHutang;
+      const waktuRevert = new Date().toISOString();
+
+      for (const h of hutangList || []) {
+        if (sisaRevert <= 0) break;
+
+        const dibayarLama = Number(h.dibayar || 0);
+        const sisaLama = Number(h.sisa || 0);
+        const revertAmount = Math.min(dibayarLama, sisaRevert);
+
+        if (revertAmount <= 0) continue;
+
+        const logEntry = {
+          aksi: "revert_hapus_panen",
+          waktu: waktuRevert,
+          jumlah: revertAmount,
+          sisa_sebelum: sisaLama,
+          sisa_sesudah: sisaLama + revertAmount,
+          keterangan: `Revert karena hapus panen tanggal ${panen.tanggal}`,
+        };
+
+        const logLama = Array.isArray(h.log_perubahan) ? h.log_perubahan : [];
+        const logBaru = [...logLama, logEntry];
+
+        await supabase
+          .from("debts")
+          .update({
+            dibayar: dibayarLama - revertAmount,
+            sisa: sisaLama + revertAmount,
+            log_perubahan: logBaru,
+          })
+          .eq("id", h.id);
+
+        sisaRevert -= revertAmount;
+      }
+    }
+
+    // ========== STEP 3: Hapus data panen ==========
     const { error } = await supabase.from("harvests").delete().eq("id", id);
 
     if (error) {
@@ -120,9 +188,25 @@ export async function DELETE(
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({
+      success: true,
+      reverted: potonganHutang,
+    });
   } catch (err) {
     console.error("Unexpected error:", err);
     return NextResponse.json({ error: "Terjadi kesalahan" }, { status: 500 });
   }
+}
+
+// Helper: ambil penggarap_id dari land_id
+async function getPenggarapIdFromLand(
+  supabase: any,
+  landId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("lands")
+    .select("penggarap_id")
+    .eq("id", landId)
+    .single();
+  return data?.penggarap_id || null;
 }

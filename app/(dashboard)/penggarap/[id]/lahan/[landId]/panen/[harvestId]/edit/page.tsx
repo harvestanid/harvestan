@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
-async function tambahPanen(formData: FormData) {
+async function editPanen(formData: FormData) {
   "use server";
 
   const supabase = await createClient();
@@ -12,6 +12,7 @@ async function tambahPanen(formData: FormData) {
 
   if (!user) redirect("/login");
 
+  const harvest_id = formData.get("harvest_id") as string;
   const penggarap_id = formData.get("penggarap_id") as string;
   const land_id = formData.get("land_id") as string;
   const tanggal = formData.get("tanggal") as string;
@@ -21,9 +22,11 @@ async function tambahPanen(formData: FormData) {
   const harga_gabah = parseFloat(formData.get("harga_gabah") as string);
   const biaya_panen_per_kg =
     parseFloat(formData.get("biaya_panen_per_kg") as string) || 0;
-  const biaya_tambahan = parseFloat(formData.get("biaya_tambahan") as string) || 0;
+  const biaya_tambahan =
+    parseFloat(formData.get("biaya_tambahan") as string) || 0;
   const keterangan_biaya = (formData.get("keterangan_biaya") as string) || null;
-  const bawa_penggarap = parseFloat(formData.get("bawa_penggarap") as string) || 0;
+  const bawa_penggarap =
+    parseFloat(formData.get("bawa_penggarap") as string) || 0;
   const bawa_owner = parseFloat(formData.get("bawa_owner") as string) || 0;
   const bawa_lain = parseFloat(formData.get("bawa_lain") as string) || 0;
   const persen_owner = parseFloat(formData.get("persen_owner") as string) || 50;
@@ -31,11 +34,113 @@ async function tambahPanen(formData: FormData) {
   const potongHutang = formData.get("potong_hutang") === "on";
 
   const redirectBase = `/penggarap/${penggarap_id}/lahan/${land_id}`;
+  const editBase = `${redirectBase}/panen/${harvest_id}`;
 
   if (!tanggal || isNaN(hasil_kg) || isNaN(harga_gabah)) {
-    redirect(`${redirectBase}/panen/baru?error=Data+tidak+lengkap`);
+    redirect(`${editBase}/edit?error=Data+tidak+lengkap`);
   }
 
+  // ============ AMBIL DATA PANEN LAMA ============
+  const { data: panenLama } = await supabase
+    .from("harvests")
+    .select("*")
+    .eq("id", harvest_id)
+    .single();
+
+  if (!panenLama) {
+    redirect(redirectBase);
+  }
+
+  const potonganHutangLama = Number(panenLama.potongan_hutang || 0);
+  const wasPotongHutang = potonganHutangLama > 0;
+
+  // ============ LOGIC BARU: CEK KONDISI ============
+
+  // Skenario A: User UNCHECK (dan sebelumnya potong hutang)
+  //   → REVERT potongan lama ke hutang
+  //
+  // Skenario B: User CHECK (dan sebelumnya tidak potong)
+  //   → LANGSUNG potong dari hutang aktif sekarang
+  //
+  // Skenario C: User UNCHECK + sebelumnya tidak potong
+  //   → Tidak ada yang perlu dilakukan
+  //
+  // Skenario D: User CHECK + sebelumnya sudah potong
+  //   → Revert potongan lama dulu, lalu potong ulang dari hutang aktif baru
+  //     (karena kondisi hutang sudah berubah)
+
+  let revertLog: Array<{
+    debt_id: string;
+    jumlah_direvert: number;
+    waktu_revert: string;
+    aksi: string;
+  }> = [];
+
+  // ============ STEP 1: REVERT (kalau perlu) ============
+  // Revert HANYA kalau:
+  //   - Sebelumnya potong hutang (potonganHutangLama > 0)
+  //   - DAN user UNCHECK (potongHutang = false)
+  //   - ATAU user CHECK (karena kondisi hutang berubah, harus revert dulu)
+  //
+  // Intinya: kalau sebelumnya potong hutang (apapun kondisi checkbox sekarang),
+  // kita revert dulu supaya konsisten
+  const perluRevert = wasPotongHutang;
+
+  if (perluRevert) {
+    // Ambil hutang penggarap urut TERBARU dulu
+    // (karena waktu potong urutan TERLAMA dulu → revert TERBARU dulu)
+    const { data: hutangList } = await supabase
+      .from("debts")
+      .select("*")
+      .eq("penggarap_id", penggarap_id)
+      .eq("user_id", user.id)
+      .order("tanggal", { ascending: false });
+
+    let sisaRevert = potonganHutangLama;
+    const waktuRevert = new Date().toISOString();
+
+    for (const h of hutangList || []) {
+      if (sisaRevert <= 0) break;
+
+      const dibayarLama = Number(h.dibayar || 0);
+      const sisaLama = Number(h.sisa || 0);
+      const revertAmount = Math.min(dibayarLama, sisaRevert);
+
+      if (revertAmount <= 0) continue;
+
+      const logEntry = {
+        aksi: "revert_edit_panen",
+        waktu: waktuRevert,
+        jumlah: revertAmount,
+        sisa_sebelum: sisaLama,
+        sisa_sesudah: sisaLama + revertAmount,
+        keterangan: "Revert karena edit panen",
+      };
+
+      const logLama = Array.isArray(h.log_perubahan) ? h.log_perubahan : [];
+      const logBaru = [...logLama, logEntry];
+
+      await supabase
+        .from("debts")
+        .update({
+          dibayar: dibayarLama - revertAmount,
+          sisa: sisaLama + revertAmount,
+          log_perubahan: logBaru,
+        })
+        .eq("id", h.id);
+
+      revertLog.push({
+        debt_id: h.id,
+        jumlah_direvert: revertAmount,
+        waktu_revert: waktuRevert,
+        aksi: "revert",
+      });
+
+      sisaRevert -= revertAmount;
+    }
+  }
+
+  // ============ STEP 2: HITUNG PROFIT BARU ============
   const persen_penggarap = 100 - persen_owner;
   const pendapatan = hasil_kg * harga_gabah;
   const totalBiaya = hasil_kg * biaya_panen_per_kg + biaya_tambahan;
@@ -48,7 +153,9 @@ async function tambahPanen(formData: FormData) {
     profit_penggarap = profit_bersih * (persen_penggarap / 100);
   }
 
-  const { data: hutangList } = await supabase
+  // ============ STEP 3: POTONG HUTANG BARU (kalau user CENTANG) ============
+  // Ambil hutang aktif sekarang (setelah revert kalau ada)
+  const { data: hutangAktifSekarang } = await supabase
     .from("debts")
     .select("*")
     .eq("penggarap_id", penggarap_id)
@@ -56,15 +163,15 @@ async function tambahPanen(formData: FormData) {
     .gt("sisa", 0)
     .order("tanggal", { ascending: true });
 
-  const totalHutangSebelum = (hutangList || []).reduce(
+  const totalHutangSebelum = (hutangAktifSekarang || []).reduce(
     (s, h) => s + Number(h.sisa || 0),
     0
   );
 
-  let potonganHutang = 0;
+  let potonganHutangBaru = 0;
   let profitPenggarapFinal = profit_penggarap;
   let profitOwnerFinal = profit_owner;
-  const potonganLog: Array<{
+  const potonganLogBaru: Array<{
     debt_id: string;
     jumlah_dipotong: number;
     tanggal_hutang: string;
@@ -73,12 +180,13 @@ async function tambahPanen(formData: FormData) {
     aksi: string;
   }> = [];
 
+  // Potong HANYA kalau user CENTANG dan ada hutang dan ada profit
   if (potongHutang && totalHutangSebelum > 0 && profit_penggarap > 0) {
     let sisaPotong = Math.min(profit_penggarap, totalHutangSebelum);
-    potonganHutang = sisaPotong;
+    potonganHutangBaru = sisaPotong;
     const waktuPotong = new Date().toISOString();
 
-    for (const h of hutangList || []) {
+    for (const h of hutangAktifSekarang || []) {
       if (sisaPotong <= 0) break;
       const sisaHutang = Number(h.sisa);
       const bayar = Math.min(sisaHutang, sisaPotong);
@@ -86,12 +194,12 @@ async function tambahPanen(formData: FormData) {
       const dibayarBaru = Number(h.dibayar || 0) + bayar;
 
       const logEntry = {
-        aksi: "potong_panen",
+        aksi: "potong_edit_panen",
         waktu: waktuPotong,
         jumlah: bayar,
         sisa_sebelum: sisaHutang,
         sisa_sesudah: sisaBaru,
-        keterangan: "Potong otomatis dari panen",
+        keterangan: "Potong otomatis setelah edit panen",
       };
 
       const logLama = Array.isArray(h.log_perubahan) ? h.log_perubahan : [];
@@ -106,71 +214,88 @@ async function tambahPanen(formData: FormData) {
         })
         .eq("id", h.id);
 
-      potonganLog.push({
+      potonganLogBaru.push({
         debt_id: h.id,
         jumlah_dipotong: bayar,
         tanggal_hutang: h.tanggal,
         keperluan: h.keperluan || null,
         waktu_potong: waktuPotong,
-        aksi: "potong",
+        aksi: "potong_ulang",
       });
 
       sisaPotong -= bayar;
     }
 
-    profitPenggarapFinal = profit_penggarap - potonganHutang;
-    profitOwnerFinal = profit_owner + potonganHutang;
+    profitPenggarapFinal = profit_penggarap - potonganHutangBaru;
+    profitOwnerFinal = profit_owner + potonganHutangBaru;
   }
 
   const totalHutangSesudah = Math.max(
     0,
-    totalHutangSebelum - potonganHutang
+    totalHutangSebelum - potonganHutangBaru
   );
 
-  const { error } = await supabase.from("harvests").insert({
-    user_id: user.id,
-    land_id,
-    tanggal,
-    komoditas,
-    musim,
-    hasil_kg,
-    harga_gabah,
-    harga_per_kg: harga_gabah,
-    biaya_panen_per_kg,
-    biaya_tambahan,
-    keterangan_biaya,
-    bawa_penggarap,
-    bawa_owner,
-    bawa_lain,
-    persen_owner,
-    persen_penggarap,
-    profit_bersih,
-    profit_owner: profitOwnerFinal,
-    profit_penggarap: profitPenggarapFinal,
-    potongan_hutang: potonganHutang,
-    potongan_hutang_log: potonganLog,
-    total_hutang_sebelum: totalHutangSebelum,
-    sisa_hutang_sesudah: totalHutangSesudah,
-    catatan,
-  });
+  // ============ STEP 4: UPDATE PANEN ============
+  const panenLogLama = Array.isArray(panenLama.potongan_hutang_log)
+    ? panenLama.potongan_hutang_log
+    : [];
+
+  const logEntry = {
+    aksi: "edit",
+    waktu: new Date().toISOString(),
+    revert_log: revertLog,
+    potong_baru_log: potonganLogBaru,
+    potongan_lama: potonganHutangLama,
+    potongan_baru: potonganHutangBaru,
+    user_centang: potongHutang,
+  };
+
+  const panenLogBaru = [...panenLogLama, logEntry];
+
+  const { error } = await supabase
+    .from("harvests")
+    .update({
+      tanggal,
+      komoditas,
+      musim,
+      hasil_kg,
+      harga_gabah,
+      harga_per_kg: harga_gabah,
+      biaya_panen_per_kg,
+      biaya_tambahan,
+      keterangan_biaya,
+      bawa_penggarap,
+      bawa_owner,
+      bawa_lain,
+      persen_owner,
+      persen_penggarap,
+      profit_bersih,
+      profit_owner: profitOwnerFinal,
+      profit_penggarap: profitPenggarapFinal,
+      potongan_hutang: potonganHutangBaru,
+      potongan_hutang_log: panenLogBaru,
+      total_hutang_sebelum: totalHutangSebelum,
+      sisa_hutang_sesudah: totalHutangSesudah,
+      catatan,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", harvest_id);
 
   if (error) {
-    redirect(
-      `${redirectBase}/panen/baru?error=${encodeURIComponent(error.message)}`
-    );
+    redirect(`${editBase}/edit?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect(redirectBase);
+  redirect(editBase);
 }
 
-export default async function TambahPanenPage({
+export default async function EditPanenPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string; landId: string }>;
+  params: Promise<{ id: string; landId: string; harvestId: string }>;
   searchParams: Promise<{ error?: string }>;
 }) {
-  const { id, landId } = await params;
+  const { id, landId, harvestId } = await params;
   const { error } = await searchParams;
 
   const supabase = await createClient();
@@ -178,6 +303,14 @@ export default async function TambahPanenPage({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
+
+  const { data: panen } = await supabase
+    .from("harvests")
+    .select("*")
+    .eq("id", harvestId)
+    .single();
+
+  if (!panen) redirect(`/penggarap/${id}/lahan/${landId}`);
 
   const { data: penggarap } = await supabase
     .from("penggaraps")
@@ -206,23 +339,24 @@ export default async function TambahPanenPage({
     0
   );
 
+  const potonganHutangLama = Number(panen.potongan_hutang || 0);
+  const wasPotongHutang = potonganHutangLama > 0;
+
   function formatRp(n: number) {
     return "Rp " + Math.round(n).toLocaleString("id-ID");
   }
-
-  const today = new Date().toISOString().split("T")[0];
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
         <Link
-          href={`/penggarap/${id}/lahan/${landId}`}
+          href={`/penggarap/${id}/lahan/${landId}/panen/${harvestId}`}
           className="text-green-700 hover:text-green-800 text-sm font-medium"
         >
-          ← Kembali ke {lahan.nama}
+          ← Kembali ke Detail Panen
         </Link>
         <h1 className="text-2xl font-bold text-gray-800 mt-2">
-          🌾 Input Panen
+          ✏️ Edit Panen
         </h1>
         <p className="text-gray-600 text-sm mt-1">
           {penggarap.nama} &middot; {lahan.nama} ({lahan.luas} Ha)
@@ -235,6 +369,17 @@ export default async function TambahPanenPage({
         </div>
       )}
 
+      {/* Info status potongan hutang lama */}
+      {wasPotongHutang && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-800">
+          ℹ️ Panen ini sebelumnya memotong hutang{" "}
+          <strong>{formatRp(potonganHutangLama)}</strong>.
+          <br />
+          Ubah centang di bawah untuk menyesuaikan.
+        </div>
+      )}
+
+      {/* Info Hutang Aktif */}
       {totalHutangAktif > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -252,9 +397,10 @@ export default async function TambahPanenPage({
       )}
 
       <form
-        action={tambahPanen}
+        action={editPanen}
         className="bg-white rounded-xl shadow-sm p-6 space-y-4"
       >
+        <input type="hidden" name="harvest_id" value={harvestId} />
         <input type="hidden" name="penggarap_id" value={id} />
         <input type="hidden" name="land_id" value={landId} />
 
@@ -266,7 +412,7 @@ export default async function TambahPanenPage({
             <input
               type="date"
               name="tanggal"
-              defaultValue={today}
+              defaultValue={panen.tanggal}
               required
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
@@ -277,6 +423,7 @@ export default async function TambahPanenPage({
             </label>
             <select
               name="komoditas"
+              defaultValue={panen.komoditas || "padi"}
               required
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             >
@@ -299,8 +446,8 @@ export default async function TambahPanenPage({
               name="hasil_kg"
               step="any"
               min="0.01"
+              defaultValue={panen.hasil_kg}
               required
-              placeholder="Contoh: 3500"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
@@ -313,7 +460,7 @@ export default async function TambahPanenPage({
               name="harga_gabah"
               step="any"
               min="0"
-              defaultValue="5000"
+              defaultValue={panen.harga_gabah}
               required
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
@@ -330,7 +477,7 @@ export default async function TambahPanenPage({
               name="biaya_panen_per_kg"
               step="any"
               min="0"
-              defaultValue="400"
+              defaultValue={panen.biaya_panen_per_kg}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
@@ -343,7 +490,7 @@ export default async function TambahPanenPage({
               name="biaya_tambahan"
               step="any"
               min="0"
-              defaultValue="0"
+              defaultValue={panen.biaya_tambahan || 0}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
@@ -356,6 +503,7 @@ export default async function TambahPanenPage({
           <input
             type="text"
             name="keterangan_biaya"
+            defaultValue={panen.keterangan_biaya || ""}
             placeholder="Contoh: Sewa mesin, transport"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
           />
@@ -367,7 +515,7 @@ export default async function TambahPanenPage({
           </label>
           <select
             name="persen_owner"
-            defaultValue="50"
+            defaultValue={panen.persen_owner || 50}
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             <option value="50">50 : 50 (Owner : Penggarap)</option>
@@ -375,9 +523,6 @@ export default async function TambahPanenPage({
             <option value="70">70 : 30 (Owner : Penggarap)</option>
             <option value="100">100 : 0 (Owner garap sendiri)</option>
           </select>
-          <p className="text-xs text-gray-500 mt-1">
-            Persen penggarap otomatis = 100 − persen owner
-          </p>
         </div>
 
         <div className="grid grid-cols-3 gap-3">
@@ -390,7 +535,7 @@ export default async function TambahPanenPage({
               name="bawa_penggarap"
               step="any"
               min="0"
-              defaultValue="0"
+              defaultValue={panen.bawa_penggarap || 0}
               className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
             />
           </div>
@@ -403,7 +548,7 @@ export default async function TambahPanenPage({
               name="bawa_owner"
               step="any"
               min="0"
-              defaultValue="0"
+              defaultValue={panen.bawa_owner || 0}
               className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
             />
           </div>
@@ -416,19 +561,21 @@ export default async function TambahPanenPage({
               name="bawa_lain"
               step="any"
               min="0"
-              defaultValue="0"
+              defaultValue={panen.bawa_lain || 0}
               className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
             />
           </div>
         </div>
 
-        {totalHutangAktif > 0 && (
+        {/* ============ CHECKBOX POTONG HUTANG ============ */}
+        {/* Muncul kalau: ada hutang aktif ATAU sebelumnya sudah potong hutang */}
+        {(totalHutangAktif > 0 || wasPotongHutang) && (
           <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
                 type="checkbox"
                 name="potong_hutang"
-                defaultChecked
+                defaultChecked={wasPotongHutang}
                 className="mt-1 w-5 h-5 accent-red-600"
               />
               <div className="flex-1">
@@ -436,14 +583,24 @@ export default async function TambahPanenPage({
                   💸 Potong Hutang dari Profit Penggarap
                 </div>
                 <div className="text-xs text-yellow-800 mt-1">
-                  Otomatis potong profit penggarap sebesar{" "}
-                  <strong>{formatRp(totalHutangAktif)}</strong> (atau sampai
-                  profit habis).
+                  {totalHutangAktif > 0 ? (
+                    <>
+                      Otomatis potong profit penggarap sebesar{" "}
+                      <strong>{formatRp(totalHutangAktif)}</strong> (atau sampai
+                      profit habis).
+                    </>
+                  ) : (
+                    <>
+                      Saat ini <strong>tidak ada hutang aktif</strong>. Centang
+                      jika Anda ingin tetap coba potong (tidak akan ada efek
+                      karena hutang sudah 0).
+                    </>
+                  )}
                 </div>
                 {hutangAktif && hutangAktif.length > 0 && (
                   <div className="mt-2 text-xs bg-white rounded-lg p-2 border border-yellow-200">
                     <div className="font-medium text-gray-700 mb-1">
-                      Hutang yang akan dipotong (dari tertua):
+                      Hutang yang akan dipotong:
                     </div>
                     {hutangAktif.map((h) => (
                       <div
@@ -466,6 +623,13 @@ export default async function TambahPanenPage({
                     ))}
                   </div>
                 )}
+                {wasPotongHutang && (
+                  <div className="mt-2 text-[11px] text-orange-700 bg-orange-50 rounded p-1.5 border border-orange-200">
+                    ⚠️ Panen ini sebelumnya memotong{" "}
+                    {formatRp(potonganHutangLama)}. Uncheck untuk{" "}
+                    <strong>mengembalikan</strong> potongan tersebut.
+                  </div>
+                )}
               </div>
             </label>
           </div>
@@ -478,16 +642,24 @@ export default async function TambahPanenPage({
           <textarea
             name="catatan"
             rows={2}
+            defaultValue={panen.catatan || ""}
             placeholder="Catatan tambahan (opsional)"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </div>
 
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-900">
-          <strong>💡 Auto-hitung:</strong> Profit bersih = (Hasil × Harga) −
-          (Hasil × Biaya/kg) − Biaya tambahan. Dibagi ke owner & penggarap
-          sesuai skema
-          {totalHutangAktif > 0 && ", lalu dipotong hutang jika dicentang"}.
+          <strong>💡 Cara kerja:</strong>
+          <ul className="list-disc list-inside mt-1 space-y-0.5">
+            <li>
+              <strong>Centang</strong>: potong hutang dari profit penggarap
+              baru
+            </li>
+            <li>
+              <strong>Uncheck</strong>: kembalikan hutang yang pernah dipotong
+              panen ini
+            </li>
+          </ul>
         </div>
 
         <div className="flex gap-3 pt-2">
@@ -495,10 +667,10 @@ export default async function TambahPanenPage({
             type="submit"
             className="bg-green-700 hover:bg-green-800 text-white font-medium px-6 py-2 rounded-lg transition"
           >
-            💾 Simpan Panen
+            💾 Simpan Perubahan
           </button>
           <Link
-            href={`/penggarap/${id}/lahan/${landId}`}
+            href={`/penggarap/${id}/lahan/${landId}/panen/${harvestId}`}
             className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-6 py-2 rounded-lg transition"
           >
             Batal

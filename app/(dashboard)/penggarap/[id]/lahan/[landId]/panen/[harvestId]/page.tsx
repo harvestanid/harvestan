@@ -52,6 +52,11 @@ export default async function DetailPanenPage({
   const totalHutangSebelum = Number(panen.total_hutang_sebelum || 0);
   const sisaHutangSesudah = Number(panen.sisa_hutang_sesudah || 0);
 
+  // Log perubahan hutang
+  const log = Array.isArray(panen.potongan_hutang_log)
+    ? panen.potongan_hutang_log
+    : [];
+
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
@@ -171,7 +176,6 @@ export default async function DetailPanenPage({
           </div>
         </div>
 
-        {/* Potongan Hutang */}
         {potonganHutang > 0 && (
           <div className="pt-4 border-t">
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -225,6 +229,101 @@ export default async function DetailPanenPage({
           </div>
         )}
 
+        {log.length > 0 && (
+          <div className="pt-4 border-t">
+            <p className="text-xs text-gray-500 uppercase mb-3">
+              📜 Riwayat Perubahan Hutang ({log.length})
+            </p>
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {log
+                .slice()
+                .reverse()
+                .map((entry: any, i: number) => {
+                  if (entry.aksi === "edit") {
+                    return (
+                      <div
+                        key={i}
+                        className="bg-blue-50 rounded-lg p-3 text-xs border border-blue-200"
+                      >
+                        <div className="font-bold text-blue-800 flex justify-between flex-wrap gap-1">
+                          <span>✏️ Edit Panen</span>
+                          <span className="text-blue-600 font-normal">
+                            {new Date(entry.waktu).toLocaleString("id-ID", {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </div>
+                        <div className="mt-2 text-blue-900">
+                          Potongan lama:{" "}
+                          <strong>
+                            {formatRp(Number(entry.potongan_lama))}
+                          </strong>{" "}
+                          → Potongan baru:{" "}
+                          <strong>
+                            {formatRp(Number(entry.potongan_baru))}
+                          </strong>
+                        </div>
+                        {entry.revert_log && entry.revert_log.length > 0 && (
+                          <div className="mt-1 text-blue-700">
+                            ↩️ Revert {entry.revert_log.length} hutang (
+                            {formatRp(
+                              entry.revert_log.reduce(
+                                (s: number, r: any) =>
+                                  s + Number(r.jumlah_direvert || 0),
+                                0
+                              )
+                            )}
+                            )
+                          </div>
+                        )}
+                        {entry.potong_baru_log &&
+                          entry.potong_baru_log.length > 0 && (
+                            <div className="mt-0.5 text-red-700">
+                              💸 Potong ulang {entry.potong_baru_log.length}{" "}
+                              hutang
+                            </div>
+                          )}
+                      </div>
+                    );
+                  }
+                  return (
+                    <div
+                      key={i}
+                      className="bg-red-50 rounded-lg p-2.5 text-xs border border-red-200"
+                    >
+                      <div className="font-bold text-red-800 flex justify-between flex-wrap gap-1">
+                        <span>💸 Potong Hutang</span>
+                        <span className="text-red-600 font-normal">
+                          {new Date(entry.waktu_potong).toLocaleString(
+                            "id-ID",
+                            {
+                              day: "numeric",
+                              month: "short",
+                              year: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
+                          )}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-red-900">
+                        Hutang {entry.tanggal_hutang}
+                        {entry.keperluan ? ` (${entry.keperluan})` : ""} —{" "}
+                        <strong>
+                          {formatRp(Number(entry.jumlah_dipotong))}
+                        </strong>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        )}
+
         {panen.catatan && (
           <div className="pt-4 border-t">
             <p className="text-xs text-gray-500 uppercase">Catatan</p>
@@ -237,6 +336,7 @@ export default async function DetailPanenPage({
             harvestId={panen.id}
             penggarapId={id}
             landId={landId}
+            potonganHutang={potonganHutang}
           />
         </div>
       </div>
