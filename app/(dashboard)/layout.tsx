@@ -1,5 +1,19 @@
 import Link from "next/link";
 
+const MENU_ITEMS = [
+  { href: "/dashboard", label: "Dashboard", icon: "📊" },
+  { href: "/penggarap", label: "Penggarap", icon: "👨‍🌾" },
+  { href: "/gabah", label: "Gabah", icon: "⚖️" },
+  { href: "/panen-multi", label: "Panen", icon: "🌾" },
+  { href: "/ukur-lahan", label: "Ukur", icon: "📍" },
+  { href: "/keuangan", label: "Keuangan", icon: "💰" },
+  { href: "/grafik", label: "Grafik", icon: "📈" },
+  { href: "/laporan", label: "Laporan", icon: "📄" },
+  { href: "/export", label: "Export", icon: "📥" },
+  { href: "/bantuan", label: "Bantuan", icon: "❓" },
+  { href: "/pengaturan", label: "Setting", icon: "⚙️" },
+];
+
 export default function DashboardLayout({
   children,
 }: {
@@ -7,6 +21,7 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* TOP NAV */}
       <nav className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center gap-2">
@@ -25,144 +40,53 @@ export default function DashboardLayout({
       </nav>
 
       <div className="max-w-7xl mx-auto flex gap-6 px-4 py-6">
+        {/* SIDEBAR (DESKTOP) */}
         <aside className="hidden md:block w-64 flex-shrink-0">
           <div className="bg-white rounded-xl border border-gray-200 p-3 sticky top-20">
             <nav className="space-y-1">
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                <span className="text-lg">📊</span>
-                <span>Dashboard</span>
-              </Link>
-              <Link
-                href="/penggarap"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                <span className="text-lg">👨‍🌾</span>
-                <span>Penggarap</span>
-              </Link>
-              <Link
-                href="/gabah"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                <span className="text-lg">⚖️</span>
-                <span>Penimbangan Gabah</span>
-              </Link>
-              <Link
-                href="/panen-multi"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                <span className="text-lg">🌾</span>
-                <span>Panen Multi</span>
-              </Link>
-              <Link
-                href="/ukur-lahan"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                <span className="text-lg">📍</span>
-                <span>Ukur Lahan GPS</span>
-              </Link>
-              <Link
-                href="/keuangan"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                <span className="text-lg">💰</span>
-                <span>Keuangan</span>
-              </Link>
-              <Link
-                href="/grafik"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                <span className="text-lg">📈</span>
-                <span>Grafik</span>
-              </Link>
-              <Link
-                href="/export"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                <span className="text-lg">📥</span>
-                <span>Export Data</span>
-              </Link>
-              <Link
-                href="/bantuan"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                <span className="text-lg">❓</span>
-                <span>Bantuan</span>
-              </Link>
-              <Link
-                href="/pengaturan"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                <span className="text-lg">⚙️</span>
-                <span>Pengaturan</span>
-              </Link>
+              {MENU_ITEMS.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+                >
+                  <span className="text-lg">{item.icon}</span>
+                  <span>{item.label}</span>
+                </Link>
+              ))}
             </nav>
           </div>
         </aside>
 
+        {/* MAIN CONTENT */}
         <main className="flex-1 min-w-0">{children}</main>
       </div>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 z-40">
-        <div className="flex justify-around overflow-x-auto">
-          <Link
-            href="/dashboard"
-            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
-          >
-            <span className="text-xl">📊</span>
-            <span className="text-[10px] whitespace-nowrap">Dashboard</span>
-          </Link>
-          <Link
-            href="/penggarap"
-            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
-          >
-            <span className="text-xl">👨‍🌾</span>
-            <span className="text-[10px] whitespace-nowrap">Penggarap</span>
-          </Link>
-          <Link
-            href="/gabah"
-            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
-          >
-            <span className="text-xl">⚖️</span>
-            <span className="text-[10px] whitespace-nowrap">Gabah</span>
-          </Link>
-          <Link
-            href="/panen-multi"
-            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
-          >
-            <span className="text-xl">🌾</span>
-            <span className="text-[10px] whitespace-nowrap">Panen</span>
-          </Link>
-          <Link
-            href="/ukur-lahan"
-            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
-          >
-            <span className="text-xl">📍</span>
-            <span className="text-[10px] whitespace-nowrap">Ukur</span>
-          </Link>
-          <Link
-            href="/keuangan"
-            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
-          >
-            <span className="text-xl">💰</span>
-            <span className="text-[10px] whitespace-nowrap">Keuangan</span>
-          </Link>
-          <Link
-            href="/grafik"
-            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
-          >
-            <span className="text-xl">📈</span>
-            <span className="text-[10px] whitespace-nowrap">Grafik</span>
-          </Link>
-          <Link
-            href="/export"
-            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
-          >
-            <span className="text-xl">📥</span>
-            <span className="text-[10px] whitespace-nowrap">Export</span>
-          </Link>
+      {/* BOTTOM NAV (MOBILE) — SCROLLABLE */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40"
+        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+      >
+        <div
+          className="flex gap-1 overflow-x-auto overflow-y-hidden py-2 px-2"
+          style={{
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
+          {MENU_ITEMS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className="flex flex-col items-center gap-1 px-3 py-1 rounded-lg text-xs text-gray-500 hover:text-green-700 hover:bg-green-50 transition flex-shrink-0 min-w-[60px]"
+            >
+              <span className="text-xl">{item.icon}</span>
+              <span className="text-[10px] whitespace-nowrap">
+                {item.label}
+              </span>
+            </Link>
+          ))}
         </div>
       </nav>
 

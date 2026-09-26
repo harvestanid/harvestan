@@ -596,7 +596,6 @@ export async function GET(request: Request) {
 
         pdf.setFont("helvetica", "normal");
         pdf.setTextColor(60, 60, 60);
-        pdf.text(`${icon}`, kc1, yPos + 5);
         pdf.text(label, kc1 + 4, yPos + 5);
         pdf.text(String(pk.jmlPanen), kc2, yPos + 5);
         pdf.text(

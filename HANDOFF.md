@@ -459,6 +459,17 @@ Panen Bertahap Cabai (Musim)
   · Form input panen dengan dropdown musim ✅
   · Modal bikin musim baru ✅
 
+### ✅ Sudah Selesai (tambahan)
+
+- ✅ **PDF Invoice Bagi Hasil** di detail panen (download per panen)
+
+### ⏳ Belum Selesai (update)
+
+- ⏳ **Laporan Tahunan & 5 Tahunan**: produktivitas lahan + kinerja petani, 
+  reward & pendampingan berdasarkan kategori produktivitas (ikon bintang), 
+  profit owner + penggarap, hutang, biaya
+- ⏳ **Update Laporan Kinerja Penggarap**: tambah cakupan yang sama 
+  (reward & pendampingan, kategori bintang, rincian biaya)
 ⏳ Belum Selesai
 
 · ⏳ Panen Bertahap Cabai — TAHAP 3: Detail lahan breakdown per musim (khusus cabai)
