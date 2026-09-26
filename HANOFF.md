@@ -1,7 +1,6 @@
 # 🤝 HANDOFF — Konteks untuk Chat Baru
 
 **File ini dibuat untuk melanjutkan development Harvestan di chat baru.**
-
 Copy-paste isi file ini (atau link repo) ke chat baru untuk kasih konteks ke AI.
 
 ---
@@ -12,6 +11,7 @@ Copy-paste isi file ini (atau link repo) ke chat baru untuk kasih konteks ke AI.
 - **Deskripsi**: SaaS manajemen pertanian Indonesia
 - **Repo**: https://github.com/harvestanid/harvestan
 - **Live**: https://harvestan.vercel.app
+- **Versi**: v1.0 (Full Release — 2026-09-26)
 - **User**: Pemula (tidak bisa coding), koding semua oleh AI
 - **Development**: Termux di Android
 
@@ -23,58 +23,82 @@ Copy-paste isi file ini (atau link repo) ke chat baru untuk kasih konteks ke AI.
 - **UI**: Tailwind CSS v4
 - **Database**: Supabase (PostgreSQL + RLS + Auth)
 - **Hosting**: Vercel
-- **Excel**: `xlsx` (SheetJS)
+- **Grafik**: Recharts
+- **PDF**: jsPDF
+- **Excel**: xlsx (SheetJS)
+- **PNG**: html-to-image (support oklch Tailwind v4)
 - **Editor**: micro (di Termux)
 
 ---
 
 ## 📁 Struktur Folder Penting
 app/
-├── (auth)/                          # Login, register
+├── page.tsx                          # Landing page (publik)
+├── layout.tsx                        # Root layout + SEO metadata
+├── (auth)/
+│   ├── login/page.tsx
+│   └── register/page.tsx
 ├── (dashboard)/
-│   ├── layout.tsx                   # Sidebar + bottom nav
-│   ├── dashboard/page.tsx           # Dashboard utama
-│   ├── keuangan/page.tsx            # Keuangan & Laba
-│   ├── export/page.tsx              # Export Excel
+│   ├── layout.tsx                    # Sidebar + bottom nav
+│   ├── dashboard/page.tsx            # Dashboard utama
+│   ├── keuangan/page.tsx             # Keuangan & Laba
+│   ├── grafik/
+│   │   ├── page.tsx                  # Halaman Grafik
+│   │   └── grafik-client.tsx         # Client component Recharts
+│   ├── gabah/page.tsx                # Penimbangan Gabah
+│   ├── pengaturan/
+│   │   ├── page.tsx                  # Pengaturan Kategori
+│   │   └── form.tsx                  # Form kategori
+│   ├── export/page.tsx               # Export Excel + PDF list
 │   ├── penggarap/
-│   │   ├── page.tsx                 # List penggarap
-│   │   ├── baru/page.tsx            # Tambah penggarap
+│   │   ├── page.tsx                  # List penggarap + badge kategori
+│   │   ├── baru/page.tsx
 │   │   └── [id]/
-│   │       ├── page.tsx             # Detail penggarap + lahan + hutang
+│   │       ├── page.tsx              # Detail penggarap + lahan + hutang
 │   │       ├── tombol-aksi.tsx
+│   │       ├── transfer/
+│   │       │   ├── page.tsx          # Transfer lahan
+│   │       │   └── form.tsx
 │   │       ├── lahan/
 │   │       │   ├── baru/page.tsx
 │   │       │   └── [landId]/
-│   │       │       ├── page.tsx     # Detail lahan + riwayat panen
+│   │       │       ├── page.tsx      # Detail lahan + produktivitas per komoditas
 │   │       │       ├── tombol-aksi.tsx
 │   │       │       └── panen/
 │   │       │           ├── baru/page.tsx
 │   │       │           └── [harvestId]/
-│   │       │               ├── page.tsx     # Detail panen + log
+│   │       │               ├── page.tsx     # Detail panen + log audit
 │   │       │               ├── tombol-aksi.tsx
 │   │       │               └── edit/page.tsx # Edit panen
 │   │       └── hutang/
 │   │           ├── baru/page.tsx
 │   │           └── [debtId]/
-│   │               ├── page.tsx     # Detail hutang + log
+│   │               ├── page.tsx      # Detail hutang + log perubahan
 │   │               └── tombol-aksi.tsx
-│   └── gabah/page.tsx               # KOSONG, perlu diisi
 ├── api/
-│   ├── lahan/[id]/route.ts          # PUT, DELETE lahan
-│   ├── panen/[id]/route.ts          # PUT, DELETE panen (auto-revert hutang)
-│   ├── hutang/[id]/route.ts         # PUT, DELETE hutang
-│   └── export/route.ts              # GET → generate Excel
+│   ├── lahan/[id]/route.ts           # PUT, DELETE lahan
+│   ├── panen/[id]/route.ts           # PUT, DELETE panen (auto-revert hutang)
+│   ├── hutang/[id]/route.ts          # PUT, DELETE hutang
+│   ├── kategori/route.ts             # POST, DELETE kategori
+│   ├── transfer-lahan/route.ts       # POST transfer lahan
+│   ├── export/route.ts               # GET → Excel (4 sheet)
+│   └── export-pdf/route.ts           # GET → PDF per penggarap + grafik
+└── auth/logout/route.ts
 
-lib/supabase/
-├── client.ts                        # Client-side Supabase
-├── server.ts                        # Server-side Supabase
-└── queries/
-├── penggarap.ts                 # Client queries penggarap
-├── penggarap-server.ts          # Server queries penggarap + lahan
-├── panen-server.ts              # Server queries panen
-└── hutang-server.ts             # Server queries hutang
+lib/
+├── supabase/
+│   ├── client.ts                     # Client-side Supabase
+│   ├── server.ts                     # Server-side Supabase (async)
+│   └── queries/
+│       ├── penggarap.ts              # Client queries
+│       ├── penggarap-server.ts       # Server queries penggarap + lahan
+│       ├── panen-server.ts           # Server queries panen
+│       ├── hutang-server.ts          # Server queries hutang
+│       └── kategori-server.ts        # Server queries kategori + helper
+└── utils/
+└── grafik-helpers.ts             # Helper data grafik
 
-middleware.ts                        # Auth middleware
+middleware.ts                         # Auth middleware
 
 ```
 
@@ -157,10 +181,16 @@ created_at
 
 ```
 
-### `categories` (belum dipakai)
+### `categories`
 ```
 
--- untuk kategori produktivitas per komoditas
+id (uuid, PK)
+user_id (uuid)
+komoditas (text)
+cukup (numeric, nullable)
+baik (numeric, nullable)
+sangat_baik (numeric, nullable)
+created_at, updated_at
 
 ```
 
@@ -200,6 +230,25 @@ micro "app/(dashboard)/penggarap/[id]/page.tsx"
 
 · Konsisten: hasil_kg, harga_gabah, profit_owner, persen_penggarap
 · harga_gabah = harga_per_kg (sync)
+· Kategori pakai: cukup, baik, sangat_baik (BUKAN cukup_min)
+
+7. JANGAN CAMPUR PRODUKTIVITAS ANTAR KOMODITAS
+
+Setiap komoditas harus dihitung terpisah (padi punya produktivitas sendiri, jagung sendiri, dst).
+
+8. Sebelum Push, WAJIB npm run build
+
+Kode jalan di npm run dev ≠ build sukses di Vercel. Selalu jalankan npm run build sebelum push:
+
+```bash
+npm run build
+```
+
+Kalau sukses → baru git push.
+
+9. File Dead Code Bikin Build Gagal
+
+File lama yang tidak dipakai tapi masih ada bisa bikin build gagal karena TypeScript strict. Contoh kasus: lib/supabase/queries/lahan.ts (sudah dihapus).
 
 ---
 
@@ -218,7 +267,7 @@ Potong Hutang Otomatis dari Panen
 4. Kalau TIDAK centang: potongan = 0
 ```
 
-Edit Panen (Logic Baru)
+Edit Panen
 
 ```
 1. Ambil panen lama → cek potongan_hutang_lama
@@ -240,34 +289,191 @@ Hapus Panen (Auto-Revert)
 3. Hapus panen
 ```
 
+Transfer Lahan
+
+```
+1. Update lands.penggarap_id → penggarap baru
+2. Riwayat panen TETAP (karena terikat land_id, bukan penggarap_id)
+3. Opsional: transfer hutang aktif penggarap
+```
+
+Kategori Produktivitas
+
+```
+- Threshold per komoditas: cukup, baik, sangat_baik (Kg/Ha)
+- Kategori: < cukup = Kurang, ≥ cukup = Cukup, ≥ baik = Baik, ≥ sangat_baik = Sangat Baik
+- WAJIB dihitung per komoditas, TIDAK DICAMPUR
+- Komoditas tanpa data panen → tidak ditampilkan
+```
+
 ---
 
-🎯 Next Feature (yang belum)
+📊 PROGRESS FINAL v1.0
 
-Pilih salah satu:
+✅ Sudah Selesai (100%)
 
-· 🅰️ Transfer Lahan — pindah lahan dari penggarap A → B
-· 🅱️ Export PDF per Penggarap — laporan cetak/WA
-· 🅲️ Grafik Recharts — chart interaktif
-· 🅳️ Halaman Gabah — menu ada, isi kosong
-· 🅴️ Kategori Produktivitas — threshold per komoditas
-
----
-
-📊 Progress
-
-~98% fitur inti selesai!
-
-Yang sudah:
-
-· ✅ Auth
-· ✅ CRUD Penggarap
-· ✅ CRUD Lahan
-· ✅ CRUD Panen
-· ✅ CRUD Hutang
-· ✅ Dashboard
-· ✅ Keuangan
-· ✅ Export Excel
-· ✅ Potong Hutang Otomatis
-· ✅ Edit Panen + Log
+· ✅ Auth (Register, Login, Logout + RLS)
+· ✅ CRUD Penggarap (list, tambah, detail, edit, hapus)
+· ✅ CRUD Lahan + GPS koordinat
+· ✅ CRUD Panen (tambah, detail, edit, hapus)
+· ✅ CRUD Hutang (tambah, detail, edit, lunasi, hapus)
+· ✅ Dashboard (statistik, top 5, produksi 6 bulan)
+· ✅ Keuangan & Laba (profit bulanan, per komoditas, per lahan)
+· ✅ Halaman Grafik Recharts:
+  · Grafik garis produksi per komoditas
+  · Grafik garis produktivitas per komoditas
+  · Grafik bar kinerja penggarap (per komoditas)
+  · Grafik detail per penggarap
+· ✅ Export Excel (4 sheet: Penggarap, Lahan, Panen, Hutang)
+· ✅ Export PDF per Penggarap:
+  · Data penggarap + ringkasan keuangan
+  · Evaluasi produktivitas per komoditas
+  · Grafik produksi & produktivitas per komoditas
+  · Daftar lahan + riwayat panen + riwayat hutang
+· ✅ Potong Hutang Otomatis dari panen
+· ✅ Edit Panen + Log Audit
 · ✅ Auto-Revert Hapus Panen
+· ✅ Transfer Lahan (dengan opsi transfer hutang)
+· ✅ Landing Page (hero, fitur, cara kerja, FAQ, CTA) + SEO
+· ✅ Halaman Gabah (multi-sesi timbang, reset/hapus sesi, rincian perhitungan, export PNG)
+· ✅ Kategori Produktivitas (editable, per komoditas, badge di preview & PDF)
+
+🎯 Fitur Berikutnya (Opsional)
+
+· 🅰️ PWA / Offline Mode — install di HP seperti native app (recommended)
+· 🅱️ Notifikasi WhatsApp — kirim invoice/laporan otomatis
+· 🅲️ Multi-User / Team — satu owner, banyak operator
+· 🅳️ Halaman Settings — profil user, ganti password
+· 🅴️ Backup Cloud Otomatis — export ke Google Drive tiap minggu
+· 🅵️ Domain Custom (.id) — branding lebih profesional
+· 🅶️ Integrasi Harga Pasar — rekomendasi harga jual
+
+---
+
+🎯 Cara Lanjut di Chat Baru
+
+Buka chat baru, paste pesan ini:
+
+```
+Halo! Saya lanjut project Harvestan (SaaS pertanian Indonesia).
+
+Konteks lengkap ada di:
+https://github.com/harvestanid/harvestan/blob/main/HANDOFF.md
+
+Tolong baca file itu dulu sebelum kita mulai.
+
+Status: v1.0 sudah LIVE di https://harvestan.vercel.app
+Semua fitur inti selesai. Sekarang mau lanjut ke [FITUR X].
+
+Aturan main:
+1. Saya pemula, TIDAK BISA coding
+2. Selalu kirim FULL FILE, bukan potongan kode
+3. Jangan suruh saya cari line kode
+4. Kalau butuh ubah file, kasih perintah mkdir + micro + kode lengkap
+5. Kalau error, saya screenshot
+6. Sebelum push, WAJIB test `npm run build` lokal dulu
+7. RLS: setiap insert WAJIB kirim user_id
+8. Jangan campur produktivitas antar komoditas
+
+Mulai dari mana?
+```
+
+---
+
+🔗 Link Penting
+
+· Repo: https://github.com/harvestanid/harvestan
+· Live: https://harvestan.vercel.app
+· Vercel Dashboard: https://vercel.com/harvestanid/harvestan
+· Supabase Dashboard: https://supabase.com/dashboard/project/qfggoqcdaio...
+
+---
+
+🚨 Known Issues
+
+🟡 Middleware Deprecated
+
+Next.js warning: middleware file convention is deprecated, use "proxy" instead.
+Belum urgent. Bisa migrasi nanti dengan:
+
+```bash
+npx @next/codemod@canary middleware-to-proxy .
+```
+
+🟡 Edit Panen + Hutang Manual
+
+Kalau hutang sudah dilunasi manual oleh user setelah panen potong hutang, revert saat edit bisa salah. Log sudah ada tapi logic revert belum cek ini.
+
+🟡 Build Warnings
+
+Ada warning process.cwd() di Edge Runtime — tidak masalah, hanya info.
+
+---
+
+📈 Statistik Project
+
+· 22 halaman Next.js
+· 13 API routes
+· 5 tabel database + RLS
+· ~7000+ baris kode TypeScript
+· ~12 library terintegrasi
+· 3 dokumentasi: CHANGELOG.md, HANDOFF.md (ini), PROJECT.md
+· Live di production sejak 2026-09-26
+
+---
+
+Status: ✅ v1.0 FULL RELEASE — LIVE
+Tanggal rilis: 2026-09-26
+Dibuat dengan: ❤️ + AI, dari nol, tanpa bisa coding 🇮🇩
+
+```
+
+**Simpan:** `Ctrl+S` → `Ctrl+Q`
+
+---
+
+## 📝 STEP 2: Cek Baris
+
+```bash
+wc -l HANDOFF.md
+```
+
+Minimal ≥ 350 baris. Kalau kurang jauh → paste ulang.
+
+---
+
+📝 STEP 3: Commit & Push
+
+```bash
+git add HANDOFF.md
+git commit -m "docs: update HANDOFF.md ke v1.0 — fitur lengkap & cara lanjut"
+git push
+```
+
+---
+
+📝 STEP 4: Cek di GitHub
+
+Buka: https://github.com/harvestanid/harvestan/blob/main/HANDOFF.md
+
+Harusnya muncul versi baru dengan:
+
+· ✅ Section "Versi: v1.0"
+· ✅ Struktur folder lengkap (dengan /grafik, /gabah, /pengaturan)
+· ✅ Schema categories
+· ✅ Aturan penting (9 poin)
+· ✅ Progress 100% lengkap
+· ✅ Link penting
+· ✅ Known issues
+· ✅ Statistik project
+
+---
+
+🎯 Setelah Selesai
+
+HANDOFF.md siap untuk:
+
+1. Buka chat baru kalau chat ini terlalu panjang
+2. Referensi kalau ada masalah
+3. Onboarding kalau ada developer lain yang bantu
+

@@ -1,0 +1,58 @@
+{
+  "name": "Harvestan - Sistem Manajemen Pertanian",
+  "short_name": "Harvestan",
+  "description": "Kelola kebun Anda dengan lebih cerdas. Catat penggarap, lahan, panen, hutang, dan bagi hasil dalam satu aplikasi.",
+  "start_url": "/dashboard",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eaf7e6",
+  "theme_color": "#2c5e2e",
+  "lang": "id",
+  "dir": "ltr",
+  "categories": ["productivity", "business", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Lihat ringkasan kebun Anda",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Daftar Penggarap",
+      "short_name": "Penggarap",
+      "description": "Kelola penggarap & lahan",
+      "url": "/penggarap",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Input Panen",
+      "short_name": "Panen",
+      "description": "Catat hasil panen",
+      "url": "/penggarap",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Penimbangan Gabah",
+      "short_name": "Gabah",
+      "description": "Catat penimbangan gabah",
+      "url": "/gabah",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

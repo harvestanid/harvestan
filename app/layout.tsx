@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { InstallPWA } from "@/components/install-pwa";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,6 +35,15 @@ export const metadata: Metadata = {
   publisher: "Harvestan",
   applicationName: "Harvestan",
   metadataBase: new URL("https://harvestan.vercel.app"),
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    title: "Harvestan",
+    statusBarStyle: "default",
+  },
+  formatDetection: {
+    telephone: false,
+  },
   openGraph: {
     type: "website",
     locale: "id_ID",
@@ -44,9 +54,9 @@ export const metadata: Metadata = {
       "Kelola kebun Anda dengan lebih cerdas. Catat penggarap, lahan, panen, hutang, dan bagi hasil dalam satu aplikasi.",
     images: [
       {
-        url: "/og-image.png",
-        width: 1200,
-        height: 630,
+        url: "/icon-512.png",
+        width: 512,
+        height: 512,
         alt: "Harvestan - Sistem Manajemen Pertanian",
       },
     ],
@@ -56,15 +66,30 @@ export const metadata: Metadata = {
     title: "Harvestan - Sistem Manajemen Pertanian Modern",
     description:
       "Kelola kebun Anda dengan lebih cerdas. Gratis untuk petani Indonesia.",
-    images: ["/og-image.png"],
+    images: ["/icon-512.png"],
   },
   robots: {
     index: true,
     follow: true,
   },
   icons: {
-    icon: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%232c5e2e'/%3E%3Ctext x='50' y='68' font-size='58' text-anchor='middle' fill='%23ffc107'%3E%F0%9F%8C%BE%3C/text%3E%3C/svg%3E",
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
   },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#2c5e2e",
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -73,7 +98,41 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="id"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head>
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Harvestan" />
+        <meta name="mobile-web-app-capable" content="yes" />
+      </head>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <InstallPWA />
+        <RegisterSW />
+      </body>
     </html>
+  );
+}
+
+// Component untuk register service worker (client-side)
+function RegisterSW() {
+  return (
+    <script
+      dangerouslySetInnerHTML={{
+        __html: `
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+              navigator.serviceWorker.register('/sw.js')
+                .then(function(registration) {
+                  console.log('✅ Service Worker registered:', registration.scope);
+                })
+                .catch(function(err) {
+                  console.log('❌ Service Worker registration failed:', err);
+                });
+            });
+          }
+        `,
+      }}
+    />
   );
 }
