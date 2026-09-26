@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { SkemaBagiHasilV2 } from "@/components/skema-bagi-hasil-v2";
 
 async function editPanen(formData: FormData) {
   "use server";
@@ -40,7 +41,11 @@ async function editPanen(formData: FormData) {
     redirect(`${editBase}/edit?error=Data+tidak+lengkap`);
   }
 
-  // ============ AMBIL DATA PANEN LAMA ============
+  if (persen_owner < 0 || persen_owner > 100) {
+    redirect(`${editBase}/edit?error=Persen+owner+harus+0-100`);
+  }
+
+  // Ambil data panen LAMA
   const { data: panenLama } = await supabase
     .from("harvests")
     .select("*")
@@ -54,41 +59,15 @@ async function editPanen(formData: FormData) {
   const potonganHutangLama = Number(panenLama.potongan_hutang || 0);
   const wasPotongHutang = potonganHutangLama > 0;
 
-  // ============ LOGIC BARU: CEK KONDISI ============
-
-  // Skenario A: User UNCHECK (dan sebelumnya potong hutang)
-  //   → REVERT potongan lama ke hutang
-  //
-  // Skenario B: User CHECK (dan sebelumnya tidak potong)
-  //   → LANGSUNG potong dari hutang aktif sekarang
-  //
-  // Skenario C: User UNCHECK + sebelumnya tidak potong
-  //   → Tidak ada yang perlu dilakukan
-  //
-  // Skenario D: User CHECK + sebelumnya sudah potong
-  //   → Revert potongan lama dulu, lalu potong ulang dari hutang aktif baru
-  //     (karena kondisi hutang sudah berubah)
-
-  let revertLog: Array<{
+  // ========== STEP 1: REVERT potongan hutang lama (kalau ada) ==========
+  const revertLog: Array<{
     debt_id: string;
     jumlah_direvert: number;
     waktu_revert: string;
     aksi: string;
   }> = [];
 
-  // ============ STEP 1: REVERT (kalau perlu) ============
-  // Revert HANYA kalau:
-  //   - Sebelumnya potong hutang (potonganHutangLama > 0)
-  //   - DAN user UNCHECK (potongHutang = false)
-  //   - ATAU user CHECK (karena kondisi hutang berubah, harus revert dulu)
-  //
-  // Intinya: kalau sebelumnya potong hutang (apapun kondisi checkbox sekarang),
-  // kita revert dulu supaya konsisten
-  const perluRevert = wasPotongHutang;
-
-  if (perluRevert) {
-    // Ambil hutang penggarap urut TERBARU dulu
-    // (karena waktu potong urutan TERLAMA dulu → revert TERBARU dulu)
+  if (wasPotongHutang) {
     const { data: hutangList } = await supabase
       .from("debts")
       .select("*")
@@ -140,7 +119,7 @@ async function editPanen(formData: FormData) {
     }
   }
 
-  // ============ STEP 2: HITUNG PROFIT BARU ============
+  // ========== STEP 2: HITUNG PROFIT BARU ==========
   const persen_penggarap = 100 - persen_owner;
   const pendapatan = hasil_kg * harga_gabah;
   const totalBiaya = hasil_kg * biaya_panen_per_kg + biaya_tambahan;
@@ -153,8 +132,6 @@ async function editPanen(formData: FormData) {
     profit_penggarap = profit_bersih * (persen_penggarap / 100);
   }
 
-  // ============ STEP 3: POTONG HUTANG BARU (kalau user CENTANG) ============
-  // Ambil hutang aktif sekarang (setelah revert kalau ada)
   const { data: hutangAktifSekarang } = await supabase
     .from("debts")
     .select("*")
@@ -180,7 +157,6 @@ async function editPanen(formData: FormData) {
     aksi: string;
   }> = [];
 
-  // Potong HANYA kalau user CENTANG dan ada hutang dan ada profit
   if (potongHutang && totalHutangSebelum > 0 && profit_penggarap > 0) {
     let sisaPotong = Math.min(profit_penggarap, totalHutangSebelum);
     potonganHutangBaru = sisaPotong;
@@ -235,7 +211,7 @@ async function editPanen(formData: FormData) {
     totalHutangSebelum - potonganHutangBaru
   );
 
-  // ============ STEP 4: UPDATE PANEN ============
+  // Log panen
   const panenLogLama = Array.isArray(panenLama.potongan_hutang_log)
     ? panenLama.potongan_hutang_log
     : [];
@@ -369,7 +345,6 @@ export default async function EditPanenPage({
         </div>
       )}
 
-      {/* Info status potongan hutang lama */}
       {wasPotongHutang && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-800">
           ℹ️ Panen ini sebelumnya memotong hutang{" "}
@@ -379,7 +354,6 @@ export default async function EditPanenPage({
         </div>
       )}
 
-      {/* Info Hutang Aktif */}
       {totalHutangAktif > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -509,21 +483,8 @@ export default async function EditPanenPage({
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            💰 Skema Bagi Hasil
-          </label>
-          <select
-            name="persen_owner"
-            defaultValue={panen.persen_owner || 50}
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            <option value="50">50 : 50 (Owner : Penggarap)</option>
-            <option value="60">60 : 40 (Owner : Penggarap)</option>
-            <option value="70">70 : 30 (Owner : Penggarap)</option>
-            <option value="100">100 : 0 (Owner garap sendiri)</option>
-          </select>
-        </div>
+        {/* ===== SKEMA BAGI HASIL (PAKAI KOMPONEN BARU) ===== */}
+        <SkemaBagiHasilV2 />
 
         <div className="grid grid-cols-3 gap-3">
           <div>
@@ -567,8 +528,6 @@ export default async function EditPanenPage({
           </div>
         </div>
 
-        {/* ============ CHECKBOX POTONG HUTANG ============ */}
-        {/* Muncul kalau: ada hutang aktif ATAU sebelumnya sudah potong hutang */}
         {(totalHutangAktif > 0 || wasPotongHutang) && (
           <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
             <label className="flex items-start gap-3 cursor-pointer">
@@ -586,14 +545,13 @@ export default async function EditPanenPage({
                   {totalHutangAktif > 0 ? (
                     <>
                       Otomatis potong profit penggarap sebesar{" "}
-                      <strong>{formatRp(totalHutangAktif)}</strong> (atau sampai
-                      profit habis).
+                      <strong>{formatRp(totalHutangAktif)}</strong> (atau
+                      sampai profit habis).
                     </>
                   ) : (
                     <>
-                      Saat ini <strong>tidak ada hutang aktif</strong>. Centang
-                      jika Anda ingin tetap coba potong (tidak akan ada efek
-                      karena hutang sudah 0).
+                      Saat ini <strong>tidak ada hutang aktif</strong>.
+                      Centang jika Anda ingin tetap coba potong.
                     </>
                   )}
                 </div>

@@ -14,13 +14,24 @@ export function InstallPWA() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // Cek apakah sudah ter-install (standalone mode)
+    // ===== REGISTER SERVICE WORKER =====
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/sw.js")
+        .then((reg) => {
+          console.log("✅ Service Worker registered:", reg.scope);
+        })
+        .catch((err) => {
+          console.log("❌ Service Worker registration failed:", err);
+        });
+    }
+
+    // ===== PWA INSTALL LOGIC =====
     const isStandalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       (window.navigator as any).standalone === true;
     setIsInstalled(isStandalone);
 
-    // Kalau sudah pernah dismiss, jangan tampilkan lagi (24 jam)
     const dismissed = localStorage.getItem("pwa-dismissed");
     if (dismissed) {
       const dismissedTime = parseInt(dismissed, 10);
@@ -28,17 +39,14 @@ export function InstallPWA() {
       if (hoursSince < 24) return;
     }
 
-    // Event: sebelum install prompt
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      // Munculkan banner setelah 3 detik
       setTimeout(() => setShowBanner(true), 3000);
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstall);
 
-    // Event: setelah ter-install
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setShowBanner(false);
@@ -55,7 +63,6 @@ export function InstallPWA() {
 
   async function handleInstall() {
     if (!deferredPrompt) {
-      // Kalau tidak ada prompt, kasih instruksi manual
       alert(
         "📱 Cara Install Harvestan:\n\n" +
           "• Chrome Android: Menu ⋮ → 'Install app' / 'Tambahkan ke layar utama'\n" +
@@ -83,13 +90,11 @@ export function InstallPWA() {
     localStorage.setItem("pwa-dismissed", Date.now().toString());
   }
 
-  // Jangan tampilkan kalau sudah ter-install
   if (isInstalled) return null;
 
-  // Banner install
   if (showBanner) {
     return (
-      <div className="fixed bottom-24 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:max-w-sm z-50 animate-in slide-in-from-bottom">
+      <div className="fixed bottom-24 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:max-w-sm z-50">
         <div className="bg-gradient-to-br from-green-700 to-green-900 text-white rounded-2xl shadow-2xl p-4 border-2 border-green-500">
           <div className="flex items-start gap-3">
             <div className="text-3xl flex-shrink-0">🌾</div>

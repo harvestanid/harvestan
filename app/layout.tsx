@@ -52,34 +52,16 @@ export const metadata: Metadata = {
     title: "Harvestan - Sistem Manajemen Pertanian Modern",
     description:
       "Kelola kebun Anda dengan lebih cerdas. Catat penggarap, lahan, panen, hutang, dan bagi hasil dalam satu aplikasi.",
-    images: [
-      {
-        url: "/icon-512.png",
-        width: 512,
-        height: 512,
-        alt: "Harvestan - Sistem Manajemen Pertanian",
-      },
-    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Harvestan - Sistem Manajemen Pertanian Modern",
     description:
       "Kelola kebun Anda dengan lebih cerdas. Gratis untuk petani Indonesia.",
-    images: ["/icon-512.png"],
   },
   robots: {
     index: true,
     follow: true,
-  },
-  icons: {
-    icon: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-    ],
   },
 };
 
@@ -99,7 +81,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
-        <link rel="apple-touch-icon" href="/icon-192.png" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Harvestan" />
@@ -108,31 +89,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col">
         {children}
         <InstallPWA />
-        <RegisterSW />
       </body>
     </html>
-  );
-}
-
-// Component untuk register service worker (client-side)
-function RegisterSW() {
-  return (
-    <script
-      dangerouslySetInnerHTML={{
-        __html: `
-          if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-              navigator.serviceWorker.register('/sw.js')
-                .then(function(registration) {
-                  console.log('✅ Service Worker registered:', registration.scope);
-                })
-                .catch(function(err) {
-                  console.log('❌ Service Worker registration failed:', err);
-                });
-            });
-          }
-        `,
-      }}
-    />
   );
 }

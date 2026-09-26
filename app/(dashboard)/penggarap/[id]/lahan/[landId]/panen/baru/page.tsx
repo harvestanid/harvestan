@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { SkemaBagiHasilV2 } from "@/components/skema-bagi-hasil-v2";
 
 async function tambahPanen(formData: FormData) {
   "use server";
@@ -21,9 +22,11 @@ async function tambahPanen(formData: FormData) {
   const harga_gabah = parseFloat(formData.get("harga_gabah") as string);
   const biaya_panen_per_kg =
     parseFloat(formData.get("biaya_panen_per_kg") as string) || 0;
-  const biaya_tambahan = parseFloat(formData.get("biaya_tambahan") as string) || 0;
+  const biaya_tambahan =
+    parseFloat(formData.get("biaya_tambahan") as string) || 0;
   const keterangan_biaya = (formData.get("keterangan_biaya") as string) || null;
-  const bawa_penggarap = parseFloat(formData.get("bawa_penggarap") as string) || 0;
+  const bawa_penggarap =
+    parseFloat(formData.get("bawa_penggarap") as string) || 0;
   const bawa_owner = parseFloat(formData.get("bawa_owner") as string) || 0;
   const bawa_lain = parseFloat(formData.get("bawa_lain") as string) || 0;
   const persen_owner = parseFloat(formData.get("persen_owner") as string) || 50;
@@ -34,6 +37,10 @@ async function tambahPanen(formData: FormData) {
 
   if (!tanggal || isNaN(hasil_kg) || isNaN(harga_gabah)) {
     redirect(`${redirectBase}/panen/baru?error=Data+tidak+lengkap`);
+  }
+
+  if (persen_owner < 0 || persen_owner > 100) {
+    redirect(`${redirectBase}/panen/baru?error=Persen+owner+harus+0-100`);
   }
 
   const persen_penggarap = 100 - persen_owner;
@@ -361,24 +368,8 @@ export default async function TambahPanenPage({
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            💰 Skema Bagi Hasil
-          </label>
-          <select
-            name="persen_owner"
-            defaultValue="50"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            <option value="50">50 : 50 (Owner : Penggarap)</option>
-            <option value="60">60 : 40 (Owner : Penggarap)</option>
-            <option value="70">70 : 30 (Owner : Penggarap)</option>
-            <option value="100">100 : 0 (Owner garap sendiri)</option>
-          </select>
-          <p className="text-xs text-gray-500 mt-1">
-            Persen penggarap otomatis = 100 − persen owner
-          </p>
-        </div>
+        {/* ===== SKEMA BAGI HASIL ===== */}
+        <SkemaBagiHasilV2 />
 
         <div className="grid grid-cols-3 gap-3">
           <div>

@@ -1,25 +1,10 @@
-"use client";
-
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-
-const menuItems = [
-  { href: "/dashboard", label: "Dashboard", icon: "📊" },
-  { href: "/penggarap", label: "Penggarap", icon: "👨‍🌾" },
-  { href: "/gabah", label: "Penimbangan Gabah", icon: "⚖️" },
-  { href: "/keuangan", label: "Keuangan", icon: "💰" },
-  { href: "/grafik", label: "Grafik", icon: "📈" },
-  { href: "/export", label: "Export Data", icon: "📥" },
-  { href: "/pengaturan", label: "Pengaturan", icon: "⚙️" },
-];
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-
   return (
     <div className="min-h-screen bg-gray-50">
       <nav className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-40">
@@ -43,25 +28,69 @@ export default function DashboardLayout({
         <aside className="hidden md:block w-64 flex-shrink-0">
           <div className="bg-white rounded-xl border border-gray-200 p-3 sticky top-20">
             <nav className="space-y-1">
-              {menuItems.map((item) => {
-                const isActive =
-                  pathname === item.href ||
-                  pathname.startsWith(item.href + "/");
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition ${
-                      isActive
-                        ? "bg-green-50 text-green-800"
-                        : "text-gray-700 hover:bg-gray-50"
-                    }`}
-                  >
-                    <span className="text-lg">{item.icon}</span>
-                    <span>{item.label}</span>
-                  </Link>
-                );
-              })}
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                <span className="text-lg">📊</span>
+                <span>Dashboard</span>
+              </Link>
+              <Link
+                href="/penggarap"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                <span className="text-lg">👨‍🌾</span>
+                <span>Penggarap</span>
+              </Link>
+              <Link
+                href="/gabah"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                <span className="text-lg">⚖️</span>
+                <span>Penimbangan Gabah</span>
+              </Link>
+              <Link
+                href="/panen-multi"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                <span className="text-lg">🌾</span>
+                <span>Panen Multi</span>
+              </Link>
+              <Link
+                href="/keuangan"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                <span className="text-lg">💰</span>
+                <span>Keuangan</span>
+              </Link>
+              <Link
+                href="/grafik"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                <span className="text-lg">📈</span>
+                <span>Grafik</span>
+              </Link>
+              <Link
+                href="/export"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                <span className="text-lg">📥</span>
+                <span>Export Data</span>
+              </Link>
+              <Link
+                href="/bantuan"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                <span className="text-lg">❓</span>
+                <span>Bantuan</span>
+              </Link>
+              <Link
+                href="/pengaturan"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              >
+                <span className="text-lg">⚙️</span>
+                <span>Pengaturan</span>
+              </Link>
             </nav>
           </div>
         </aside>
@@ -71,24 +100,55 @@ export default function DashboardLayout({
 
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 z-40">
         <div className="flex justify-around overflow-x-auto">
-          {menuItems.map((item) => {
-            const isActive =
-              pathname === item.href || pathname.startsWith(item.href + "/");
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs transition flex-shrink-0 ${
-                  isActive ? "text-green-700" : "text-gray-500"
-                }`}
-              >
-                <span className="text-xl">{item.icon}</span>
-                <span className="text-[10px] whitespace-nowrap">
-                  {item.label.split(" ")[0]}
-                </span>
-              </Link>
-            );
-          })}
+          <Link
+            href="/dashboard"
+            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
+          >
+            <span className="text-xl">📊</span>
+            <span className="text-[10px] whitespace-nowrap">Dashboard</span>
+          </Link>
+          <Link
+            href="/penggarap"
+            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
+          >
+            <span className="text-xl">👨‍🌾</span>
+            <span className="text-[10px] whitespace-nowrap">Penggarap</span>
+          </Link>
+          <Link
+            href="/gabah"
+            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
+          >
+            <span className="text-xl">⚖️</span>
+            <span className="text-[10px] whitespace-nowrap">Gabah</span>
+          </Link>
+          <Link
+            href="/panen-multi"
+            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
+          >
+            <span className="text-xl">🌾</span>
+            <span className="text-[10px] whitespace-nowrap">Panen</span>
+          </Link>
+          <Link
+            href="/keuangan"
+            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
+          >
+            <span className="text-xl">💰</span>
+            <span className="text-[10px] whitespace-nowrap">Keuangan</span>
+          </Link>
+          <Link
+            href="/grafik"
+            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
+          >
+            <span className="text-xl">📈</span>
+            <span className="text-[10px] whitespace-nowrap">Grafik</span>
+          </Link>
+          <Link
+            href="/export"
+            className="flex flex-col items-center gap-1 px-2 py-1 rounded-lg text-xs text-gray-500 transition flex-shrink-0"
+          >
+            <span className="text-xl">📥</span>
+            <span className="text-[10px] whitespace-nowrap">Export</span>
+          </Link>
         </div>
       </nav>
 

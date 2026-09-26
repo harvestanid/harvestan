@@ -52,6 +52,18 @@ export default async function DetailPanenPage({
   const totalHutangSebelum = Number(panen.total_hutang_sebelum || 0);
   const sisaHutangSesudah = Number(panen.sisa_hutang_sesudah || 0);
 
+  const persenOwner = Number(panen.persen_owner || 50);
+  const persenPenggarap = Number(panen.persen_penggarap || 50);
+  const profitBersih = Number(panen.profit_bersih || 0);
+
+  // ===== Hitung profit owner & penggarap MURNI (sebelum potong hutang) =====
+  const profitOwnerMurni = profitBersih * (persenOwner / 100);
+  const profitPenggarapMurni = profitBersih * (persenPenggarap / 100);
+
+  // ===== Profit final (setelah potong hutang) =====
+  const profitOwnerFinal = Number(panen.profit_owner || 0);
+  const profitPenggarapFinal = Number(panen.profit_penggarap || 0);
+
   // Log perubahan hutang
   const log = Array.isArray(panen.potongan_hutang_log)
     ? panen.potongan_hutang_log
@@ -148,41 +160,50 @@ export default async function DetailPanenPage({
             <div className="font-bold pt-2 border-t col-span-2 flex justify-between">
               <span>💰 Profit Bersih:</span>
               <span className="text-green-700 text-lg">
-                {formatRp(Number(panen.profit_bersih))}
+                {formatRp(profitBersih)}
               </span>
             </div>
           </div>
         </div>
 
+        {/* ===== BAGI HASIL (MURNI) ===== */}
         <div className="pt-4 border-t bg-gray-50 -mx-6 px-6 py-4">
-          <p className="text-xs text-gray-500 uppercase mb-2">Bagi Hasil</p>
+          <p className="text-xs text-gray-500 uppercase mb-1">
+            Bagi Hasil (Sebelum Potong Hutang)
+          </p>
+          <p className="text-[10px] text-gray-400 mb-3 italic">
+            Skema: {persenOwner}:{persenPenggarap} dari profit bersih{" "}
+            {formatRp(profitBersih)}
+          </p>
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-green-100 rounded-lg p-3 text-center">
               <p className="text-xs text-green-800 font-medium">
-                👤 OWNER ({panen.persen_owner}%)
+                👤 OWNER ({persenOwner}%)
               </p>
               <p className="font-bold text-green-900 text-lg mt-1">
-                {formatRp(Number(panen.profit_owner))}
+                {formatRp(profitOwnerMurni)}
               </p>
             </div>
             <div className="bg-orange-100 rounded-lg p-3 text-center">
               <p className="text-xs text-orange-800 font-medium">
-                👨‍🌾 PENGGARAP ({panen.persen_penggarap}%)
+                👨‍🌾 PENGGARAP ({persenPenggarap}%)
               </p>
               <p className="font-bold text-orange-900 text-lg mt-1">
-                {formatRp(Number(panen.profit_penggarap))}
+                {formatRp(profitPenggarapMurni)}
               </p>
             </div>
           </div>
         </div>
 
+        {/* ===== POTONGAN HUTANG ===== */}
         {potonganHutang > 0 && (
           <div className="pt-4 border-t">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <p className="text-xs text-red-700 uppercase font-bold mb-2">
+            <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4">
+              <p className="text-sm text-red-700 uppercase font-bold mb-3">
                 💸 Potongan Hutang Otomatis
               </p>
-              <div className="space-y-2 text-sm">
+
+              <div className="space-y-2 text-sm mb-4">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Hutang sebelum:</span>
                   <span className="font-medium">
@@ -190,7 +211,9 @@ export default async function DetailPanenPage({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Dipotong dari profit:</span>
+                  <span className="text-gray-600">
+                    Dipotong dari profit penggarap:
+                  </span>
                   <span className="font-bold text-red-600">
                     − {formatRp(potonganHutang)}
                   </span>
@@ -212,9 +235,43 @@ export default async function DetailPanenPage({
                   </span>
                 </div>
               </div>
-              <p className="text-xs text-red-700 mt-2 italic">
-                Potongan ini mengurangi profit penggarap dan menambah profit
-                owner (karena hutang dibayar ke owner).
+
+              {/* ===== HASIL AKHIR SETELAH POTONG HUTANG ===== */}
+              <div className="bg-white border-2 border-green-300 rounded-lg p-3">
+                <p className="text-xs font-bold text-green-800 uppercase mb-2">
+                  ✅ Total Diterima (Setelah Potong Hutang)
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-green-50 rounded-lg p-3 text-center border border-green-200">
+                    <p className="text-xs text-green-800 font-medium">
+                      👤 OWNER
+                    </p>
+                    <p className="font-bold text-green-900 text-lg mt-1">
+                      {formatRp(profitOwnerFinal)}
+                    </p>
+                    <p className="text-[10px] text-green-700 mt-1">
+                      = {formatRp(profitOwnerMurni)} +{" "}
+                      {formatRp(potonganHutang)}
+                    </p>
+                  </div>
+                  <div className="bg-orange-50 rounded-lg p-3 text-center border border-orange-200">
+                    <p className="text-xs text-orange-800 font-medium">
+                      👨‍🌾 PENGGARAP
+                    </p>
+                    <p className="font-bold text-orange-900 text-lg mt-1">
+                      {formatRp(profitPenggarapFinal)}
+                    </p>
+                    <p className="text-[10px] text-orange-700 mt-1">
+                      = {formatRp(profitPenggarapMurni)} −{" "}
+                      {formatRp(potonganHutang)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-red-700 mt-3 italic">
+                💡 Potongan hutang mengurangi profit penggarap dan menambah
+                profit owner (karena hutang dibayar ke owner).
               </p>
             </div>
           </div>
@@ -229,6 +286,7 @@ export default async function DetailPanenPage({
           </div>
         )}
 
+        {/* ===== LOG AUDIT TRAIL ===== */}
         {log.length > 0 && (
           <div className="pt-4 border-t">
             <p className="text-xs text-gray-500 uppercase mb-3">
