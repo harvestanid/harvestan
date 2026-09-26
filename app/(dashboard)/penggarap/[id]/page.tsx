@@ -75,6 +75,12 @@ export default async function DetailPenggarapPage({
             totalLuas={totalLuas}
             landsCount={lands.length}
           />
+          <Link
+            href={`/penggarap/${id}/transfer`}
+            className="bg-purple-600 hover:bg-purple-700 text-white font-medium px-5 py-2 rounded-lg transition text-sm"
+          >
+            🔄 Transfer Lahan
+          </Link>
           <a
             href={`/api/export-pdf?penggarap_id=${id}`}
             download
