@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { SkemaBagiHasilV2 } from "@/components/skema-bagi-hasil-v2";
+import { FormPanenFields } from "./form-client";
 
 async function tambahPanen(formData: FormData) {
   "use server";
@@ -37,6 +37,10 @@ async function tambahPanen(formData: FormData) {
 
   if (!tanggal || isNaN(hasil_kg) || isNaN(harga_gabah)) {
     redirect(`${redirectBase}/panen/baru?error=Data+tidak+lengkap`);
+  }
+
+  if (komoditas === "cabai_rawit" && !musim) {
+    redirect(`${redirectBase}/panen/baru?error=Pilih+musim+cabai+dulu`);
   }
 
   if (persen_owner < 0 || persen_owner > 100) {
@@ -213,6 +217,12 @@ export default async function TambahPanenPage({
     0
   );
 
+  const { data: musimList } = await supabase
+    .from("musim_cabai")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("tanggal_mulai", { ascending: false });
+
   function formatRp(n: number) {
     return "Rp " + Math.round(n).toLocaleString("id-ID");
   }
@@ -265,36 +275,21 @@ export default async function TambahPanenPage({
         <input type="hidden" name="penggarap_id" value={id} />
         <input type="hidden" name="land_id" value={landId} />
 
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tanggal <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="date"
-              name="tanggal"
-              defaultValue={today}
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Komoditas <span className="text-red-500">*</span>
-            </label>
-            <select
-              name="komoditas"
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-            >
-              <option value="padi">🌾 Padi</option>
-              <option value="jagung">🌽 Jagung</option>
-              <option value="kacang_tanah">🥜 Kacang Tanah</option>
-              <option value="bawang_merah">🧅 Bawang Merah</option>
-              <option value="cabai_rawit">🌶️ Cabai Rawit</option>
-            </select>
-          </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Tanggal <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="date"
+            name="tanggal"
+            defaultValue={today}
+            required
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
         </div>
+
+        {/* ===== CLIENT COMPONENT: Komoditas + Musim + Skema ===== */}
+        <FormPanenFields musimList={musimList || []} defaultPersen={50} />
 
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -307,7 +302,7 @@ export default async function TambahPanenPage({
               step="any"
               min="0.01"
               required
-              placeholder="Contoh: 3500"
+              placeholder="Contoh: 250"
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
@@ -320,7 +315,7 @@ export default async function TambahPanenPage({
               name="harga_gabah"
               step="any"
               min="0"
-              defaultValue="5000"
+              defaultValue="15000"
               required
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
@@ -367,9 +362,6 @@ export default async function TambahPanenPage({
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
           />
         </div>
-
-        {/* ===== SKEMA BAGI HASIL ===== */}
-        <SkemaBagiHasilV2 />
 
         <div className="grid grid-cols-3 gap-3">
           <div>
