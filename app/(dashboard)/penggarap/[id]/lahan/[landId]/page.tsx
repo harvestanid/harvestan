@@ -28,6 +28,26 @@ function formatRp(n: number) {
   return "Rp " + Math.round(n).toLocaleString("id-ID");
 }
 
+function formatTanggal(t: string) {
+  return new Date(t).toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+type MusimBreakdown = {
+  musim: string;
+  panenList: any[];
+  totalHasil: number;
+  jmlPanen: number;
+  totalProfitOwner: number;
+  totalProfitPenggarap: number;
+  tanggalMulai: string;
+  tanggalSelesai: string;
+  produktivitas: number;
+};
+
 export default async function DetailLahanPage({
   params,
 }: {
@@ -78,6 +98,54 @@ export default async function DetailLahanPage({
     [{ id: lahan.id, luas: Number(lahan.luas) }],
     kategoriList
   );
+
+  // ===== Breakdown per musim untuk cabai rawit =====
+  const cabaiPanen = panen.filter(
+    (p) => (p.komoditas || "padi") === "cabai_rawit"
+  );
+
+  const musimMap = new Map<string, any[]>();
+  cabaiPanen.forEach((p) => {
+    const musimNama = p.musim || "Tanpa Musim";
+    if (!musimMap.has(musimNama)) {
+      musimMap.set(musimNama, []);
+    }
+    musimMap.get(musimNama)!.push(p);
+  });
+
+  const breakdownMusim: MusimBreakdown[] = Array.from(musimMap.entries())
+    .map(([musim, list]) => {
+      const sorted = [...list].sort(
+        (a, b) =>
+          new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime()
+      );
+      const total = list.reduce((s, p) => s + Number(p.hasil_kg), 0);
+      return {
+        musim,
+        panenList: [...list].sort(
+          (a, b) =>
+            new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+        ),
+        totalHasil: total,
+        jmlPanen: list.length,
+        totalProfitOwner: list.reduce(
+          (s, p) => s + Number(p.profit_owner || 0),
+          0
+        ),
+        totalProfitPenggarap: list.reduce(
+          (s, p) => s + Number(p.profit_penggarap || 0),
+          0
+        ),
+        tanggalMulai: sorted[0]?.tanggal || "",
+        tanggalSelesai: sorted[sorted.length - 1]?.tanggal || "",
+        produktivitas: Number(lahan.luas) > 0 ? total / Number(lahan.luas) : 0,
+      };
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.tanggalMulai).getTime() -
+        new Date(a.tanggalMulai).getTime()
+    );
 
   const gpsUrl = lahan.lokasi_koordinat
     ? `https://www.google.com/maps?q=${lahan.lokasi_koordinat.replace(/\s/g, "")}`
@@ -196,6 +264,155 @@ export default async function DetailLahanPage({
         </div>
       )}
 
+      {/* ===== BREAKDOWN MUSIM CABAI ===== */}
+      {breakdownMusim.length > 0 && (
+        <div className="bg-gradient-to-br from-red-50 to-orange-50 border-2 border-orange-300 rounded-xl p-5 mb-6">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <div>
+              <h2 className="font-bold text-orange-900 text-lg">
+                🌶️ Cabai Rawit — Per Musim
+              </h2>
+              <p className="text-xs text-orange-700 mt-0.5">
+                Cabai dipanen bertahap — total {breakdownMusim.length} musim
+                tercatat
+              </p>
+            </div>
+            <span className="text-[10px] bg-orange-200 text-orange-900 px-2 py-1 rounded-full font-bold">
+              📊 {cabaiPanen.length}x panen
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            {breakdownMusim.map((b) => (
+              <div
+                key={b.musim}
+                className="bg-white rounded-lg border-2 border-orange-200 overflow-hidden"
+              >
+                <div className="bg-gradient-to-r from-orange-100 to-red-100 px-4 py-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="font-bold text-orange-900 text-sm flex items-center gap-2">
+                      🗓️ {b.musim}
+                    </div>
+                    <div className="text-xs text-orange-700">
+                      {b.jmlPanen}x panen
+                    </div>
+                  </div>
+                  {b.tanggalMulai && (
+                    <div className="text-[10px] text-orange-700 mt-1">
+                      📅 {formatTanggal(b.tanggalMulai)} —{" "}
+                      {formatTanggal(b.tanggalSelesai)}
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4 grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-green-50 rounded-lg p-2 text-center">
+                    <div className="text-[10px] text-green-700 font-medium">
+                      TOTAL HASIL
+                    </div>
+                    <div className="font-bold text-green-900 text-sm mt-0.5">
+                      {b.totalHasil.toLocaleString("id-ID")} Kg
+                    </div>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-2 text-center">
+                    <div className="text-[10px] text-blue-700 font-medium">
+                      PRODUKTIVITAS
+                    </div>
+                    <div className="font-bold text-blue-900 text-sm mt-0.5">
+                      {b.produktivitas.toFixed(0)} Kg/Ha
+                    </div>
+                  </div>
+                  <div className="bg-emerald-50 rounded-lg p-2 text-center">
+                    <div className="text-[10px] text-emerald-700 font-medium">
+                      PROFIT OWNER
+                    </div>
+                    <div className="font-bold text-emerald-900 text-[11px] mt-0.5">
+                      {formatRp(b.totalProfitOwner)}
+                    </div>
+                  </div>
+                  <div className="bg-orange-50 rounded-lg p-2 text-center">
+                    <div className="text-[10px] text-orange-700 font-medium">
+                      PROFIT PENGGARAP
+                    </div>
+                    <div className="font-bold text-orange-900 text-[11px] mt-0.5">
+                      {formatRp(b.totalProfitPenggarap)}
+                    </div>
+                  </div>
+                </div>
+
+                <details className="border-t border-orange-200">
+                  <summary className="px-4 py-2 text-xs font-medium text-orange-700 cursor-pointer hover:bg-orange-50 select-none">
+                    📋 Lihat Detail {b.jmlPanen} Panen di Musim Ini
+                  </summary>
+                  <div className="p-3 bg-orange-50 border-t border-orange-200">
+                    <div className="space-y-1.5">
+                      {b.panenList.map((p) => (
+                        <Link
+                          key={p.id}
+                          href={`/penggarap/${id}/lahan/${landId}/panen/${p.id}`}
+                          className="block bg-white border border-orange-200 rounded-lg p-2.5 hover:border-orange-400 transition"
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="font-medium text-gray-900">
+                              📅 {formatTanggal(p.tanggal)}
+                            </span>
+                            <span className="font-bold text-orange-700">
+                              {Number(p.hasil_kg).toLocaleString("id-ID")} Kg
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] text-gray-500 mt-1">
+                            <span>
+                              {Number(p.hasil_kg) / Number(lahan.luas) >
+                              0
+                                ? (
+                                    Number(p.hasil_kg) / Number(lahan.luas)
+                                  ).toFixed(0)
+                                : 0}{" "}
+                              Kg/Ha
+                            </span>
+                            <span>
+                              💰 {p.persen_owner}:{p.persen_penggarap}
+                            </span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </details>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-4 bg-white border-2 border-orange-300 rounded-lg p-3">
+            <div className="text-xs font-bold text-orange-900 mb-2">
+              📊 Total Semua Musim Cabai
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="text-center">
+                <div className="text-[10px] text-gray-500">
+                  TOTAL HASIL
+                </div>
+                <div className="font-bold text-orange-700">
+                  {breakdownMusim
+                    .reduce((s, b) => s + b.totalHasil, 0)
+                    .toLocaleString("id-ID")}{" "}
+                  Kg
+                </div>
+              </div>
+              <div className="text-center">
+                <div className="text-[10px] text-gray-500">
+                  TOTAL PANEN
+                </div>
+                <div className="font-bold text-orange-700">
+                  {cabaiPanen.length}x
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== PRODUKTIVITAS PER KOMODITAS ===== */}
       {produktivitasPerKom.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
           <h2 className="font-bold text-gray-900 mb-1 text-sm uppercase tracking-wide">
@@ -279,6 +496,7 @@ export default async function DetailLahanPage({
         </div>
       )}
 
+      {/* ===== RIWAYAT PANEN ===== */}
       <div>
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-bold text-gray-900">
@@ -329,18 +547,18 @@ export default async function DetailLahanPage({
                   <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-gray-900">
-                        📅{" "}
-                        {new Date(p.tanggal).toLocaleDateString("id-ID", {
-                          day: "numeric",
-                          month: "short",
-                          year: "numeric",
-                        })}
+                        📅 {formatTanggal(p.tanggal)}
                       </span>
                       <span
                         className={`text-xs px-2 py-1 rounded-full font-medium ${komColor}`}
                       >
                         {KOMODITAS_LABEL[kom] || kom}
                       </span>
+                      {p.musim && (
+                        <span className="text-xs px-2 py-1 rounded-full bg-orange-100 text-orange-700 font-medium">
+                          🗓️ {p.musim}
+                        </span>
+                      )}
                       <span className="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 font-medium">
                         💰 {p.persen_owner}:{p.persen_penggarap}
                       </span>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type Musim = {
   id: string;
@@ -18,6 +19,7 @@ export function FormPanenFields({
   musimList: initialMusimList,
   defaultPersen,
 }: Props) {
+  const router = useRouter();
   const [komoditas, setKomoditas] = useState("padi");
   const [musimList, setMusimList] = useState<Musim[]>(initialMusimList);
   const [selectedMusim, setSelectedMusim] = useState("");
@@ -25,6 +27,13 @@ export function FormPanenFields({
   const [persenOwner, setPersenOwner] = useState(defaultPersen);
   const [inputKey, setInputKey] = useState(0);
   const [skema, setSkema] = useState(String(defaultPersen));
+  const [namaMusimBaru, setNamaMusimBaru] = useState("");
+  const [tanggalMulaiBaru, setTanggalMulaiBaru] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [catatanMusimBaru, setCatatanMusimBaru] = useState("");
+  const [loadingSimpanMusim, setLoadingSimpanMusim] = useState(false);
+  const [errorMusim, setErrorMusim] = useState("");
 
   const persenPenggarap = 100 - persenOwner;
 
@@ -40,45 +49,58 @@ export function FormPanenFields({
   }
 
   async function handleSimpanMusimClick() {
-    const form = document.getElementById(
-      "form-musim-baru"
-    ) as HTMLFormElement | null;
-    if (!form) return;
-
-    const formData = new FormData(form);
-    const nama = (formData.get("nama") as string) || "";
-    const tanggalMulai = (formData.get("tanggal_mulai") as string) || "";
-    const catatan = (formData.get("catatan") as string) || "";
-
-    if (!nama.trim()) {
-      alert("❌ Isi nama musim dulu");
+    if (!namaMusimBaru.trim()) {
+      setErrorMusim("Isi nama musim dulu");
       return;
     }
+
+    setErrorMusim("");
+    setLoadingSimpanMusim(true);
 
     try {
       const res = await fetch("/api/musim", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          nama: nama.trim(),
-          tanggal_mulai: tanggalMulai || null,
-          catatan: catatan || null,
+          nama: namaMusimBaru.trim(),
+          tanggal_mulai: tanggalMulaiBaru || null,
+          catatan: catatanMusimBaru || null,
         }),
       });
 
       const json = await res.json();
 
       if (!res.ok) {
-        alert("❌ " + (json.error || "Gagal simpan musim"));
+        setErrorMusim(json.error || "Gagal simpan musim");
+        setLoadingSimpanMusim(false);
         return;
       }
 
+      // Update list & auto-select
       setMusimList([json.data, ...musimList]);
       setSelectedMusim(json.data.nama);
       setShowModalMusim(false);
+
+      // Reset form
+      setNamaMusimBaru("");
+      setTanggalMulaiBaru(new Date().toISOString().split("T")[0]);
+      setCatatanMusimBaru("");
+
+      // Refresh server component (biar data ke-refresh kalau user reload)
+      router.refresh();
     } catch (err: any) {
-      alert("❌ " + (err.message || "Error"));
+      setErrorMusim(err.message || "Terjadi kesalahan");
+    } finally {
+      setLoadingSimpanMusim(false);
     }
+  }
+
+  function handleBukaModal() {
+    setNamaMusimBaru("");
+    setTanggalMulaiBaru(new Date().toISOString().split("T")[0]);
+    setCatatanMusimBaru("");
+    setErrorMusim("");
+    setShowModalMusim(true);
   }
 
   return (
@@ -124,7 +146,7 @@ export function FormPanenFields({
             </select>
             <button
               type="button"
-              onClick={() => setShowModalMusim(true)}
+              onClick={handleBukaModal}
               className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-3 py-2 rounded-lg text-sm whitespace-nowrap transition"
             >
               + Baru
@@ -222,14 +244,21 @@ export function FormPanenFields({
               </button>
             </div>
 
-            <div id="form-musim-baru" className="space-y-4">
+            {errorMusim && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg mb-4 text-sm">
+                ❌ {errorMusim}
+              </div>
+            )}
+
+            <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Nama Musim <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  name="nama"
+                  value={namaMusimBaru}
+                  onChange={(e) => setNamaMusimBaru(e.target.value)}
                   placeholder="Contoh: Cabai 2026-1"
                   required
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
@@ -241,8 +270,8 @@ export function FormPanenFields({
                 </label>
                 <input
                   type="date"
-                  name="tanggal_mulai"
-                  defaultValue={new Date().toISOString().split("T")[0]}
+                  value={tanggalMulaiBaru}
+                  onChange={(e) => setTanggalMulaiBaru(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
@@ -251,8 +280,10 @@ export function FormPanenFields({
                   Catatan
                 </label>
                 <textarea
-                  name="catatan"
+                  value={catatanMusimBaru}
+                  onChange={(e) => setCatatanMusimBaru(e.target.value)}
                   rows={2}
+                  placeholder="Contoh: Bibit dari toko X"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
@@ -260,9 +291,10 @@ export function FormPanenFields({
                 <button
                   type="button"
                   onClick={handleSimpanMusimClick}
-                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-lg"
+                  disabled={loadingSimpanMusim}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-lg disabled:opacity-50"
                 >
-                  💾 Simpan Musim
+                  {loadingSimpanMusim ? "⏳ Menyimpan..." : "💾 Simpan Musim"}
                 </button>
                 <button
                   type="button"
