@@ -22,12 +22,16 @@ export default function DashboardLayout({
 }) {
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* TOP NAV */}
-      <nav className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-40">
+      {/* TOP NAV — logo 1.2x lebih besar dari sebelumnya */}
+      <nav className="bg-white border-b border-gray-200 px-4 py-0 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <span className="text-2xl">🌾</span>
-            <span className="font-bold text-green-800">Harvestan</span>
+          <Link href="/dashboard" className="flex items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt="Harvestan"
+              className="h-24 md:h-28 w-auto"
+            />
           </Link>
           <form action="/auth/logout" method="post">
             <button
@@ -43,7 +47,7 @@ export default function DashboardLayout({
       <div className="max-w-7xl mx-auto flex gap-6 px-4 py-6">
         {/* SIDEBAR (DESKTOP) */}
         <aside className="hidden md:block w-64 flex-shrink-0">
-          <div className="bg-white rounded-xl border border-gray-200 p-3 sticky top-20">
+          <div className="bg-white rounded-xl border border-gray-200 p-3 sticky top-32">
             <nav className="space-y-1">
               {MENU_ITEMS.map((item) => (
                 <Link

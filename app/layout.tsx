@@ -35,7 +35,19 @@ export const metadata: Metadata = {
   publisher: "Harvestan",
   applicationName: "Harvestan",
   metadataBase: new URL("https://harvestan.vercel.app"),
+
+  icons: {
+    icon: [
+      { url: "/icon.png", type: "image/png", sizes: "any" },
+    ],
+    apple: [
+      { url: "/icon.png", sizes: "180x180", type: "image/png" },
+    ],
+    shortcut: "/icon.png",
+  },
+
   manifest: "/manifest.json",
+
   appleWebApp: {
     capable: true,
     title: "Harvestan",
@@ -52,12 +64,21 @@ export const metadata: Metadata = {
     title: "Harvestan - Sistem Manajemen Pertanian Modern",
     description:
       "Kelola kebun Anda dengan lebih cerdas. Catat penggarap, lahan, panen, hutang, dan bagi hasil dalam satu aplikasi.",
+    images: [
+      {
+        url: "/icon.png",
+        width: 512,
+        height: 512,
+        alt: "Harvestan Logo",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "Harvestan - Sistem Manajemen Pertanian Modern",
     description:
       "Kelola kebun Anda dengan lebih cerdas. Gratis untuk petani Indonesia.",
+    images: ["/icon.png"],
   },
   robots: {
     index: true,
@@ -85,6 +106,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Harvestan" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <link rel="icon" href="/icon.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/icon.png" />
       </head>
       <body className="min-h-full flex flex-col">
         {children}

@@ -88,12 +88,16 @@ const FAQ = [
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-white">
-      {/* ===== NAVBAR ===== */}
+      {/* ===== NAVBAR — logo 1.2x lebih besar ===== */}
       <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="text-2xl">🌾</span>
-            <span className="font-bold text-green-800 text-lg">Harvestan</span>
+        <div className="max-w-7xl mx-auto px-4 py-0 flex items-center justify-between">
+          <Link href="/" className="flex items-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt="Harvestan"
+              className="h-20 md:h-24 w-auto"
+            />
           </Link>
           <div className="flex items-center gap-2">
             <Link
@@ -222,7 +226,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ===== STATISTIK (PLACEHOLDER) ===== */}
+      {/* ===== STATISTIK ===== */}
       <section className="py-16 bg-gradient-to-r from-green-700 to-green-800 text-white">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <h2 className="text-2xl md:text-3xl font-bold mb-8">
@@ -283,7 +287,14 @@ export default function LandingPage() {
       <section className="py-16 md:py-24 bg-white">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-3xl p-10 md:p-16">
-            <div className="text-6xl mb-6">🌾</div>
+            <div className="flex justify-center mb-6">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon.png"
+                alt="Harvestan"
+                className="w-32 h-32 md:w-40 md:h-40 object-contain"
+              />
+            </div>
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
               Siap Kelola Kebun Lebih Baik?
             </h2>
@@ -308,9 +319,13 @@ export default function LandingPage() {
       <footer className="bg-gray-900 text-gray-400 py-10">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🌾</span>
-              <span className="font-bold text-white text-lg">Harvestan</span>
+            <div className="flex items-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo.png"
+                alt="Harvestan"
+                className="h-20 md:h-24 w-auto brightness-0 invert opacity-90"
+              />
             </div>
             <div className="text-xs text-center md:text-right">
               <p>© 2026 Harvestan. Dibuat dengan ❤️ di Indonesia 🇮🇩</p>

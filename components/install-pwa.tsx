@@ -12,6 +12,7 @@ export function InstallPWA() {
     useState<BeforeInstallPromptEvent | null>(null);
   const [showBanner, setShowBanner] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
     // ===== REGISTER SERVICE WORKER =====
@@ -32,17 +33,28 @@ export function InstallPWA() {
       (window.navigator as any).standalone === true;
     setIsInstalled(isStandalone);
 
+    // Kalau sudah install, jangan tampilkan banner
+    if (isStandalone) {
+      setIsReady(true);
+      return;
+    }
+
+    // Cek dismiss (24 jam)
     const dismissed = localStorage.getItem("pwa-dismissed");
     if (dismissed) {
       const dismissedTime = parseInt(dismissed, 10);
       const hoursSince = (Date.now() - dismissedTime) / (1000 * 60 * 60);
-      if (hoursSince < 24) return;
+      if (hoursSince < 24) {
+        setIsReady(true);
+        return;
+      }
     }
 
+    // ===== TANGKAP beforeinstallprompt EVENT =====
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
-      setTimeout(() => setShowBanner(true), 3000);
+      console.log("✅ beforeinstallprompt event captured");
     };
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstall);
@@ -55,14 +67,35 @@ export function InstallPWA() {
 
     window.addEventListener("appinstalled", handleAppInstalled);
 
+    // ===== FORCE SHOW BANNER AFTER 3 DETIK =====
+    // Tidak nunggu beforeinstallprompt — banner langsung muncul
+    // Tombol Install akan trigger Chrome prompt kalau PWA valid
+    const timer = setTimeout(() => {
+      setShowBanner(true);
+      setIsReady(true);
+    }, 3000);
+
     return () => {
+      clearTimeout(timer);
       window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
   }, []);
 
   async function handleInstall() {
+    // Kalau Chrome belum fire beforeinstallprompt, kita trigger manual
     if (!deferredPrompt) {
+      // Coba trigger prompt Chrome (kalau ada)
+      const anyWindow = window as any;
+      if (anyWindow.deferredPrompt) {
+        anyWindow.deferredPrompt.prompt();
+        await anyWindow.deferredPrompt.userChoice;
+        anyWindow.deferredPrompt = null;
+        setShowBanner(false);
+        return;
+      }
+
+      // Kalau tetap tidak ada, kasih instruksi manual
       alert(
         "📱 Cara Install Harvestan:\n\n" +
           "• Chrome Android: Menu ⋮ → 'Install app' / 'Tambahkan ke layar utama'\n" +
@@ -77,6 +110,7 @@ export function InstallPWA() {
 
     if (outcome === "accepted") {
       console.log("✅ User accepted install");
+      setIsInstalled(true);
     } else {
       console.log("❌ User dismissed install");
     }
@@ -97,7 +131,14 @@ export function InstallPWA() {
       <div className="fixed bottom-24 md:bottom-6 left-4 right-4 md:left-auto md:right-6 md:max-w-sm z-50">
         <div className="bg-gradient-to-br from-green-700 to-green-900 text-white rounded-2xl shadow-2xl p-4 border-2 border-green-500">
           <div className="flex items-start gap-3">
-            <div className="text-3xl flex-shrink-0">🌾</div>
+            <div className="bg-white rounded-lg p-1.5 flex-shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/icon.png"
+                alt="Harvestan"
+                className="w-12 h-12 object-contain"
+              />
+            </div>
             <div className="flex-1 min-w-0">
               <div className="font-bold text-sm mb-1">
                 Install Harvestan di HP

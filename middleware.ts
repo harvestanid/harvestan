@@ -31,17 +31,33 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
+  // ===== STATIC FILES — SELALU IZINKAN =====
+  // File statis (manifest, service worker, icons, dll) harus SELALU bisa diakses
+  // tanpa login, karena browser fetch file ini tanpa session
+  if (
+    pathname === "/manifest.json" ||
+    pathname === "/sw.js" ||
+    pathname === "/favicon.ico" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname.startsWith("/icon-") ||
+    pathname === "/icon.png" ||
+    pathname === "/logo.png" ||
+    pathname.startsWith("/apple-touch-icon") ||
+    /\.(png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|eot)$/.test(pathname)
+  ) {
+    return supabaseResponse;
+  }
+
   // ===== ROUTE PUBLIK (boleh diakses tanpa login) =====
   const isPublicRoute =
     pathname === "/" ||
     pathname.startsWith("/auth") ||
     pathname === "/login" ||
     pathname === "/register" ||
-    pathname.startsWith("/reset-password"); // ← TAMBAHAN INI
+    pathname.startsWith("/reset-password");
 
-  // ===== SKIP CHECK UNTUK ROUTE PUBLIK =====
   if (isPublicRoute) {
-    // Khusus login/register: kalau sudah login, redirect ke dashboard
     if (user && (pathname === "/login" || pathname === "/register")) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
@@ -50,7 +66,6 @@ export async function middleware(request: NextRequest) {
 
   // ===== ROUTE TERPROTEKSI (wajib login) =====
   if (!user) {
-    // Redirect ke login dengan menyimpan URL asal
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);
     return NextResponse.redirect(loginUrl);
@@ -61,13 +76,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match semua request kecuali:
-     * - _next/static (file statis)
-     * - _next/image (image optimization)
-     * - favicon.ico
-     * - file dengan ekstensi gambar
-     */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
