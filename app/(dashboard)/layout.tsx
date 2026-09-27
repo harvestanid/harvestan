@@ -1,4 +1,9 @@
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
+import { getUnreadFeedbackCount } from "@/lib/supabase/queries/feedback-server";
+import { NavLink } from "./nav-link";
+
+const ADMIN_EMAIL = "harvestan.id@gmail.com";
 
 const MENU_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "📊" },
@@ -11,18 +16,26 @@ const MENU_ITEMS = [
   { href: "/laporan", label: "Laporan", icon: "📄" },
   { href: "/export", label: "Export", icon: "📥" },
   { href: "/import", label: "Import", icon: "📤" },
-  { href: "/bantuan", label: "Bantuan", icon: "❓" },
+  { href: "/feedback", label: "Feedback", icon: "💬" },
   { href: "/pengaturan", label: "Setting", icon: "⚙️" },
 ];
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const isAdmin = user?.email === ADMIN_EMAIL;
+  const unreadCount = isAdmin ? await getUnreadFeedbackCount() : 0;
+
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* TOP NAV — logo 1.2x lebih besar dari sebelumnya */}
+      {/* TOP NAV — logo 1.2x */}
       <nav className="bg-white border-b border-gray-200 px-4 py-0 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center">
@@ -50,15 +63,31 @@ export default function DashboardLayout({
           <div className="bg-white rounded-xl border border-gray-200 p-3 sticky top-32">
             <nav className="space-y-1">
               {MENU_ITEMS.map((item) => (
-                <Link
+                <NavLink
                   key={item.href}
                   href={item.href}
-                  className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-                >
-                  <span className="text-lg">{item.icon}</span>
-                  <span>{item.label}</span>
-                </Link>
+                  icon={item.icon}
+                  label={item.label}
+                />
               ))}
+
+              {/* ADMIN SECTION */}
+              {isAdmin && (
+                <>
+                  <div className="pt-3 mt-3 border-t border-gray-200">
+                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-4 mb-1">
+                      Admin Only
+                    </div>
+                    <NavLink
+                      href="/admin/feedback"
+                      icon="🔐"
+                      label="Feedback Admin"
+                      badge={unreadCount}
+                      variant="admin"
+                    />
+                  </div>
+                </>
+              )}
             </nav>
           </div>
         </aside>
@@ -81,17 +110,23 @@ export default function DashboardLayout({
           }}
         >
           {MENU_ITEMS.map((item) => (
-            <Link
+            <NavLink
               key={item.href}
               href={item.href}
-              className="flex flex-col items-center gap-1 px-3 py-1 rounded-lg text-xs text-gray-500 hover:text-green-700 hover:bg-green-50 transition flex-shrink-0 min-w-[60px]"
-            >
-              <span className="text-xl">{item.icon}</span>
-              <span className="text-[10px] whitespace-nowrap">
-                {item.label}
-              </span>
-            </Link>
+              icon={item.icon}
+              label={item.label}
+              variant="mobile"
+            />
           ))}
+          {isAdmin && (
+            <NavLink
+              href="/admin/feedback"
+              icon="🔐"
+              label="Admin"
+              badge={unreadCount}
+              variant="mobile"
+            />
+          )}
         </div>
       </nav>
 
