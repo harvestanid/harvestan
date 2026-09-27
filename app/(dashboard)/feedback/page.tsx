@@ -28,9 +28,14 @@ export default async function FeedbackPage() {
     .order("created_at", { ascending: false })
     .limit(1);
 
-  const sudahKirim = recent && recent.length > 0;
-  const tanggalKirim = sudahKirim ? recent[0].created_at : null;
-  const ratingTerakhir = sudahKirim ? recent[0].rating : null;
+  // Paksa jadi boolean (bukan null)
+  const sudahKirim: boolean = Boolean(recent && recent.length > 0);
+  const tanggalKirim: string | null = sudahKirim
+    ? recent![0].created_at
+    : null;
+  const ratingTerakhir: number | null = sudahKirim
+    ? recent![0].rating
+    : null;
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
