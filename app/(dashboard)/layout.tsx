@@ -17,6 +17,7 @@ const MENU_ITEMS = [
   { href: "/export", label: "Export", icon: "📥" },
   { href: "/import", label: "Import", icon: "📤" },
   { href: "/feedback", label: "Feedback", icon: "💬" },
+  { href: "/bantuan", label: "Bantuan", icon: "❓" },
   { href: "/pengaturan", label: "Setting", icon: "⚙️" },
 ];
 
@@ -73,20 +74,18 @@ export default async function DashboardLayout({
 
               {/* ADMIN SECTION */}
               {isAdmin && (
-                <>
-                  <div className="pt-3 mt-3 border-t border-gray-200">
-                    <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-4 mb-1">
-                      Admin Only
-                    </div>
-                    <NavLink
-                      href="/admin/feedback"
-                      icon="🔐"
-                      label="Feedback Admin"
-                      badge={unreadCount}
-                      variant="admin"
-                    />
+                <div className="pt-3 mt-3 border-t border-gray-200">
+                  <div className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-4 mb-1">
+                    Admin Only
                   </div>
-                </>
+                  <NavLink
+                    href="/admin/feedback"
+                    icon="🔐"
+                    label="Feedback Admin"
+                    badge={unreadCount}
+                    variant="admin"
+                  />
+                </div>
               )}
             </nav>
           </div>
