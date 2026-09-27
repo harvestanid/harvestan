@@ -6,6 +6,7 @@ import {
   Line,
   BarChart,
   Bar,
+  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -34,6 +35,31 @@ type Props = {
 
 function formatRp(n: number) {
   return "Rp " + Math.round(n).toLocaleString("id-ID");
+}
+
+// ===================================================
+// PALET WARNA PENGARAP — dari database34.html
+// ===================================================
+const WARNA_PALET: string[] = [
+  "#2c5e2e", // hijau tua
+  "#ff8c42", // oranye
+  "#4a90e2", // biru
+  "#e24a4a", // merah
+  "#9b59b6", // ungu
+  "#f1c40f", // kuning
+  "#e67e22", // oranye tua
+  "#1abc9c", // tosca
+  "#e84393", // pink
+  "#34495e", // biru tua
+  "#27ae60", // hijau terang
+  "#8e44ad", // violet
+  "#16a085", // hijau tosca
+  "#c0392b", // merah bata
+  "#2980b9", // biru sedang
+];
+
+function getWarnaPenggarap(index: number): string {
+  return WARNA_PALET[index % WARNA_PALET.length];
 }
 
 export function GrafikClient({ penggaraps, lands, harvests }: Props) {
@@ -104,6 +130,19 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
   const adaDataCabai = harvests.some(
     (h) => (h.komoditas || "padi") === "cabai_rawit"
   );
+
+  // Statistik ringkas untuk header kinerja
+  const statsKinerja = useMemo(() => {
+    if (dataKinerja.length === 0)
+      return { min: 0, max: 0, avg: 0, total: 0 };
+    const values = dataKinerja.map((d: any) => d.rataProduktivitas);
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const avg =
+      values.reduce((s: number, v: number) => s + v, 0) / values.length;
+    const total = dataKinerja.length;
+    return { min, max, avg, total };
+  }, [dataKinerja]);
 
   if (!adaData) {
     return (
@@ -310,8 +349,8 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
               🏆 Kinerja Penggarap
             </h2>
             <p className="text-xs text-gray-500 mt-1">
-              Rata-rata produktivitas per penggarap (Kg/Ha) — dipilih
-              berdasarkan komoditas
+              Rata-rata produktivitas per penggarap (Kg/Ha) — setiap penggarap
+              warna beda
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -337,60 +376,139 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
             Belum ada penggarap dengan data untuk komoditas ini
           </div>
         ) : (
-          <div style={{ width: "100%", height: 380 }}>
-            <ResponsiveContainer>
-              <BarChart
-                data={dataKinerja}
-                margin={{ top: 10, right: 20, left: 0, bottom: 60 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis
-                  dataKey="nama"
-                  tick={{ fontSize: 11 }}
-                  stroke="#9ca3af"
-                  angle={-30}
-                  textAnchor="end"
-                  interval={0}
-                  height={70}
-                />
-                <YAxis
-                  tick={{ fontSize: 11 }}
-                  stroke="#9ca3af"
-                  tickFormatter={(v) => v.toLocaleString("id-ID")}
-                />
-                <Tooltip
-                  contentStyle={{
-                    fontSize: 12,
-                    borderRadius: 8,
-                    border: "1px solid #e5e7eb",
-                  }}
-                  formatter={(value: any, name: any) => {
-                    if (name === "rataProduktivitas") {
-                      return [
-                        `${Number(value).toLocaleString("id-ID")} Kg/Ha`,
-                        "Rata-rata Produktivitas",
-                      ];
-                    }
-                    return [value, name];
-                  }}
-                  labelFormatter={(label: any, payload: any) => {
-                    const d = payload?.[0]?.payload;
-                    if (d) {
-                      return `${d.nama} — ${d.jmlPanen}x panen (${Number(
-                        d.totalHasilKg
-                      ).toLocaleString("id-ID")} Kg)`;
-                    }
-                    return label;
-                  }}
-                />
-                <Bar
-                  dataKey="rataProduktivitas"
-                  fill={KOMODITAS_COLOR[komoditasKinerja] || "#27ae60"}
-                  radius={[8, 8, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
+          <>
+            {/* Statistik Ringkas */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-center overflow-hidden">
+                <div className="text-[10px] text-gray-500 font-medium truncate">
+                  PENGGARAP
+                </div>
+                <div className="text-base font-bold text-gray-900">
+                  {statsKinerja.total}
+                </div>
+              </div>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-2 text-center overflow-hidden">
+                <div className="text-[10px] text-red-600 font-medium truncate">
+                  TERENDAH
+                </div>
+                <div className="text-base font-bold text-red-900">
+                  {Math.round(statsKinerja.min).toLocaleString("id-ID")}
+                </div>
+              </div>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-center overflow-hidden">
+                <div className="text-[10px] text-blue-600 font-medium truncate">
+                  RATA-RATA
+                </div>
+                <div className="text-base font-bold text-blue-900">
+                  {Math.round(statsKinerja.avg).toLocaleString("id-ID")}
+                </div>
+              </div>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center overflow-hidden">
+                <div className="text-[10px] text-green-600 font-medium truncate">
+                  TERTINGGI
+                </div>
+                <div className="text-base font-bold text-green-900">
+                  {Math.round(statsKinerja.max).toLocaleString("id-ID")}
+                </div>
+              </div>
+            </div>
+
+            {/* Bar Chart Warna-Warni */}
+            <div style={{ width: "100%", height: 400 }}>
+              <ResponsiveContainer>
+                <BarChart
+                  data={dataKinerja}
+                  margin={{ top: 20, right: 20, left: 0, bottom: 60 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis
+                    dataKey="nama"
+                    tick={{ fontSize: 11 }}
+                    stroke="#9ca3af"
+                    angle={-30}
+                    textAnchor="end"
+                    interval={0}
+                    height={70}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11 }}
+                    stroke="#9ca3af"
+                    tickFormatter={(v) => Math.round(v).toLocaleString("id-ID")}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      fontSize: 12,
+                      borderRadius: 8,
+                      border: "1px solid #e5e7eb",
+                    }}
+                    formatter={(value: any, name: any) => {
+                      if (name === "rataProduktivitas") {
+                        return [
+                          `${Math.round(Number(value)).toLocaleString(
+                            "id-ID"
+                          )} Kg/Ha`,
+                          "Rata-rata Produktivitas",
+                        ];
+                      }
+                      return [value, name];
+                    }}
+                    labelFormatter={(label: any, payload: any) => {
+                      const d = payload?.[0]?.payload;
+                      if (d) {
+                        return `${d.nama} — ${d.jmlPanen}x panen (${Number(
+                          d.totalHasilKg
+                        ).toLocaleString("id-ID")} Kg)`;
+                      }
+                      return label;
+                    }}
+                  />
+                  <Bar
+                    dataKey="rataProduktivitas"
+                    radius={[8, 8, 0, 0]}
+                  >
+                    {dataKinerja.map((entry: any, index: number) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={getWarnaPenggarap(index)}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Legend warna penggarap */}
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="text-[11px] font-medium text-gray-500 uppercase mb-2">
+                Keterangan Warna
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {dataKinerja.map((d: any, i: number) => (
+                  <div
+                    key={d.id || i}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs"
+                    style={{
+                      backgroundColor: getWarnaPenggarap(i) + "20",
+                      border: `1px solid ${getWarnaPenggarap(i)}`,
+                    }}
+                  >
+                    <div
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: getWarnaPenggarap(i) }}
+                    />
+                    <span className="text-gray-800 font-medium">
+                      {d.nama}
+                    </span>
+                    <span className="text-gray-500 text-[10px]">
+                      ({Math.round(Number(d.rataProduktivitas)).toLocaleString(
+                        "id-ID"
+                      )})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </>
         )}
       </div>
 

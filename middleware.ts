@@ -31,19 +31,28 @@ export async function middleware(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
 
-  // Skip middleware untuk callback auth
-  if (pathname.startsWith("/auth/callback")) {
+  // ===== ROUTE PUBLIK (boleh diakses tanpa login) =====
+  const isPublicRoute =
+    pathname === "/" ||
+    pathname.startsWith("/auth") ||
+    pathname === "/login" ||
+    pathname === "/register";
+
+  // ===== SKIP CHECK UNTUK ROUTE PUBLIK =====
+  if (isPublicRoute) {
+    // Khusus login/register: kalau sudah login, redirect ke dashboard
+    if (user && (pathname === "/login" || pathname === "/register")) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
     return supabaseResponse;
   }
 
-  // Kalau akses /dashboard tapi belum login → redirect ke /login
-  if (!user && pathname.startsWith("/dashboard")) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  // Kalau sudah login tapi akses /login atau /register → redirect ke /dashboard
-  if (user && (pathname === "/login" || pathname === "/register")) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+  // ===== ROUTE TERPROTEKSI (wajib login) =====
+  if (!user) {
+    // Redirect ke login dengan menyimpan URL asal
+    const loginUrl = new URL("/login", request.url);
+    loginUrl.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return supabaseResponse;
@@ -51,9 +60,13 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/dashboard/:path*",
-    "/login",
-    "/register",
-    "/auth/callback",
+    /*
+     * Match semua request kecuali:
+     * - _next/static (file statis)
+     * - _next/image (image optimization)
+     * - favicon.ico
+     * - file dengan ekstensi gambar
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };
