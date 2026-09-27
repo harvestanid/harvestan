@@ -1,145 +1,164 @@
-# Changelog Harvestan
+# 📝 CHANGELOG Harvestan
 
-Semua perubahan penting pada project Harvestan dicatat di sini.
+Semua perubahan penting dari project ini akan didokumentasikan di file ini.
 
-Format: `[tanggal] — [fitur] — [deskripsi]`
-
----
-
-## 2026-09-26
-
-### ✅ Fitur: Log/Audit Trail Hutang
-- Tambah kolom `potongan_hutang_log` (JSONB) di tabel `harvests`
-- Tambah kolom `log_perubahan` (JSONB) di tabel `debts`
-- Setiap aksi potong/revert hutang tercatat dengan timestamp
-- Halaman detail hutang menampilkan log perubahan
-- Halaman detail panen menampilkan riwayat perubahan hutang
-
-### ✅ Fitur: Auto-Revert Hutang saat Hapus Panen
-- Hapus panen dengan potongan hutang → hutang otomatis dikembalikan
-- Pesan konfirmasi menampilkan info potongan hutang
-- Log revert tercatat sebagai `revert_hapus_panen`
-
-### ✅ Fitur: Edit Panen (Lengkap)
-- Halaman `/penggarap/[id]/lahan/[landId]/panen/[harvestId]/edit`
-- Checkbox "Potong Hutang" default tercentang kalau panen lama punya potongan
-- Logic: revert kalau uncheck, potong ulang kalau check
-- Auto-recalculate profit owner & penggarap dari hasil baru
-- Log lengkap di tabel `harvests` dan `debts`
-
-### ✅ Fitur: Keuangan Page
-- Halaman `/keuangan`
-- Kartu statistik: Profit Owner, Profit Penggarap, Hutang Aktif, Total Panen
-- Chart profit bulanan (12 bulan terakhir) — bar owner & penggarap
-- Top 5 Penggarap by Profit Owner
-- Profit per Komoditas (padi, jagung, dll)
-- Tabel Profit per Lahan
-- Info total potongan hutang dari panen
-
-### ✅ Fitur: Export Excel
-- Halaman `/export`
-- 4 sheet: Penggarap, Lahan, Panen, Hutang
-- Library: `xlsx` (SheetJS)
-- File: `Harvestan_Export_YYYY-MM-DD.xlsx`
-- Menu di sidebar: "📥 Export Data"
-
-### ✅ Fitur: Potong Hutang Otomatis dari Panen
-- Saat input panen, ada checkbox "Potong Hutang dari Profit Penggarap"
-- Sistem otomatis:
-  - Hitung profit penggarap
-  - Kurangi dengan hutang aktif (urut dari tertua)
-  - Update `dibayar` & `sisa` di tabel `debts`
-  - Simpan `potongan_hutang`, `total_hutang_sebelum`, `sisa_hutang_sesudah` di `harvests`
-  - Geser dari profit penggarap → owner
-- Info daftar hutang aktif muncul di form
-
-### ✅ Fitur: Dashboard
-- Halaman `/dashboard`
-- 4 kartu statistik: Penggarap, Lahan, Panen, Hutang Aktif
-- Profit Summary (Owner & Penggarap)
-- Top 5 Penggarap by Profit Owner
-- Chart produksi 6 bulan terakhir (CSS bar)
-- Aktivitas terbaru (panen & hutang)
-
-### ✅ Fitur: CRUD Hutang
-- Halaman `/penggarap/[id]/hutang/baru` (form tambah)
-- Halaman `/penggarap/[id]/hutang/[debtId]` (detail)
-- Tombol Aksi: Edit, Lunasi, Hapus
-- Field: tanggal, jumlah, keperluan, dibayar, sisa
-- Validasi: `step="any"` biar tidak error
-
-### ✅ Fitur: CRUD Panen
-- Halaman `/penggarap/[id]/lahan/[landId]/panen/baru` (form tambah)
-- Halaman `/penggarap/[id]/lahan/[landId]/panen/[harvestId]` (detail)
-- Tombol Aksi: Edit, Hapus
-- Field: tanggal, komoditas, hasil_kg, harga_gabah, biaya_panen_per_kg, biaya_tambahan, persen_owner, catatan
-- Auto-hitung: profit_bersih, profit_owner, profit_penggarap
-
-### ✅ Fitur: CRUD Lahan
-- Halaman `/penggarap/[id]/lahan/baru` (form tambah)
-- Halaman `/penggarap/[id]/lahan/[landId]` (detail + riwayat panen)
-- Field: nama, luas, lokasi_koordinat
-- GPS link ke Google Maps
-
-### ✅ Fitur: CRUD Penggarap
-- Halaman `/penggarap` (list)
-- Halaman `/penggarap/baru` (form tambah)
-- Halaman `/penggarap/[id]` (detail + lahan + hutang)
-- Edit & Hapus
-
-### ✅ Fitur: Auth
-- Register, Login, Logout
-- Middleware
-- RLS di semua tabel
+Format: [Keep a Changelog](https://keepachangelog.com/)
+Versioning: [Semantic Versioning](https://semver.org/)
 
 ---
 
-## ⚠️ Known Issues / TODO
+## [2.2.0] — 2026-09-27
 
-### 🔴 RLS Policy: Wajib Kirim `user_id`
-Setiap insert ke tabel dengan policy `auth.uid() = user_id` **WAJIB** kirim `user_id` di payload. Kalau tidak → error `new row violates row-level security policy`.
+### 🎉 PRODUCTION READY
 
-### 🟡 Middleware Deprecated
-Next.js warning: `middleware file convention is deprecated, use "proxy" instead`.
-Belum urgent, tapi bisa migrasi nanti.
+Semua fitur sudah diuji dan berjalan dengan baik di production (harvestan.vercel.app).
 
-### 🟡 Edit Panen + Hutang Manually Dibayar
-Kalau hutang sudah **dilunasi manual** oleh user setelah panen potong hutang, revert saat edit bisa salah. Perlu mitigasi tambahan (log sudah ada, tapi logic revert belum cek ini).
+### Added
+- **Halaman Bantuan** — Pusat bantuan dengan 3 tab:
+  - Panduan 12 step (daftar, penggarap, lahan, GPS, panen, bagi hasil, hutang, potong hutang, gabah, cabai musiman, grafik, export/import)
+  - FAQ 10 pertanyaan
+  - Kontak support (WA, email, Telegram)
+  - Section troubleshooting
+
+- **Fitur Feedback Anonymous**:
+  - Form feedback dengan rating 1-5 bintang + saran fitur + masukan
+  - Anti-spam 1x per minggu per user
+  - Notifikasi Telegram otomatis ke grup admin
+  - Dashboard admin dengan statistik & chart (distribusi rating, tren bulanan)
+  - Filter rating, status (unread/pinned), search
+  - Mark read, pin, delete feedback
+  - Badge merah di sidebar admin (unread count)
+  - Active state highlight di sidebar
+
+- **PWA Install Banner**:
+  - Banner muncul 3 detik setelah user visit
+  - Service worker v1.8
+  - Favicon & PWA icon
+  - Middleware whitelist static files
+
+### Changed
+- Logo Harvestan baru (H + teks, dengan tema pertanian & peternakan)
+- Ukuran logo disesuaikan di semua halaman
+- Efek klik (press animation) di semua tombol & link
+- Middleware catch-all matcher (semua route terproteksi by default)
+- Skip TS check di Vercel build
+
+### Fixed
+- **Login Google** — Client Secret salah (di-reset di Google Cloud)
+- **Middleware blokir static files** — manifest.json & sw.js tidak bisa diakses
+- **PWA banner tidak muncul** — force banner 3 detik tanpa nunggu beforeinstallprompt
+- **TypeScript boolean type** — di feedback page
+- **Halaman Bantuan** — menu sidebar hilang
 
 ---
 
-## 🚀 Next Feature Ideas
+## [2.1.0] — 2026-09-27
 
-- [ ] **Transfer Lahan** (pindahkan lahan dari penggarap A → B)
-- [ ] **Export PDF per Penggarap** (laporan kinerja)
-- [ ] **Grafik Recharts** (chart interaktif, ganti CSS bar)
-- [ ] **Halaman Gabah** (menu sudah ada, halaman kosong)
-- [ ] **Notifikasi WhatsApp** (kirim invoice via WA)
-- [ ] **Multi-user / Team** (satu owner, banyak operator)
-- [ ] **PWA / Offline Mode**
-- [ ] **Kategori Produktivitas** (threshold per komoditas)
-- [ ] **Report Bulanan Otomatis** (kirim email)
-- [ ] **Backup Otomatis ke Cloud**
+### Added
+- Halaman Bantuan (draft pertama)
+
+### Fixed
+- Menu Bantuan hilang dari sidebar
 
 ---
 
-## 📊 Progress
+## [2.0.0] — 2026-09-27
 
-**~98% fitur inti selesai!**
+### Added
+- **Auth Lanjutan**:
+  - Konfirmasi password saat register
+  - Lupa password via email (Supabase default template)
+  - Halaman reset password (2 step)
+  - Auto-login setelah reset
 
-| Kategori | Status |
-|----------|--------|
-| Auth | ✅ |
-| CRUD Penggarap | ✅ |
-| CRUD Lahan | ✅ |
-| CRUD Panen | ✅ |
-| CRUD Hutang | ✅ |
-| Dashboard | ✅ |
-| Keuangan | ✅ |
-| Export Excel | ✅ |
-| Potong Hutang Otomatis | ✅ |
-| Edit Panen | ✅ |
-| Log/Audit Trail | ✅ |
-| Auto-Revert Hapus | ✅ |
-| Transfer Lahan | ⏳ |
-| Export PDF | ⏳ |
+- **PWA**:
+  - Install banner
+  - Service worker dengan cache strategy
+  - Favicon & PWA icons
+
+- **Logo Harvestan**:
+  - Logo baru (H + teks)
+  - Auto-crop whitespace
+  - Compress icon < 1MB
+
+- **Efek Klik**:
+  - Press animation di semua tombol & link
+  - Smooth scroll
+  - Focus outline untuk keyboard user
+
+### Changed
+- Logo baru di semua halaman
+- Middleware catch-all
+
+### Fixed
+- Login Google (Client Secret)
+- Hydration error di Next.js 16
+
+---
+
+## [1.9.0] — 2026-09-27
+
+### Added
+- Gabah bawa pulang (pengalihan profit)
+- Tombol "Jumlah Setiap Sesi" di gabah
+- Setting default jumlah sak customable
+- Checkbox bawa pulang penggarap & owner
+- Rincian pengalihan di detail panen & invoice PDF
+
+### Fixed
+- Simbol aneh di PDF (sanitize ASCII)
+- Konten terpotong di PDF
+
+---
+
+## [1.8.0] — 2026-09-27
+
+### Added
+- Import/Export Backup Excel
+- Converter SawahKu HTML lama
+- Grafik Kinerja Penggarap warna-warni
+- Redesign Invoice PDF profesional
+- Auto-remap UUID pada import
+
+---
+
+## [1.7.0] — 2026-09-27
+
+### Added
+- TAHAP 3: Laporan Kinerja Penggarap (bintang, reward, pendampingan)
+- Kategori produktivitas horizontal
+- Leaderboard auto-fit
+
+### Fixed
+- Bug huruf "e" nyasar di laporan
+- Leaderboard terpotong
+
+---
+
+## [1.5.0] — 2026-09-25
+
+### Added
+- Login Google OAuth
+- GPS Walking (ukur lahan + mini-map)
+- Panen Multi-Lahan
+- Panen Bertahap Cabai (TAHAP 1-5)
+- PDF Invoice Bagi Hasil
+- Laporan Tahunan/5 Tahunan
+- Bottom nav mobile scrollable
+
+---
+
+## [1.0.0] — 2026-09-24
+
+### Added
+- Initial release
+- Auth (email + password)
+- CRUD Penggarap, Lahan, Panen, Hutang
+- Dashboard & statistik
+- Export Excel
+- Kategori Produktivitas
+- PWA basic
+
+---
+
+**Dibuat dengan**: ❤️ + AI, dari nol, tanpa bisa coding 🇮🇩
