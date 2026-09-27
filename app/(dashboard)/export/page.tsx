@@ -30,6 +30,16 @@ export default async function ExportPage() {
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id);
 
+  const { count: kategoriCount } = await supabase
+    .from("categories")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
+  const { count: musimCount } = await supabase
+    .from("musim_cabai")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id);
+
   // Ambil semua penggarap untuk list PDF
   const { data: penggaraps } = await supabase
     .from("penggaraps")
@@ -42,60 +52,104 @@ export default async function ExportPage() {
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">📊 Export Data</h1>
         <p className="text-gray-600 text-sm mt-1">
-          Download semua data Anda dalam 1 file Excel atau PDF per penggarap
+          Download backup (untuk import ulang) atau laporan Excel/PDF
         </p>
       </div>
 
-      {/* ===== EXPORT EXCEL ===== */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+      {/* ===== EXPORT BACKUP ===== */}
+      <div className="bg-white border-2 border-blue-200 rounded-xl p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">
-          <span className="text-3xl">📥</span>
+          <span className="text-3xl">💾</span>
           <div>
-            <h2 className="font-bold text-gray-900 text-lg">Export Excel</h2>
+            <h2 className="font-bold text-gray-900 text-lg">
+              Export Backup (untuk Import Ulang)
+            </h2>
             <p className="text-xs text-gray-500">
-              Semua data dalam 1 file (4 sheet)
+              File lengkap dengan semua data mentah — bisa di-import ke akun lain
             </p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-            <div className="text-xl mb-1">👨‍🌾</div>
-            <div className="text-[10px] text-green-700 font-medium">
+        <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-4">
+          <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center">
+            <div className="text-[9px] text-green-700 font-medium">
               PENGGARAP
             </div>
-            <div className="text-lg font-bold text-green-900 mt-1">
+            <div className="text-base font-bold text-green-900">
               {penggarapCount || 0}
             </div>
           </div>
-
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-            <div className="text-xl mb-1">🗺️</div>
-            <div className="text-[10px] text-blue-700 font-medium">LAHAN</div>
-            <div className="text-lg font-bold text-blue-900 mt-1">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 text-center">
+            <div className="text-[9px] text-blue-700 font-medium">LAHAN</div>
+            <div className="text-base font-bold text-blue-900">
               {landsCount || 0}
             </div>
           </div>
-
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
-            <div className="text-xl mb-1">🌾</div>
-            <div className="text-[10px] text-yellow-700 font-medium">PANEN</div>
-            <div className="text-lg font-bold text-yellow-900 mt-1">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-2 text-center">
+            <div className="text-[9px] text-yellow-700 font-medium">PANEN</div>
+            <div className="text-base font-bold text-yellow-900">
               {harvestsCount || 0}
             </div>
           </div>
-
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
-            <div className="text-xl mb-1">💰</div>
-            <div className="text-[10px] text-red-700 font-medium">HUTANG</div>
-            <div className="text-lg font-bold text-red-900 mt-1">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-2 text-center">
+            <div className="text-[9px] text-red-700 font-medium">HUTANG</div>
+            <div className="text-base font-bold text-red-900">
               {debtsCount || 0}
             </div>
+          </div>
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-center">
+            <div className="text-[9px] text-orange-700 font-medium">
+              KATEGORI
+            </div>
+            <div className="text-base font-bold text-orange-900">
+              {kategoriCount || 0}
+            </div>
+          </div>
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 text-center">
+            <div className="text-[9px] text-purple-700 font-medium">MUSIM</div>
+            <div className="text-base font-bold text-purple-900">
+              {musimCount || 0}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-xs text-blue-800">
+          <strong>📁 Isi file Backup:</strong> 7 sheet (Penggarap, Lahan,
+          Panen, Hutang, Kategori, MusimCabai, Info)
+          <br />
+          <strong>💡 Berguna untuk:</strong> Pindah akun, backup rutin, restore
+          data.
+        </div>
+
+        <a
+          href="/api/export-backup"
+          download
+          className="block w-full bg-blue-700 hover:bg-blue-800 text-white font-bold text-center px-6 py-3 rounded-xl transition"
+        >
+          💾 Download Backup (.xlsx)
+        </a>
+      </div>
+
+      {/* ===== EXPORT LAPORAN EXCEL ===== */}
+      <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="text-3xl">📥</span>
+          <div>
+            <h2 className="font-bold text-gray-900 text-lg">
+              Export Laporan Excel
+            </h2>
+            <p className="text-xs text-gray-500">
+              Enak dibaca manusia — untuk analisis & review data
+            </p>
           </div>
         </div>
 
         <div className="bg-gray-50 rounded-lg p-3 mb-4 text-xs text-gray-600">
           <strong>📁 Isi file:</strong> Sheet Penggarap, Lahan, Panen, Hutang
+          dengan statistik lengkap.
+          <br />
+          <strong>⚠️ Catatan:</strong> File ini <strong>tidak bisa</strong>{" "}
+          di-import ulang. Gunakan "Download Backup" di atas untuk import.
         </div>
 
         <a
@@ -103,7 +157,7 @@ export default async function ExportPage() {
           download
           className="block w-full bg-green-700 hover:bg-green-800 text-white font-bold text-center px-6 py-3 rounded-xl transition"
         >
-          📥 Download Excel
+          📊 Download Laporan Excel
         </a>
       </div>
 

@@ -10,6 +10,7 @@ const MENU_ITEMS = [
   { href: "/grafik", label: "Grafik", icon: "📈" },
   { href: "/laporan", label: "Laporan", icon: "📄" },
   { href: "/export", label: "Export", icon: "📥" },
+  { href: "/import", label: "Import", icon: "📤" },
   { href: "/bantuan", label: "Bantuan", icon: "❓" },
   { href: "/pengaturan", label: "Setting", icon: "⚙️" },
 ];
