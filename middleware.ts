@@ -36,7 +36,8 @@ export async function middleware(request: NextRequest) {
     pathname === "/" ||
     pathname.startsWith("/auth") ||
     pathname === "/login" ||
-    pathname === "/register";
+    pathname === "/register" ||
+    pathname.startsWith("/reset-password"); // ← TAMBAHAN INI
 
   // ===== SKIP CHECK UNTUK ROUTE PUBLIK =====
   if (isPublicRoute) {

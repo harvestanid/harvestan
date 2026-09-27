@@ -13,13 +13,38 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [password, setPassword] = useState("");
+  const [konfirmasi, setKonfirmasi] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showKonfirmasi, setShowKonfirmasi] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [error, setError] = useState("");
 
+  // Validasi real-time
+  const passwordMismatch = konfirmasi.length > 0 && password !== konfirmasi;
+  const passwordTooShort = password.length > 0 && password.length < 8;
+  const bisaSubmit =
+    nama.trim() &&
+    email.trim() &&
+    password.length >= 8 &&
+    password === konfirmasi &&
+    !loading &&
+    !loadingGoogle;
+
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setError("");
+
+    // Validasi ulang
+    if (password.length < 8) {
+      setError("Password minimal 8 karakter");
+      return;
+    }
+    if (password !== konfirmasi) {
+      setError("Password dan konfirmasi tidak sama");
+      return;
+    }
+
     setLoading(true);
 
     const { data, error } = await supabase.auth.signUp({
@@ -161,24 +186,83 @@ export default function RegisterPage() {
             />
           </div>
 
+          {/* Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Password
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Minimal 8 karakter"
-              required
-              minLength={8}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Minimal 8 karakter"
+                required
+                minLength={8}
+                className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:border-transparent outline-none transition ${
+                  passwordTooShort
+                    ? "border-red-300 focus:ring-red-500"
+                    : "border-gray-300 focus:ring-green-500"
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 text-sm"
+              >
+                {showPassword ? "🙈" : "👁️"}
+              </button>
+            </div>
+            {passwordTooShort && (
+              <p className="text-xs text-red-600 mt-1">
+                ⚠️ Password minimal 8 karakter
+              </p>
+            )}
+          </div>
+
+          {/* Konfirmasi Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Konfirmasi Password
+            </label>
+            <div className="relative">
+              <input
+                type={showKonfirmasi ? "text" : "password"}
+                value={konfirmasi}
+                onChange={(e) => setKonfirmasi(e.target.value)}
+                placeholder="Ulangi password"
+                required
+                className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:border-transparent outline-none transition ${
+                  passwordMismatch
+                    ? "border-red-300 focus:ring-red-500"
+                    : konfirmasi && password === konfirmasi
+                    ? "border-green-300 focus:ring-green-500"
+                    : "border-gray-300 focus:ring-green-500"
+                }`}
+              />
+              <button
+                type="button"
+                onClick={() => setShowKonfirmasi(!showKonfirmasi)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 text-sm"
+              >
+                {showKonfirmasi ? "🙈" : "👁️"}
+              </button>
+            </div>
+            {passwordMismatch && (
+              <p className="text-xs text-red-600 mt-1">
+                ⚠️ Password tidak sama
+              </p>
+            )}
+            {konfirmasi && password === konfirmasi && (
+              <p className="text-xs text-green-600 mt-1">
+                ✅ Password cocok
+              </p>
+            )}
           </div>
 
           <button
             type="submit"
-            disabled={loading || loadingGoogle}
+            disabled={!bisaSubmit}
             className="w-full bg-green-700 text-white py-3 rounded-lg font-semibold hover:bg-green-800 transition disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? "Mendaftar..." : "Daftar Sekarang"}

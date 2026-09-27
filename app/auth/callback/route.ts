@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const errorParam = requestUrl.searchParams.get("error");
   const errorDescription = requestUrl.searchParams.get("error_description");
   const next = requestUrl.searchParams.get("next") || "/dashboard";
+  const type = requestUrl.searchParams.get("type"); // 'recovery' untuk reset password
 
   // ===== CEK ERROR DARI GOOGLE/SUPABASE =====
   if (errorParam) {
@@ -29,14 +30,18 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // ===== TENTUKAN REDIRECT URL =====
+  // Kalau tipe recovery → redirect ke reset-password/update
+  // Kalau bukan → redirect ke dashboard (atau next)
+  const redirectTarget =
+    type === "recovery" ? "/reset-password/update" : next;
+
   // ===== BUAT RESPONSE DULU (sebelum set cookie) =====
-  // Ini kunci fix: cookie harus di-set di RESPONSE yang akan dikirim ke browser
   let response = NextResponse.redirect(
-    new URL(next, requestUrl.origin)
+    new URL(redirectTarget, requestUrl.origin)
   );
 
   // ===== CREATE SUPABASE CLIENT DENGAN COOKIE HANDLER =====
-  // Cookie di-set ke `response`, bukan ke `cookieStore`
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -66,6 +71,12 @@ export async function GET(request: NextRequest) {
 
   if (exchangeError) {
     console.error("exchangeCodeForSession error:", exchangeError);
+    // Kalau recovery link expired / error, arahkan ke halaman update (yang akan cek session)
+    if (type === "recovery") {
+      return NextResponse.redirect(
+        new URL("/reset-password/update", requestUrl.origin)
+      );
+    }
     return NextResponse.redirect(
       new URL(
         `/login?error=${encodeURIComponent(exchangeError.message)}`,
@@ -81,6 +92,12 @@ export async function GET(request: NextRequest) {
 
   if (!user) {
     console.error("OAuth callback: no user after exchange");
+    // Kalau recovery, tetap ke halaman update (biar user lihat pesan error jelas)
+    if (type === "recovery") {
+      return NextResponse.redirect(
+        new URL("/reset-password/update", requestUrl.origin)
+      );
+    }
     return NextResponse.redirect(
       new URL("/login?error=no_user", requestUrl.origin)
     );
@@ -96,11 +113,16 @@ export async function GET(request: NextRequest) {
     ) < 10000;
 
   // ===== REDIRECT FINAL =====
-  const finalUrl = isNewUser
-    ? new URL("/dashboard?welcome=1", requestUrl.origin)
-    : new URL(next, requestUrl.origin);
+  let finalUrl: URL;
+  if (type === "recovery") {
+    finalUrl = new URL("/reset-password/update", requestUrl.origin);
+  } else if (isNewUser) {
+    finalUrl = new URL("/dashboard?welcome=1", requestUrl.origin);
+  } else {
+    finalUrl = new URL(next, requestUrl.origin);
+  }
 
-  // Buat response baru untuk redirect final + copy cookies dari response sebelumnya
+  // Buat response baru + copy cookies dari response sebelumnya
   const finalResponse = NextResponse.redirect(finalUrl);
   response.cookies.getAll().forEach((cookie) => {
     finalResponse.cookies.set(cookie.name, cookie.value, cookie);
