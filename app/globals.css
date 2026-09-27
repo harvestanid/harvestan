@@ -24,3 +24,173 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* ===================================================
+   EFEK KLIK UNTUK TOMBOL & LINK (Opsi C — Hybrid)
+   - Semua tombol & link: efek halus
+   - Bottom nav & fixed: tidak goyang
+   - Tombol disabled: tidak ada efek
+   =================================================== */
+
+/* Transisi dasar untuk semua elemen interaktif */
+button,
+a,
+[role="button"],
+input[type="submit"],
+input[type="button"] {
+  transition:
+    transform 0.12s cubic-bezier(0.25, 0.8, 0.25, 1),
+    box-shadow 0.12s ease,
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease,
+    opacity 0.15s ease;
+  /* Anti-flicker di mobile */
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform;
+}
+
+/* ===== HOVER (desktop): naik sedikit + shadow ===== */
+@media (hover: hover) {
+  button:hover:not(:disabled):not([aria-disabled="true"]),
+  a:hover:not([aria-disabled="true"]),
+  [role="button"]:hover:not(:disabled):not([aria-disabled="true"]) {
+    transform: translateY(-1px);
+  }
+}
+
+/* ===== ACTIVE (klik): turun + scale kecil ===== */
+button:active:not(:disabled):not([aria-disabled="true"]),
+a:active:not([aria-disabled="true"]),
+[role="button"]:active:not(:disabled):not([aria-disabled="true"]),
+input[type="submit"]:active,
+input[type="button"]:active {
+  transform: translateY(1px) scale(0.97);
+  transition: transform 0.05s ease;
+}
+
+/* ===== DISABLED: tidak ada efek, cursor not-allowed ===== */
+button:disabled,
+input[type="submit"]:disabled,
+input[type="button"]:disabled,
+[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+button:disabled:active,
+input[type="submit"]:disabled:active {
+  transform: none;
+}
+
+/* ===================================================
+   PENGECUALIAN — Elemen yang TIDAK boleh goyang
+   =================================================== */
+
+/* Bottom nav (fixed) — cukup highlight saja */
+nav.fixed button,
+nav.fixed a,
+nav[class*="fixed"] button,
+nav[class*="fixed"] a {
+  transform: none !important;
+}
+
+nav.fixed button:active,
+nav.fixed a:active {
+  background-color: rgba(0, 0, 0, 0.05);
+  transform: none !important;
+}
+
+/* Elemen dengan class .no-press-animation */
+.no-press-animation,
+.no-press-animation * {
+  transform: none !important;
+}
+
+/* Elemen dengan class .press-strong (efek lebih tegas) */
+.press-strong:active:not(:disabled) {
+  transform: translateY(2px) scale(0.95) !important;
+}
+
+/* Link di dalam teks paragraf (<p>, <span>) — hanya color change, no move */
+p a,
+span a,
+li a,
+p [role="button"],
+span [role="button"] {
+  transform: none !important;
+}
+
+p a:hover,
+span a:hover,
+li a:hover {
+  text-decoration: underline;
+}
+
+/* Input, select, textarea — tidak perlu efek klik */
+input:not([type="submit"]):not([type="button"]),
+select,
+textarea {
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+input:not([type="submit"]):not([type="button"]):active,
+select:active,
+textarea:active {
+  transform: none !important;
+}
+
+/* ===================================================
+   SMOOTH SCROLL untuk anchor link
+   =================================================== */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ===================================================
+   FOCUS VISIBLE — outline ramah keyboard user
+   =================================================== */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid #2c5e2e;
+  outline-offset: 2px;
+}
+
+/* ===================================================
+   LOADING SPINNER — pakai di button kalau perlu
+   =================================================== */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spin 1s linear infinite;
+}
+
+/* ===================================================
+   CARD HOVER — opsional untuk card interaktif
+   =================================================== */
+.card-interactive {
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.card-interactive:active {
+  transform: translateY(0) scale(0.99);
+}
