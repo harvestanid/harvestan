@@ -8,6 +8,8 @@ type Props = {
   icon: string;
   label: string;
   badge?: number;
+  premium?: boolean;
+  isPremiumActive?: boolean;
   variant?: "sidebar" | "mobile" | "admin";
 };
 
@@ -16,15 +18,20 @@ export function NavLink({
   icon,
   label,
   badge = 0,
+  premium = false,
+  isPremiumActive = false,
   variant = "sidebar",
 }: Props) {
   const pathname = usePathname();
 
-  // Cek active: exact match untuk root, prefix match untuk lainnya
+  // Cek active
   const isActive =
     pathname === href ||
     (href !== "/dashboard" && pathname.startsWith(href + "/")) ||
     (href !== "/dashboard" && pathname === href);
+
+  // Apakah menu ini perlu lock
+  const isLocked = premium && !isPremiumActive;
 
   // ===== MOBILE VARIANT =====
   if (variant === "mobile") {
@@ -39,6 +46,11 @@ export function NavLink({
       >
         <span className="text-xl relative">
           {icon}
+          {isLocked && (
+            <span className="absolute -bottom-1 -right-1 bg-orange-500 text-white text-[8px] rounded-full w-4 h-4 flex items-center justify-center border border-white">
+              🔒
+            </span>
+          )}
           {badge > 0 && (
             <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold rounded-full min-w-[14px] h-[14px] flex items-center justify-center px-1">
               {badge > 9 ? "9+" : badge}
@@ -66,12 +78,19 @@ export function NavLink({
     >
       <span className="text-lg flex-shrink-0">{icon}</span>
       <span className="flex-1">{label}</span>
+
+      {/* Badge 🔒 untuk premium locked */}
+      {isLocked && (
+        <span className="text-[10px] bg-orange-100 text-orange-700 border border-orange-300 font-bold px-1.5 py-0.5 rounded-full flex-shrink-0">
+          🔒
+        </span>
+      )}
+
+      {/* Badge angka (unread feedback) */}
       {badge > 0 && (
         <span
           className={`text-[10px] font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 ${
-            isAdminVariant
-              ? "bg-red-500 text-white"
-              : "bg-red-500 text-white"
+            isAdminVariant ? "bg-red-500 text-white" : "bg-red-500 text-white"
           } animate-pulse`}
         >
           {badge > 99 ? "99+" : badge}

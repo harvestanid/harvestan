@@ -1,24 +1,26 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getUnreadFeedbackCount } from "@/lib/supabase/queries/feedback-server";
+import { checkPremiumStatus } from "@/lib/supabase/queries/subscription-server";
 import { NavLink } from "./nav-link";
 
 const ADMIN_EMAIL = "harvestan.id@gmail.com";
 
+// Menu items dengan flag premium
 const MENU_ITEMS = [
-  { href: "/dashboard", label: "Dashboard", icon: "📊" },
-  { href: "/penggarap", label: "Penggarap", icon: "👨‍🌾" },
-  { href: "/gabah", label: "Gabah", icon: "⚖️" },
-  { href: "/panen-multi", label: "Panen", icon: "🌾" },
-  { href: "/ukur-lahan", label: "Ukur", icon: "📍" },
-  { href: "/keuangan", label: "Keuangan", icon: "💰" },
-  { href: "/grafik", label: "Grafik", icon: "📈" },
-  { href: "/laporan", label: "Laporan", icon: "📄" },
-  { href: "/export", label: "Export", icon: "📥" },
-  { href: "/import", label: "Import", icon: "📤" },
-  { href: "/feedback", label: "Feedback", icon: "💬" },
-  { href: "/bantuan", label: "Bantuan", icon: "❓" },
-  { href: "/pengaturan", label: "Setting", icon: "⚙️" },
+  { href: "/dashboard", label: "Dashboard", icon: "📊", premium: false },
+  { href: "/penggarap", label: "Penggarap", icon: "👨‍🌾", premium: false },
+  { href: "/gabah", label: "Gabah", icon: "⚖️", premium: true },
+  { href: "/panen-multi", label: "Panen", icon: "🌾", premium: false },
+  { href: "/ukur-lahan", label: "Ukur", icon: "📍", premium: true },
+  { href: "/keuangan", label: "Keuangan", icon: "💰", premium: false },
+  { href: "/grafik", label: "Grafik", icon: "📈", premium: false },
+  { href: "/laporan", label: "Laporan", icon: "📄", premium: false },
+  { href: "/export", label: "Export", icon: "📥", premium: true },
+  { href: "/import", label: "Import", icon: "📤", premium: true },
+  { href: "/feedback", label: "Feedback", icon: "💬", premium: false },
+  { href: "/bantuan", label: "Bantuan", icon: "❓", premium: false },
+  { href: "/pengaturan", label: "Setting", icon: "⚙️", premium: false },
 ];
 
 export default async function DashboardLayout({
@@ -33,10 +35,17 @@ export default async function DashboardLayout({
 
   const isAdmin = user?.email === ADMIN_EMAIL;
   const unreadCount = isAdmin ? await getUnreadFeedbackCount() : 0;
+  const premiumStatus = user
+    ? await checkPremiumStatus(user.id)
+    : { isPremium: false, isActive: false };
+
+  // isPremiumActive = user punya akses premium (lifetime atau masih berlaku)
+  const isPremiumActive =
+    premiumStatus.isPremium && premiumStatus.isActive;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* TOP NAV — logo 1.2x */}
+      {/* TOP NAV */}
       <nav className="bg-white border-b border-gray-200 px-4 py-0 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/dashboard" className="flex items-center">
@@ -47,14 +56,29 @@ export default async function DashboardLayout({
               className="h-24 md:h-28 w-auto"
             />
           </Link>
-          <form action="/auth/logout" method="post">
-            <button
-              type="submit"
-              className="text-sm text-gray-600 hover:text-red-600 transition"
-            >
-              Keluar
-            </button>
-          </form>
+          <div className="flex items-center gap-3">
+            {/* Badge Premium di top nav */}
+            {isPremiumActive ? (
+              <span className="hidden md:inline-flex items-center gap-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md">
+                💎 PREMIUM
+              </span>
+            ) : (
+              <Link
+                href="/premium"
+                className="hidden md:inline-flex items-center gap-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md transition"
+              >
+                💎 Upgrade
+              </Link>
+            )}
+            <form action="/auth/logout" method="post">
+              <button
+                type="submit"
+                className="text-sm text-gray-600 hover:text-red-600 transition"
+              >
+                Keluar
+              </button>
+            </form>
+          </div>
         </div>
       </nav>
 
@@ -69,6 +93,8 @@ export default async function DashboardLayout({
                   href={item.href}
                   icon={item.icon}
                   label={item.label}
+                  premium={item.premium}
+                  isPremiumActive={isPremiumActive}
                 />
               ))}
 
@@ -88,6 +114,24 @@ export default async function DashboardLayout({
                 </div>
               )}
             </nav>
+
+            {/* Banner Premium di bawah menu */}
+            {!isPremiumActive && (
+              <div className="mt-3 p-3 bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-200 rounded-xl">
+                <div className="text-xs font-bold text-orange-900 mb-1">
+                  💎 Premium — Rp 59.000
+                </div>
+                <div className="text-[10px] text-orange-700 mb-2 leading-relaxed">
+                  Akses semua fitur, sekali bayar, selamanya!
+                </div>
+                <Link
+                  href="/premium"
+                  className="block w-full bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold text-center py-2 rounded-lg transition"
+                >
+                  Upgrade Sekarang
+                </Link>
+              </div>
+            )}
           </div>
         </aside>
 
@@ -114,6 +158,8 @@ export default async function DashboardLayout({
               href={item.href}
               icon={item.icon}
               label={item.label}
+              premium={item.premium}
+              isPremiumActive={isPremiumActive}
               variant="mobile"
             />
           ))}

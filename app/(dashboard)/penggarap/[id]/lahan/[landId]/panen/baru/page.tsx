@@ -18,46 +18,78 @@ async function tambahPanen(formData: FormData) {
   const tanggal = formData.get("tanggal") as string;
   const komoditas = (formData.get("komoditas") as string) || "padi";
   const musim = (formData.get("musim") as string) || null;
+
+  // ===== VALIDASI PREMIUM (server-side) =====
+  const { canUserInput } = await import(
+    "@/lib/supabase/queries/subscription-server"
+  );
+  const check = await canUserInput(user.id, "panen");
+  if (!check.allowed) {
+    redirect(
+      `/penggarap/${penggarap_id}/lahan/${land_id}/panen/baru?error=${encodeURIComponent(
+        check.reason || "Limit panen tercapai"
+      )}`
+    );
+  }
+
   const hasil_kg = parseFloat(formData.get("hasil_kg") as string);
   const harga_gabah = parseFloat(formData.get("harga_gabah") as string);
-  const biaya_panen_per_kg =
-    parseFloat(formData.get("biaya_panen_per_kg") as string) || 0;
-  const biaya_tambahan =
-    parseFloat(formData.get("biaya_tambahan") as string) || 0;
-  const keterangan_biaya = (formData.get("keterangan_biaya") as string) || null;
-  const bawa_penggarap =
-    parseFloat(formData.get("bawa_penggarap") as string) || 0;
-  const bawa_owner = parseFloat(formData.get("bawa_owner") as string) || 0;
-  const bawa_lain = parseFloat(formData.get("bawa_lain") as string) || 0;
-  const persen_owner = parseFloat(formData.get("persen_owner") as string) || 50;
+  const biaya_panen_per_kg = parseFloat(
+    formData.get("biaya_panen_per_kg") as string
+  );
+  const biaya_tambahan = parseFloat(
+    (formData.get("biaya_tambahan") as string) || "0"
+  );
+  const keterangan_biaya =
+    (formData.get("keterangan_biaya") as string) || null;
+  const bawa_penggarap = parseFloat(
+    (formData.get("bawa_penggarap") as string) || "0"
+  );
+  const bawa_owner = parseFloat(
+    (formData.get("bawa_owner") as string) || "0"
+  );
+  const bawa_lain = parseFloat(
+    (formData.get("bawa_lain") as string) || "0"
+  );
+  const persen_owner = parseFloat(
+    (formData.get("persen_owner") as string) || "50"
+  );
+  const persen_penggarap = 100 - persen_owner;
   const catatan = (formData.get("catatan") as string) || null;
-  const potongHutang = formData.get("potong_hutang") === "on";
-
-  const redirectBase = `/penggarap/${penggarap_id}/lahan/${land_id}`;
+  const potong_hutang = formData.get("potong_hutang") === "on";
 
   if (!tanggal || isNaN(hasil_kg) || isNaN(harga_gabah)) {
-    redirect(`${redirectBase}/panen/baru?error=Data+tidak+lengkap`);
+    redirect(
+      `/penggarap/${penggarap_id}/lahan/${land_id}/panen/baru?error=Data+tidak+lengkap`
+    );
   }
 
-  if (komoditas === "cabai_rawit" && !musim) {
-    redirect(`${redirectBase}/panen/baru?error=Pilih+musim+cabai+dulu`);
-  }
-
-  if (persen_owner < 0 || persen_owner > 100) {
-    redirect(`${redirectBase}/panen/baru?error=Persen+owner+harus+0-100`);
-  }
-
-  const persen_penggarap = 100 - persen_owner;
+  // ===== HITUNG PROFIT =====
   const pendapatan = hasil_kg * harga_gabah;
-  const totalBiaya = hasil_kg * biaya_panen_per_kg + biaya_tambahan;
-  const profit_bersih = pendapatan - totalBiaya;
+  const biaya_panen = hasil_kg * biaya_panen_per_kg;
+  const total_biaya = biaya_panen + biaya_tambahan;
+  const profit_bersih = pendapatan - total_biaya;
 
-  let profit_owner = 0;
-  let profit_penggarap = 0;
-  if (profit_bersih > 0) {
-    profit_owner = profit_bersih * (persen_owner / 100);
-    profit_penggarap = profit_bersih * (persen_penggarap / 100);
-  }
+  let profit_owner = profit_bersih * (persen_owner / 100);
+  let profit_penggarap = profit_bersih * (persen_penggarap / 100);
+
+  // ===== PENYESUAIAN GABAH BAWA PULANG =====
+  const nilai_bawa_penggarap = bawa_penggarap * harga_gabah;
+  const nilai_bawa_owner = bawa_owner * harga_gabah;
+  const nilai_bawa_lain = bawa_lain * harga_gabah;
+
+  profit_owner += nilai_bawa_penggarap;
+  profit_penggarap -= nilai_bawa_penggarap;
+  profit_penggarap += nilai_bawa_owner;
+  profit_owner -= nilai_bawa_owner;
+  profit_owner -= nilai_bawa_lain * 0.5;
+  profit_penggarap -= nilai_bawa_lain * 0.5;
+
+  // ===== POTONG HUTANG OTOMATIS =====
+  let potongan_hutang = 0;
+  let potongan_log: any[] = [];
+  let total_hutang_sebelum = 0;
+  let sisa_hutang_sesudah = 0;
 
   const { data: hutangList } = await supabase
     .from("debts")
@@ -67,26 +99,14 @@ async function tambahPanen(formData: FormData) {
     .gt("sisa", 0)
     .order("tanggal", { ascending: true });
 
-  const totalHutangSebelum = (hutangList || []).reduce(
+  total_hutang_sebelum = (hutangList || []).reduce(
     (s, h) => s + Number(h.sisa || 0),
     0
   );
 
-  let potonganHutang = 0;
-  let profitPenggarapFinal = profit_penggarap;
-  let profitOwnerFinal = profit_owner;
-  const potonganLog: Array<{
-    debt_id: string;
-    jumlah_dipotong: number;
-    tanggal_hutang: string;
-    keperluan: string | null;
-    waktu_potong: string;
-    aksi: string;
-  }> = [];
-
-  if (potongHutang && totalHutangSebelum > 0 && profit_penggarap > 0) {
-    let sisaPotong = Math.min(profit_penggarap, totalHutangSebelum);
-    potonganHutang = sisaPotong;
+  if (potong_hutang && total_hutang_sebelum > 0 && profit_penggarap > 0) {
+    let sisaPotong = Math.min(profit_penggarap, total_hutang_sebelum);
+    potongan_hutang = sisaPotong;
     const waktuPotong = new Date().toISOString();
 
     for (const h of hutangList || []) {
@@ -102,7 +122,7 @@ async function tambahPanen(formData: FormData) {
         jumlah: bayar,
         sisa_sebelum: sisaHutang,
         sisa_sesudah: sisaBaru,
-        keterangan: "Potong otomatis dari panen",
+        keterangan: "Potong otomatis dari input panen",
       };
 
       const logLama = Array.isArray(h.log_perubahan) ? h.log_perubahan : [];
@@ -117,7 +137,7 @@ async function tambahPanen(formData: FormData) {
         })
         .eq("id", h.id);
 
-      potonganLog.push({
+      potongan_log.push({
         debt_id: h.id,
         jumlah_dipotong: bayar,
         tanggal_hutang: h.tanggal,
@@ -129,15 +149,14 @@ async function tambahPanen(formData: FormData) {
       sisaPotong -= bayar;
     }
 
-    profitPenggarapFinal = profit_penggarap - potonganHutang;
-    profitOwnerFinal = profit_owner + potonganHutang;
+    profit_penggarap -= potongan_hutang;
+    profit_owner += potongan_hutang;
+    sisa_hutang_sesudah = Math.max(0, total_hutang_sebelum - potongan_hutang);
+  } else {
+    sisa_hutang_sesudah = total_hutang_sebelum;
   }
 
-  const totalHutangSesudah = Math.max(
-    0,
-    totalHutangSebelum - potonganHutang
-  );
-
+  // ===== INSERT PANEN =====
   const { error } = await supabase.from("harvests").insert({
     user_id: user.id,
     land_id,
@@ -156,22 +175,24 @@ async function tambahPanen(formData: FormData) {
     persen_owner,
     persen_penggarap,
     profit_bersih,
-    profit_owner: profitOwnerFinal,
-    profit_penggarap: profitPenggarapFinal,
-    potongan_hutang: potonganHutang,
-    potongan_hutang_log: potonganLog,
-    total_hutang_sebelum: totalHutangSebelum,
-    sisa_hutang_sesudah: totalHutangSesudah,
+    profit_owner,
+    profit_penggarap,
+    potongan_hutang,
+    potongan_hutang_log: potongan_log,
+    total_hutang_sebelum,
+    sisa_hutang_sesudah,
     catatan,
   });
 
   if (error) {
     redirect(
-      `${redirectBase}/panen/baru?error=${encodeURIComponent(error.message)}`
+      `/penggarap/${penggarap_id}/lahan/${land_id}/panen/baru?error=${encodeURIComponent(
+        error.message
+      )}`
     );
   }
 
-  redirect(redirectBase);
+  redirect(`/penggarap/${penggarap_id}/lahan/${land_id}`);
 }
 
 export default async function TambahPanenPage({
@@ -188,306 +209,172 @@ export default async function TambahPanenPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
   if (!user) redirect("/login");
 
-  const { data: penggarap } = await supabase
-    .from("penggaraps")
-    .select("id, nama")
-    .eq("id", id)
-    .single();
-
-  const { data: lahan } = await supabase
-    .from("lands")
-    .select("id, nama, luas")
-    .eq("id", landId)
-    .single();
-
-  if (!penggarap || !lahan) redirect(`/penggarap/${id}`);
-
-  const { data: hutangAktif } = await supabase
-    .from("debts")
-    .select("*")
-    .eq("penggarap_id", id)
-    .eq("user_id", user.id)
-    .gt("sisa", 0)
-    .order("tanggal", { ascending: true });
-
-  const totalHutangAktif = (hutangAktif || []).reduce(
-    (s, h) => s + Number(h.sisa || 0),
-    0
+  // ===== CEK LIMIT PANEN =====
+  const { canUserInput } = await import(
+    "@/lib/supabase/queries/subscription-server"
   );
+  const checkPanen = await canUserInput(user.id, "panen");
 
-  const { data: musimList } = await supabase
-    .from("musim_cabai")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("tanggal_mulai", { ascending: false });
-
-  function formatRp(n: number) {
-    return "Rp " + Math.round(n).toLocaleString("id-ID");
-  }
-
-  const today = new Date().toISOString().split("T")[0];
-
-  return (
-    <div className="p-4 md:p-6 max-w-2xl mx-auto">
-      <div className="mb-6">
-        <Link
-          href={`/penggarap/${id}/lahan/${landId}`}
-          className="text-green-700 hover:text-green-800 text-sm font-medium"
-        >
-          ← Kembali ke {lahan.nama}
-        </Link>
-        <h1 className="text-2xl font-bold text-gray-800 mt-2">
-          🌾 Input Panen
-        </h1>
-        <p className="text-gray-600 text-sm mt-1">
-          {penggarap.nama} &middot; {lahan.nama} ({lahan.luas} Ha)
-        </p>
-      </div>
-
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg mb-4 text-sm">
-          ⚠️ {error}
+  if (!checkPanen.allowed) {
+    return (
+      <div className="p-4 md:p-6 max-w-2xl mx-auto">
+        <div className="mb-6">
+          <Link
+            href={`/penggarap/${id}/lahan/${landId}`}
+            className="text-green-700 hover:text-green-800 text-sm font-medium"
+          >
+            ← Kembali ke Lahan
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-800 mt-2">
+            🌾 Tambah Panen
+          </h1>
         </div>
-      )}
 
-      {totalHutangAktif > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <div className="font-bold text-red-800 text-sm">
-                ⚠️ {penggarap.nama} punya hutang aktif
-              </div>
-              <div className="text-xs text-red-700 mt-1">
-                Total: <strong>{formatRp(totalHutangAktif)}</strong> (
-                {hutangAktif?.length} hutang)
+        <div className="bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-300 rounded-2xl p-8 text-center">
+          <div className="text-6xl mb-4">🔒</div>
+          <h2 className="text-2xl font-bold text-orange-900 mb-3">
+            Limit Panen Tercapai
+          </h2>
+          <p className="text-sm text-orange-800 mb-4 leading-relaxed max-w-md mx-auto">
+            {checkPanen.reason}
+          </p>
+
+          <div className="bg-white rounded-xl p-4 my-4 inline-block border border-orange-200">
+            <div className="text-xs text-gray-500 mb-1">Panen Anda</div>
+            <div className="text-3xl font-bold text-orange-700">
+              {checkPanen.currentCount} / {checkPanen.maxCount}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-3 justify-center mt-6">
+            <Link
+              href="/premium"
+              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold px-6 py-3 rounded-xl transition shadow-lg"
+            >
+              💎 Upgrade — Rp 59.000
+            </Link>
+            <Link
+              href="/demo"
+              className="bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium px-6 py-3 rounded-xl transition border border-blue-200"
+            >
+              🎬 Lihat Demo
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }// ===== AMBIL DATA PENGGARAP & LAHAN =====
+    const { data: penggarap } = await supabase
+      .from("penggaraps")
+      .select("id, nama")
+      .eq("id", id)
+      .eq("user_id", user.id)
+      .single();
+  
+    if (!penggarap) redirect("/penggarap");
+  
+    const { data: lahan } = await supabase
+      .from("lands")
+      .select("id, nama, luas")
+      .eq("id", landId)
+      .eq("user_id", user.id)
+      .single();
+  
+    if (!lahan) redirect(`/penggarap/${id}`);
+  
+    // ===== AMBIL MUSIM CABAI (kalau ada) =====
+    const { data: musimList } = await supabase
+      .from("musim_cabai")
+      .select("id, nama")
+      .eq("user_id", user.id)
+      .order("nama");
+  
+    // ===== AMBIL HUTANG AKTIF (untuk preview) =====
+    const { data: hutangAktif } = await supabase
+      .from("debts")
+      .select("id, sisa, tanggal, keperluan")
+      .eq("penggarap_id", id)
+      .eq("user_id", user.id)
+      .gt("sisa", 0)
+      .order("tanggal", { ascending: true });
+  
+    const totalHutang = (hutangAktif || []).reduce(
+      (s, h) => s + Number(h.sisa || 0),
+      0
+    );
+  
+    return (
+      <div className="p-4 md:p-6 max-w-2xl mx-auto">
+        <div className="mb-6">
+          <Link
+            href={`/penggarap/${id}/lahan/${landId}`}
+            className="text-green-700 hover:text-green-800 text-sm font-medium"
+          >
+            ← Kembali ke {lahan.nama}
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-800 mt-2">
+            🌾 Input Panen Baru
+          </h1>
+          <p className="text-gray-600 text-sm mt-1">
+            {penggarap.nama} &middot; {lahan.nama} ({lahan.luas} Ha)
+          </p>
+        </div>
+  
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg mb-4 text-sm">
+            ⚠️ {error}
+          </div>
+        )}
+  
+        {totalHutang > 0 && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-xl p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <div className="text-2xl flex-shrink-0">💰</div>
+              <div className="flex-1">
+                <div className="font-bold text-red-900 text-sm mb-1">
+                  Hutang Aktif: Rp {totalHutang.toLocaleString("id-ID")}
+                </div>
+                <p className="text-xs text-red-800">
+                  Akan otomatis dipotong dari profit penggarap kalau dicentang
+                  di form di bawah.
+                </p>
               </div>
             </div>
           </div>
-        </div>
-      )}
-
-      <form
-        action={tambahPanen}
-        className="bg-white rounded-xl shadow-sm p-6 space-y-4"
-      >
-        <input type="hidden" name="penggarap_id" value={id} />
-        <input type="hidden" name="land_id" value={landId} />
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Tanggal <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="date"
-            name="tanggal"
-            defaultValue={today}
-            required
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-        </div>
-
-        {/* ===== CLIENT COMPONENT: Komoditas + Musim + Skema ===== */}
-        <FormPanenFields musimList={musimList || []} defaultPersen={50} />
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Hasil Panen (Kg) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              name="hasil_kg"
-              step="any"
-              min="0.01"
-              required
-              placeholder="Contoh: 250"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Harga per Kg (Rp) <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="number"
-              name="harga_gabah"
-              step="any"
-              min="0"
-              defaultValue="15000"
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Biaya Panen per Kg (Rp)
-            </label>
-            <input
-              type="number"
-              name="biaya_panen_per_kg"
-              step="any"
-              min="0"
-              defaultValue="400"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Biaya Tambahan (Rp)
-            </label>
-            <input
-              type="number"
-              name="biaya_tambahan"
-              step="any"
-              min="0"
-              defaultValue="0"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Keterangan Biaya Tambahan
-          </label>
-          <input
-            type="text"
-            name="keterangan_biaya"
-            placeholder="Contoh: Sewa mesin, transport"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-        </div>
-
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              🌾 Penggarap bawa (Kg)
-            </label>
-            <input
-              type="number"
-              name="bawa_penggarap"
-              step="any"
-              min="0"
-              defaultValue="0"
-              className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              🏠 Owner bawa (Kg)
-            </label>
-            <input
-              type="number"
-              name="bawa_owner"
-              step="any"
-              min="0"
-              defaultValue="0"
-              className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              📦 Lainnya (Kg)
-            </label>
-            <input
-              type="number"
-              name="bawa_lain"
-              step="any"
-              min="0"
-              defaultValue="0"
-              className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
-            />
-          </div>
-        </div>
-
-        {totalHutangAktif > 0 && (
-          <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
-            <label className="flex items-start gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                name="potong_hutang"
-                defaultChecked
-                className="mt-1 w-5 h-5 accent-red-600"
-              />
-              <div className="flex-1">
-                <div className="font-bold text-yellow-900 text-sm">
-                  💸 Potong Hutang dari Profit Penggarap
-                </div>
-                <div className="text-xs text-yellow-800 mt-1">
-                  Otomatis potong profit penggarap sebesar{" "}
-                  <strong>{formatRp(totalHutangAktif)}</strong> (atau sampai
-                  profit habis).
-                </div>
-                {hutangAktif && hutangAktif.length > 0 && (
-                  <div className="mt-2 text-xs bg-white rounded-lg p-2 border border-yellow-200">
-                    <div className="font-medium text-gray-700 mb-1">
-                      Hutang yang akan dipotong (dari tertua):
-                    </div>
-                    {hutangAktif.map((h) => (
-                      <div
-                        key={h.id}
-                        className="flex justify-between text-gray-600 py-0.5"
-                      >
-                        <span>
-                          📅{" "}
-                          {new Date(h.tanggal).toLocaleDateString("id-ID", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                          {h.keperluan ? ` — ${h.keperluan}` : ""}
-                        </span>
-                        <span className="font-bold text-red-600">
-                          {formatRp(Number(h.sisa))}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </label>
-          </div>
         )}
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Catatan
-          </label>
-          <textarea
-            name="catatan"
-            rows={2}
-            placeholder="Catatan tambahan (opsional)"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+  
+        <form
+          action={tambahPanen}
+          className="bg-white rounded-xl shadow-sm p-6 space-y-5"
+        >
+          <input type="hidden" name="penggarap_id" value={id} />
+          <input type="hidden" name="land_id" value={landId} />
+  
+          <FormPanenFields
+            hargaDefault={5000}
+            biayaDefault={400}
+            totalHutang={totalHutang}
+            musimList={musimList || []}
           />
-        </div>
-
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-900">
-          <strong>💡 Auto-hitung:</strong> Profit bersih = (Hasil × Harga) −
-          (Hasil × Biaya/kg) − Biaya tambahan. Dibagi ke owner & penggarap
-          sesuai skema
-          {totalHutangAktif > 0 && ", lalu dipotong hutang jika dicentang"}.
-        </div>
-
-        <div className="flex gap-3 pt-2">
-          <button
-            type="submit"
-            className="bg-green-700 hover:bg-green-800 text-white font-medium px-6 py-2 rounded-lg transition"
-          >
-            💾 Simpan Panen
-          </button>
-          <Link
-            href={`/penggarap/${id}/lahan/${landId}`}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-6 py-2 rounded-lg transition"
-          >
-            Batal
-          </Link>
-        </div>
-      </form>
-    </div>
-  );
-}
+  
+          <div className="flex gap-3 pt-2">
+            <button
+              type="submit"
+              className="bg-green-700 hover:bg-green-800 text-white font-medium px-6 py-3 rounded-lg transition flex-1"
+            >
+              💾 Simpan Panen
+            </button>
+            <Link
+              href={`/penggarap/${id}/lahan/${landId}`}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-6 py-3 rounded-lg transition"
+            >
+              Batal
+            </Link>
+          </div>
+        </form>
+      </div>
+    );
+  }

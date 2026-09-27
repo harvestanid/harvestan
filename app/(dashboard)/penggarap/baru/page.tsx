@@ -1,140 +1,107 @@
-"use client";
-
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { redirect } from "next/navigation";
 import Link from "next/link";
-import { createPenggarap } from "@/lib/supabase/queries/penggarap";
+import { canUserInput } from "@/lib/supabase/queries/subscription-server";
+import { FormPenggarapBaru } from "./form";
 
-export default function TambahPenggarapPage() {
-  const router = useRouter();
-  const [nama, setNama] = useState("");
-  const [alamat, setAlamat] = useState("");
-  const [usia, setUsia] = useState("");
-  const [kontak, setKontak] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+export const metadata = {
+  title: "Tambah Penggarap",
+};
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+export default async function PenggarapBaruPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-    const result = await createPenggarap({
-      nama: nama.trim(),
-      alamat: alamat.trim(),
-      usia: usia ? parseInt(usia) : undefined,
-      kontak: kontak.trim(),
-    });
+  if (!user) redirect("/login");
 
-    if (!result.success) {
-      setError(result.error || "Gagal menyimpan");
-      setLoading(false);
-      return;
-    }
+  // Cek apakah user boleh input penggarap lagi
+  const check = await canUserInput(user.id, "penggarap");
 
-    router.push("/penggarap");
-    router.refresh();
+  // Kalau tidak boleh (limit tercapai), tampilkan upgrade prompt
+  if (!check.allowed) {
+    return (
+      <div className="p-4 md:p-6 max-w-2xl mx-auto">
+        <div className="mb-6">
+          <Link
+            href="/penggarap"
+            className="text-green-700 hover:text-green-800 text-sm font-medium"
+          >
+            ← Kembali ke Penggarap
+          </Link>
+          <h1 className="text-2xl font-bold text-gray-800 mt-2">
+            👨‍🌾 Tambah Penggarap
+          </h1>
+        </div>
+
+        <div className="bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-300 rounded-2xl p-8 text-center">
+          <div className="text-6xl mb-4">🔒</div>
+          <h2 className="text-2xl font-bold text-orange-900 mb-3">
+            Limit Penggarap Tercapai
+          </h2>
+          <p className="text-sm text-orange-800 mb-2 leading-relaxed">
+            {check.reason}
+          </p>
+          <div className="bg-white rounded-xl p-4 my-4 inline-block">
+            <div className="text-xs text-gray-500 mb-1">Penggarap Anda</div>
+            <div className="text-3xl font-bold text-orange-700">
+              {check.currentCount} / {check.maxCount}
+            </div>
+          </div>
+          <p className="text-xs text-orange-700 mb-6 max-w-md mx-auto">
+            💎 Upgrade ke Premium untuk input unlimited penggarap, lahan,
+            dan panen — hanya Rp 59.000 sekali bayar!
+          </p>
+          <div className="flex flex-wrap gap-3 justify-center">
+            <Link
+              href="/premium"
+              className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold px-6 py-3 rounded-xl transition shadow-lg"
+            >
+              💎 Upgrade — Rp 59.000
+            </Link>
+            <Link
+              href="/demo"
+              className="bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium px-6 py-3 rounded-xl transition border border-blue-200"
+            >
+              🎬 Lihat Demo Dulu
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
   }
 
+  // Boleh input → tampilkan form
   return (
-    <div className="max-w-2xl">
+    <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
         <Link
           href="/penggarap"
-          className="text-sm text-gray-600 hover:text-gray-900"
+          className="text-green-700 hover:text-green-800 text-sm font-medium"
         >
-          ← Kembali
+          ← Kembali ke Penggarap
         </Link>
-        <h1 className="text-2xl font-bold text-gray-900 mt-2">
-          👨‍🌾 Tambah Penggarap
+        <h1 className="text-2xl font-bold text-gray-800 mt-2">
+          👨‍🌾 Tambah Penggarap Baru
         </h1>
         <p className="text-gray-600 text-sm mt-1">
-          Isi data penggarap baru
+          Isi data penggarap di bawah ini
         </p>
       </div>
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          ❌ {error}
+      {/* Info limit untuk free tier */}
+      {check.maxCount !== undefined && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-800">
+          💡 Anda menggunakan paket <strong>Gratis</strong>:{" "}
+          <strong>
+            {check.currentCount} / {check.maxCount}
+          </strong>{" "}
+          penggarap terpakai.
         </div>
       )}
 
-      <form
-        onSubmit={handleSubmit}
-        className="bg-white border border-gray-200 rounded-xl p-6 space-y-5"
-      >
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nama Lengkap <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            value={nama}
-            onChange={(e) => setNama(e.target.value)}
-            placeholder="Contoh: Budi Santoso"
-            required
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
-          />
-        </div>
-
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Usia
-            </label>
-            <input
-              type="number"
-              value={usia}
-              onChange={(e) => setUsia(e.target.value)}
-              placeholder="45"
-              min="1"
-              max="120"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              No. Kontak
-            </label>
-            <input
-              type="tel"
-              value={kontak}
-              onChange={(e) => setKontak(e.target.value)}
-              placeholder="08123456789"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Alamat
-          </label>
-          <textarea
-            value={alamat}
-            onChange={(e) => setAlamat(e.target.value)}
-            placeholder="Dusun, Desa, Kecamatan, Kabupaten"
-            rows={3}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition resize-none"
-          />
-        </div>
-
-        <div className="flex gap-3 pt-2">
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 bg-green-700 text-white py-3 rounded-lg font-semibold hover:bg-green-800 transition disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {loading ? "Menyimpan..." : "Simpan Penggarap"}
-          </button>
-          <Link
-            href="/penggarap"
-            className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition"
-          >
-            Batal
-          </Link>
-        </div>
-      </form>
+      <FormPenggarapBaru />
     </div>
   );
 }

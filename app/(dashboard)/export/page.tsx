@@ -1,6 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { checkPremiumStatus } from "@/lib/supabase/queries/subscription-server";
+import { ExportPremiumGate } from "./export-gate";
+
+export const metadata = {
+  title: "Export Data",
+};
 
 export default async function ExportPage() {
   const supabase = await createClient();
@@ -9,6 +15,9 @@ export default async function ExportPage() {
   } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
+
+  const premium = await checkPremiumStatus(user.id);
+  const isPremiumActive = premium.isPremium && premium.isActive;
 
   const { count: penggarapCount } = await supabase
     .from("penggaraps")
@@ -40,7 +49,6 @@ export default async function ExportPage() {
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id);
 
-  // Ambil semua penggarap untuk list PDF
   const { data: penggaraps } = await supabase
     .from("penggaraps")
     .select("id, nama, kontak")
@@ -56,7 +64,40 @@ export default async function ExportPage() {
         </p>
       </div>
 
-      {/* ===== EXPORT BACKUP ===== */}
+      {/* Banner premium status */}
+      {!isPremiumActive && (
+        <div className="bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-300 rounded-2xl p-5 mb-6">
+          <div className="flex items-start gap-3">
+            <div className="text-3xl">🔒</div>
+            <div className="flex-1">
+              <div className="font-bold text-orange-900 mb-1">
+                Export Data — Fitur Premium
+              </div>
+              <p className="text-xs text-orange-800 mb-3 leading-relaxed">
+                Export Excel, PDF, dan Backup hanya tersedia untuk pengguna
+                Premium. Coba dulu lihat demo atau upgrade untuk unlock semua
+                fitur export.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/premium"
+                  className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-4 py-2 rounded-lg transition"
+                >
+                  💎 Upgrade — Rp 59.000
+                </Link>
+                <Link
+                  href="/demo"
+                  className="bg-white hover:bg-blue-50 text-blue-800 text-xs font-bold px-4 py-2 rounded-lg transition border border-blue-200"
+                >
+                  🎬 Lihat Demo
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EXPORT BACKUP */}
       <div className="bg-white border-2 border-blue-200 rounded-xl p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">
           <span className="text-3xl">💾</span>
@@ -65,7 +106,8 @@ export default async function ExportPage() {
               Export Backup (untuk Import Ulang)
             </h2>
             <p className="text-xs text-gray-500">
-              File lengkap dengan semua data mentah — bisa di-import ke akun lain
+              File lengkap dengan semua data mentah — bisa di-import ke akun
+              lain
             </p>
           </div>
         </div>
@@ -116,21 +158,20 @@ export default async function ExportPage() {
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-xs text-blue-800">
           <strong>📁 Isi file Backup:</strong> 7 sheet (Penggarap, Lahan,
           Panen, Hutang, Kategori, MusimCabai, Info)
-          <br />
-          <strong>💡 Berguna untuk:</strong> Pindah akun, backup rutin, restore
-          data.
         </div>
 
-        <a
-          href="/api/export-backup"
-          download
-          className="block w-full bg-blue-700 hover:bg-blue-800 text-white font-bold text-center px-6 py-3 rounded-xl transition"
-        >
-          💾 Download Backup (.xlsx)
-        </a>
+        <ExportPremiumGate isPremium={isPremiumActive} feature="Export Backup">
+          <a
+            href="/api/export-backup"
+            download
+            className="block w-full bg-blue-700 hover:bg-blue-800 text-white font-bold text-center px-6 py-3 rounded-xl transition"
+          >
+            💾 Download Backup (.xlsx)
+          </a>
+        </ExportPremiumGate>
       </div>
 
-      {/* ===== EXPORT LAPORAN EXCEL ===== */}
+      {/* EXPORT LAPORAN EXCEL */}
       <div className="bg-white border border-gray-200 rounded-xl p-6 mb-6">
         <div className="flex items-center gap-3 mb-4">
           <span className="text-3xl">📥</span>
@@ -147,21 +188,20 @@ export default async function ExportPage() {
         <div className="bg-gray-50 rounded-lg p-3 mb-4 text-xs text-gray-600">
           <strong>📁 Isi file:</strong> Sheet Penggarap, Lahan, Panen, Hutang
           dengan statistik lengkap.
-          <br />
-          <strong>⚠️ Catatan:</strong> File ini <strong>tidak bisa</strong>{" "}
-          di-import ulang. Gunakan "Download Backup" di atas untuk import.
         </div>
 
-        <a
-          href="/api/export"
-          download
-          className="block w-full bg-green-700 hover:bg-green-800 text-white font-bold text-center px-6 py-3 rounded-xl transition"
-        >
-          📊 Download Laporan Excel
-        </a>
+        <ExportPremiumGate isPremium={isPremiumActive} feature="Export Laporan Excel">
+          <a
+            href="/api/export"
+            download
+            className="block w-full bg-green-700 hover:bg-green-800 text-white font-bold text-center px-6 py-3 rounded-xl transition"
+          >
+            📊 Download Laporan Excel
+          </a>
+        </ExportPremiumGate>
       </div>
 
-      {/* ===== EXPORT PDF PER PENGGARAP ===== */}
+      {/* EXPORT PDF PER PENGGARAP */}
       <div className="bg-white border border-gray-200 rounded-xl p-6">
         <div className="flex items-center gap-3 mb-4">
           <span className="text-3xl">📄</span>
@@ -173,17 +213,6 @@ export default async function ExportPage() {
               Laporan kinerja penggarap - siap cetak / kirim WhatsApp
             </p>
           </div>
-        </div>
-
-        <div className="bg-gray-50 rounded-lg p-3 mb-4 text-xs text-gray-600">
-          <strong>📋 Isi laporan PDF:</strong>
-          <ul className="list-disc list-inside mt-1 space-y-0.5">
-            <li>Data penggarap (nama, kontak, alamat)</li>
-            <li>Ringkasan keuangan (profit owner, penggarap, hutang)</li>
-            <li>Daftar lahan + statistik panen</li>
-            <li>Riwayat panen lengkap</li>
-            <li>Riwayat hutang + status (aktif/lunas)</li>
-          </ul>
         </div>
 
         {!penggaraps || penggaraps.length === 0 ? (
@@ -215,13 +244,19 @@ export default async function ExportPage() {
                   >
                     Detail
                   </Link>
-                  <a
-                    href={`/api/export-pdf?penggarap_id=${p.id}`}
-                    download
-                    className="bg-red-600 hover:bg-red-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition"
+                  <ExportPremiumGate
+                    isPremium={isPremiumActive}
+                    feature="Export PDF Penggarap"
+                    inline
                   >
-                    📄 PDF
-                  </a>
+                    <a
+                      href={`/api/export-pdf?penggarap_id=${p.id}`}
+                      download
+                      className="bg-red-600 hover:bg-red-700 text-white text-xs font-medium px-3 py-2 rounded-lg transition"
+                    >
+                      📄 PDF
+                    </a>
+                  </ExportPremiumGate>
                 </div>
               </div>
             ))}
