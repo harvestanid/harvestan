@@ -10,6 +10,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { CtaThreshold } from "@/components/cta-threshold";
 
 type HarvestRaw = {
   id: string;
@@ -42,14 +43,14 @@ type Props = {
   mode: "produksi" | "produktivitas";
 };
 
-// ===== HELPER: Hitung breakdown per musim cabai =====
 function hitungBreakdownMusim(
   harvests: HarvestRaw[],
   lands: LandRaw[]
 ): MusimData[] {
-  const cabaiHarvests = harvests.filter(
-    (h) => (h.komoditas || "padi") === "cabai_rawit"
-  );
+  const cabaiHarvests = harvests.filter((h) => {
+    const kom = h.komoditas || "padi";
+    return kom === "cabai_rawit" || kom === "cabai";
+  });
 
   const musimMap = new Map<
     string,
@@ -85,7 +86,6 @@ function hitungBreakdownMusim(
       0
     );
 
-    // Asumsi 1 lahan = 1 luas, ambil max luas (kalau ada overlap)
     const totalLuasUnik = Math.max(...Array.from(data.luasSet), 0);
 
     result.push({
@@ -95,8 +95,7 @@ function hitungBreakdownMusim(
       jmlPanen: data.panenList.length,
       tanggalMulai: sorted[0]?.tanggal || "",
       tanggalSelesai: sorted[sorted.length - 1]?.tanggal || "",
-      produktivitas:
-        totalLuasUnik > 0 ? totalHasil / totalLuasUnik : 0,
+      produktivitas: totalLuasUnik > 0 ? totalHasil / totalLuasUnik : 0,
     });
   });
 
@@ -147,13 +146,16 @@ export function GrafikCabai({ harvests, lands, mode }: Props) {
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-5">
-      <div className="mb-4">
-        <h3 className="font-bold text-gray-900 text-base">
-          🌶️ {chartTitle}
-        </h3>
-        <p className="text-xs text-gray-500 mt-1">
-          Cabai rawit dipanen bertahap — total {breakdown.length} musim
-        </p>
+      <div className="mb-4 flex items-start justify-between flex-wrap gap-2">
+        <div>
+          <h3 className="font-bold text-gray-900 text-base">
+            🌶️ {chartTitle}
+          </h3>
+          <p className="text-xs text-gray-500 mt-1">
+            Cabai rawit dipanen bertahap — total {breakdown.length} musim
+          </p>
+        </div>
+        {mode === "produktivitas" && <CtaThreshold />}
       </div>
 
       <div style={{ width: "100%", height: 350 }}>
@@ -205,7 +207,6 @@ export function GrafikCabai({ harvests, lands, mode }: Props) {
         </ResponsiveContainer>
       </div>
 
-      {/* Detail per musim */}
       <div className="mt-5 pt-4 border-t border-gray-200">
         <div className="text-xs font-bold text-gray-700 mb-2">
           📋 Detail Per Musim
@@ -214,15 +215,13 @@ export function GrafikCabai({ harvests, lands, mode }: Props) {
           {breakdown.map((b) => (
             <div
               key={b.musim}
-              className="flex items-center justify-between text-xs bg-orange-50 border border-orange-200 rounded-lg px-3 py-2"
+              className="flex items-center justify-between text-xs bg-orange-50 border border-orange-200 rounded-lg px-3 py-2 gap-2 flex-wrap"
             >
               <span className="font-medium text-orange-900">
                 🗓️ {b.musim}
               </span>
-              <div className="flex items-center gap-3">
-                <span className="text-gray-600">
-                  {b.jmlPanen}x panen
-                </span>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-gray-600">{b.jmlPanen}x panen</span>
                 <span className="font-bold text-orange-700">
                   {b.totalHasil.toLocaleString("id-ID")} Kg
                 </span>

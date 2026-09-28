@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getDataFilter } from "@/lib/demo/demo-mode";
 import { TombolAksiLahan } from "./tombol-aksi";
 import PetaMiniWrapper from "@/components/peta-mini-wrapper";
+import { CtaThreshold } from "@/components/cta-threshold";
 import {
   getKategoriList,
   hitungProduktivitasPerKomoditas,
@@ -27,6 +28,7 @@ const KOMODITAS_LABEL: Record<string, string> = {
   kacang_tanah: "🥜 Kacang Tanah",
   bawang_merah: "🧅 Bawang Merah",
   cabai_rawit: "🌶️ Cabai Rawit",
+  cabai: "🌶️ Cabai",
 };
 
 export default async function DetailLahanPage({
@@ -42,7 +44,6 @@ export default async function DetailLahanPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // Filter demo mode
   const filter = await getDataFilter(user.id);
 
   const { data: lahan } = await supabase
@@ -81,10 +82,10 @@ export default async function DetailLahanPage({
     kategoriList
   );
 
-  // Breakdown per musim cabai
   const musimMap = new Map<string, MusimBreakdown>();
   (harvests || []).forEach((h) => {
-    if (h.komoditas !== "cabai_rawit") return;
+    const kom = h.komoditas || "padi";
+    if (kom !== "cabai_rawit" && kom !== "cabai") return;
     const musim = h.musim || "Tanpa Musim";
     if (!musimMap.has(musim)) {
       musimMap.set(musim, {
@@ -160,7 +161,7 @@ export default async function DetailLahanPage({
 
       {/* Mini-map */}
       {lahan.polygon && (
-        <div className="mb-6">
+        <div className="mb-6 relative z-0">
           <PetaMiniWrapper polygon={lahan.polygon} />
         </div>
       )}
@@ -193,7 +194,7 @@ export default async function DetailLahanPage({
           <div className="text-[10px] text-gray-500 uppercase">
             Profit Owner
           </div>
-          <div className="text-sm font-bold text-green-700">
+          <div className="text-sm font-bold text-green-700 break-words">
             {formatRp(totalProfitOwner)}
           </div>
         </div>
@@ -201,7 +202,7 @@ export default async function DetailLahanPage({
           <div className="text-[10px] text-gray-500 uppercase">
             Profit Penggarap
           </div>
-          <div className="text-sm font-bold text-orange-700">
+          <div className="text-sm font-bold text-orange-700 break-words">
             {formatRp(totalProfitPenggarap)}
           </div>
         </div>
@@ -210,9 +211,12 @@ export default async function DetailLahanPage({
       {/* Produktivitas per Komoditas */}
       {produktivitas.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
-          <h2 className="font-bold text-gray-900 mb-4">
-            📊 Produktivitas per Komoditas
-          </h2>
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+            <h2 className="font-bold text-gray-900">
+              📊 Produktivitas per Komoditas
+            </h2>
+            <CtaThreshold />
+          </div>
           <div className="space-y-3">
             {produktivitas.map((pk: any) => {
               const kat = pk.kategoriRata || pk.kategoriTerakhir;
@@ -327,6 +331,7 @@ export default async function DetailLahanPage({
           <div className="space-y-2">
             {(harvests || []).map((h) => {
               const prod = Number(h.hasil_kg) / Number(lahan.luas);
+              const adaPotongan = Number(h.potongan_hutang || 0) > 0;
               return (
                 <Link
                   key={h.id}
@@ -341,6 +346,11 @@ export default async function DetailLahanPage({
                       {h.musim && (
                         <span className="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold">
                           🗓️ {h.musim}
+                        </span>
+                      )}
+                      {adaPotongan && (
+                        <span className="text-[10px] bg-red-100 text-red-800 px-2 py-0.5 rounded-full font-bold">
+                          💸 Potong Hutang
                         </span>
                       )}
                     </div>
@@ -371,7 +381,7 @@ export default async function DetailLahanPage({
                       <div className="text-gray-500 text-[10px]">
                         Profit Bersih
                       </div>
-                      <div className="font-bold text-blue-700">
+                      <div className="font-bold text-blue-700 break-words">
                         {formatRp(Number(h.profit_bersih || 0))}
                       </div>
                     </div>

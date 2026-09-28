@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
+import { CtaThreshold } from "@/components/cta-threshold";
 
 const KOMODITAS_LABEL: Record<string, string> = {
   padi: "🌾 Padi",
@@ -9,6 +10,7 @@ const KOMODITAS_LABEL: Record<string, string> = {
   kacang_tanah: "🥜 Kacang Tanah",
   bawang_merah: "🧅 Bawang Merah",
   cabai_rawit: "🌶️ Cabai Rawit",
+  cabai: "🌶️ Cabai",
 };
 
 const KOMODITAS_COLOR: Record<string, string> = {
@@ -17,6 +19,7 @@ const KOMODITAS_COLOR: Record<string, string> = {
   kacang_tanah: "bg-purple-500",
   bawang_merah: "bg-red-500",
   cabai_rawit: "bg-red-700",
+  cabai: "bg-red-700",
 };
 
 const KOMODITAS_BORDER: Record<string, string> = {
@@ -25,6 +28,7 @@ const KOMODITAS_BORDER: Record<string, string> = {
   kacang_tanah: "border-purple-300 bg-purple-50",
   bawang_merah: "border-red-300 bg-red-50",
   cabai_rawit: "border-red-400 bg-red-50",
+  cabai: "border-red-400 bg-red-50",
 };
 
 function formatRp(n: number) {
@@ -54,7 +58,6 @@ export function KeuanganClient({
   const [filterKomoditas, setFilterKomoditas] = useState("");
   const [filterMusim, setFilterMusim] = useState("");
 
-  // ===== DAFTAR TAHUN TERSEDIA =====
   const tahunTersedia = useMemo(() => {
     const set = new Set<number>();
     allHarvests.forEach((h) => {
@@ -63,11 +66,17 @@ export function KeuanganClient({
     return Array.from(set).sort((a, b) => b - a);
   }, [allHarvests]);
 
-  // ===== DAFTAR KOMODITAS TERSEDIA =====
   const komoditasTersedia = useMemo(() => {
     const set = new Set<string>();
     allHarvests.forEach((h) => set.add(h.komoditas || "padi"));
-    const order = ["padi", "jagung", "kacang_tanah", "bawang_merah", "cabai_rawit"];
+    const order = [
+      "padi",
+      "jagung",
+      "kacang_tanah",
+      "bawang_merah",
+      "cabai_rawit",
+      "cabai",
+    ];
     return Array.from(set).sort((a, b) => {
       const ia = order.indexOf(a);
       const ib = order.indexOf(b);
@@ -78,7 +87,6 @@ export function KeuanganClient({
     });
   }, [allHarvests]);
 
-  // ===== FILTER HARVESTS =====
   const harvests = useMemo(() => {
     return allHarvests.filter((h) => {
       if (filterTahun) {
@@ -95,7 +103,6 @@ export function KeuanganClient({
     });
   }, [allHarvests, filterTahun, filterKomoditas, filterMusim]);
 
-  // ===== STATISTIK =====
   const totalProfitOwner = harvests.reduce(
     (s, h) => s + Number(h.profit_owner || 0),
     0
@@ -104,22 +111,15 @@ export function KeuanganClient({
     (s, h) => s + Number(h.profit_penggarap || 0),
     0
   );
-  const totalHasilKg = harvests.reduce(
-    (s, h) => s + Number(h.hasil_kg),
-    0
-  );
+  const totalHasilKg = harvests.reduce((s, h) => s + Number(h.hasil_kg), 0);
   const totalPotonganHutang = harvests.reduce(
     (s, h) => s + Number(h.potongan_hutang || 0),
     0
   );
 
   const hutangAktif = debts.filter((d) => Number(d.sisa) > 0);
-  const totalHutangAktif = hutangAktif.reduce(
-    (s, d) => s + Number(d.sisa),
-    0
-  );
+  const totalHutangAktif = hutangAktif.reduce((s, d) => s + Number(d.sisa), 0);
 
-  // ===== PROFIT BULANAN (12 BULAN TERAKHIR) =====
   const { bulanLabels, bulanOwner, bulanPenggarap, maxBulan } = useMemo(() => {
     const now = new Date();
     const labels: string[] = [];
@@ -163,7 +163,6 @@ export function KeuanganClient({
     };
   }, [harvests]);
 
-  // ===== TOP 5 PENGGARAP =====
   const topPenggarap = useMemo(() => {
     const profitByPenggarap = new Map<
       string,
@@ -187,7 +186,6 @@ export function KeuanganClient({
       .slice(0, 5);
   }, [harvests, lands, penggaraps]);
 
-  // ===== STATISTIK PER KOMODITAS (DETAIL) =====
   const statPerKomoditas = useMemo(() => {
     const map = new Map<
       string,
@@ -255,8 +253,7 @@ export function KeuanganClient({
           (s, l) => s + l,
           0
         );
-        const produktivitas =
-          totalLuas > 0 ? d.totalHasilKg / totalLuas : 0;
+        const produktivitas = totalLuas > 0 ? d.totalHasilKg / totalLuas : 0;
         return {
           komoditas: kom,
           jmlPanen: d.jmlPanen,
@@ -277,7 +274,6 @@ export function KeuanganClient({
       .sort((a, b) => b.profitBersih - a.profitBersih);
   }, [harvests, lands]);
 
-  // ===== PROFIT PER LAHAN =====
   const lahanList = useMemo(() => {
     const map = new Map<
       string,
@@ -335,7 +331,7 @@ export function KeuanganClient({
         </p>
       </div>
 
-      {/* ===== FILTER BAR ===== */}
+      {/* FILTER BAR */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1">
@@ -407,30 +403,30 @@ export function KeuanganClient({
         </div>
       </div>
 
-      {/* ===== KARTU STATISTIK ===== */}
+      {/* KARTU STATISTIK */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 min-w-0">
           <div className="text-2xl mb-1">👤</div>
           <div className="text-xs text-gray-500 font-medium">PROFIT OWNER</div>
-          <div className="text-xl font-bold text-green-700 mt-1">
+          <div className="text-base sm:text-lg font-bold text-green-700 mt-1 leading-tight break-words">
             {formatRp(totalProfitOwner)}
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 min-w-0">
           <div className="text-2xl mb-1">👨‍🌾</div>
           <div className="text-xs text-gray-500 font-medium">
             PROFIT PENGGARAP
           </div>
-          <div className="text-xl font-bold text-orange-600 mt-1">
+          <div className="text-base sm:text-lg font-bold text-orange-600 mt-1 leading-tight break-words">
             {formatRp(totalProfitPenggarap)}
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 min-w-0">
           <div className="text-2xl mb-1">💰</div>
           <div className="text-xs text-gray-500 font-medium">HUTANG AKTIF</div>
-          <div className="text-xl font-bold text-red-600 mt-1">
+          <div className="text-base sm:text-lg font-bold text-red-600 mt-1 leading-tight break-words">
             {formatRp(totalHutangAktif)}
           </div>
           <div className="text-xs text-gray-500 mt-1">
@@ -438,10 +434,10 @@ export function KeuanganClient({
           </div>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-white border border-gray-200 rounded-xl p-4 min-w-0">
           <div className="text-2xl mb-1">🌾</div>
           <div className="text-xs text-gray-500 font-medium">TOTAL PANEN</div>
-          <div className="text-xl font-bold text-blue-600 mt-1">
+          <div className="text-base sm:text-lg font-bold text-blue-600 mt-1 leading-tight break-words">
             {formatKg(totalHasilKg)}
           </div>
           <div className="text-xs text-gray-500 mt-1">
@@ -450,15 +446,18 @@ export function KeuanganClient({
         </div>
       </div>
 
-      {/* ===== STATISTIK PER KOMODITAS (BARU) ===== */}
+      {/* STATISTIK PER KOMODITAS */}
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <h2 className="font-bold text-gray-900 text-sm uppercase tracking-wide">
-            📊 Statistik per Komoditas
-          </h2>
-          <span className="text-xs text-gray-500 italic">
-            Total panen & profit per komoditas (tidak digabung)
-          </span>
+          <div>
+            <h2 className="font-bold text-gray-900 text-sm uppercase tracking-wide">
+              📊 Statistik per Komoditas
+            </h2>
+            <span className="text-xs text-gray-500 italic">
+              Total panen & profit per komoditas (tidak digabung)
+            </span>
+          </div>
+          <CtaThreshold />
         </div>
 
         {statPerKomoditas.length === 0 ? (
@@ -469,16 +468,13 @@ export function KeuanganClient({
           <div className="space-y-4">
             {statPerKomoditas.map((k) => {
               const borderClass =
-                KOMODITAS_BORDER[k.komoditas] ||
-                "border-gray-300 bg-gray-50";
-              const dotClass =
-                KOMODITAS_COLOR[k.komoditas] || "bg-gray-500";
+                KOMODITAS_BORDER[k.komoditas] || "border-gray-300 bg-gray-50";
+              const dotClass = KOMODITAS_COLOR[k.komoditas] || "bg-gray-500";
               return (
                 <div
                   key={k.komoditas}
                   className={`border-2 rounded-xl p-4 ${borderClass}`}
                 >
-                  {/* Header Komoditas */}
                   <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                     <div className="flex items-center gap-2">
                       <div className={`w-3 h-3 rounded-full ${dotClass}`} />
@@ -491,7 +487,6 @@ export function KeuanganClient({
                     </span>
                   </div>
 
-                  {/* Statistik Ringkas */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3 text-xs">
                     <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
                       <div className="text-gray-500">Penggarap</div>
@@ -519,56 +514,63 @@ export function KeuanganClient({
                     </div>
                   </div>
 
-                  {/* Keuangan */}
                   <div className="space-y-1 text-xs">
-                    <div className="flex justify-between py-1 border-b border-gray-200">
-                      <span className="text-gray-600">Pendapatan Kotor</span>
-                      <span className="font-medium text-gray-800">
+                    <div className="flex justify-between py-1 border-b border-gray-200 gap-2">
+                      <span className="text-gray-600 shrink-0">
+                        Pendapatan Kotor
+                      </span>
+                      <span className="font-medium text-gray-800 text-right break-words">
                         {formatRp(k.totalPendapatan)}
                       </span>
                     </div>
-                    <div className="flex justify-between py-1 border-b border-gray-200">
-                      <span className="text-gray-600">Biaya Panen</span>
-                      <span className="font-medium text-red-600">
+                    <div className="flex justify-between py-1 border-b border-gray-200 gap-2">
+                      <span className="text-gray-600 shrink-0">
+                        Biaya Panen
+                      </span>
+                      <span className="font-medium text-red-600 text-right break-words">
                         − {formatRp(k.totalBiayaPanen)}
                       </span>
                     </div>
                     {k.totalBiayaTambahan > 0 && (
-                      <div className="flex justify-between py-1 border-b border-gray-200">
-                        <span className="text-gray-600">Biaya Tambahan</span>
-                        <span className="font-medium text-red-600">
+                      <div className="flex justify-between py-1 border-b border-gray-200 gap-2">
+                        <span className="text-gray-600 shrink-0">
+                          Biaya Tambahan
+                        </span>
+                        <span className="font-medium text-red-600 text-right break-words">
                           − {formatRp(k.totalBiayaTambahan)}
                         </span>
                       </div>
                     )}
-                    <div className="flex justify-between py-1.5 bg-white rounded px-2 border border-gray-200 font-bold">
-                      <span className="text-green-800">💵 Profit Bersih</span>
-                      <span className="text-green-700">
+                    <div className="flex justify-between items-center py-1.5 bg-white rounded px-2 border border-gray-200 font-bold gap-2">
+                      <span className="text-green-800 shrink-0">
+                        💵 Profit Bersih
+                      </span>
+                      <span className="text-green-700 text-right break-words">
                         {formatRp(k.profitBersih)}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 mt-2">
-                      <div className="bg-green-100 rounded-lg p-2 text-center">
+                      <div className="bg-green-100 rounded-lg p-2 text-center min-w-0">
                         <div className="text-green-700 font-medium">
                           👤 Owner
                         </div>
-                        <div className="font-bold text-green-900 text-sm mt-0.5">
+                        <div className="font-bold text-green-900 text-xs sm:text-sm mt-0.5 leading-tight break-words">
                           {formatRp(k.profitOwner)}
                         </div>
                       </div>
-                      <div className="bg-orange-100 rounded-lg p-2 text-center">
+                      <div className="bg-orange-100 rounded-lg p-2 text-center min-w-0">
                         <div className="text-orange-700 font-medium">
                           👨‍🌾 Penggarap
                         </div>
-                        <div className="font-bold text-orange-900 text-sm mt-0.5">
+                        <div className="font-bold text-orange-900 text-xs sm:text-sm mt-0.5 leading-tight break-words">
                           {formatRp(k.profitPenggarap)}
                         </div>
                       </div>
                     </div>
                     {k.potonganHutang > 0 && (
-                      <div className="flex justify-between py-1 text-red-700 mt-1">
-                        <span>💸 Potongan Hutang</span>
-                        <span className="font-bold">
+                      <div className="flex justify-between py-1 text-red-700 mt-1 gap-2">
+                        <span className="shrink-0">💸 Potongan Hutang</span>
+                        <span className="font-bold text-right break-words">
                           − {formatRp(k.potonganHutang)}
                         </span>
                       </div>
@@ -581,21 +583,21 @@ export function KeuanganClient({
         )}
       </div>
 
-      {/* ===== INFO POTONGAN HUTANG ===== */}
+      {/* INFO POTONGAN HUTANG */}
       {totalPotonganHutang > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="text-sm font-medium text-blue-800">
               💸 Total potongan hutang dari panen:
             </div>
-            <div className="font-bold text-blue-700 text-lg">
+            <div className="font-bold text-blue-700 text-lg break-words">
               {formatRp(totalPotonganHutang)}
             </div>
           </div>
         </div>
       )}
 
-      {/* ===== CHART PROFIT BULANAN ===== */}
+      {/* CHART PROFIT BULANAN */}
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
         <h2 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
           📈 Profit Bulanan (12 Bulan Terakhir)
@@ -616,9 +618,9 @@ export function KeuanganClient({
                 const pctPenggarap = (penggarap / maxBulan) * 100;
                 return (
                   <div key={label}>
-                    <div className="flex justify-between text-xs text-gray-600 mb-1">
+                    <div className="flex justify-between text-xs text-gray-600 mb-1 gap-2">
                       <span className="font-medium">{label}</span>
-                      <span className="font-bold text-gray-700">
+                      <span className="font-bold text-gray-700 text-right break-words">
                         {formatRp(total)}
                       </span>
                     </div>
@@ -634,9 +636,13 @@ export function KeuanganClient({
                         title={`Penggarap: ${formatRp(penggarap)}`}
                       />
                     </div>
-                    <div className="flex justify-between text-[10px] text-gray-500 mt-0.5">
-                      <span>👤 Owner: {formatRp(owner)}</span>
-                      <span>👨‍🌾 Penggarap: {formatRp(penggarap)}</span>
+                    <div className="flex justify-between text-[10px] text-gray-500 mt-0.5 gap-2">
+                      <span className="truncate">
+                        👤 Owner: {formatRp(owner)}
+                      </span>
+                      <span className="truncate text-right">
+                        👨‍🌾 Penggarap: {formatRp(penggarap)}
+                      </span>
                     </div>
                   </div>
                 );
@@ -656,7 +662,7 @@ export function KeuanganClient({
         )}
       </div>
 
-      {/* ===== TOP 5 PENGGARAP ===== */}
+      {/* TOP 5 PENGGARAP */}
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
         <h2 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
           🏆 Top 5 Penggarap by Profit Owner
@@ -673,13 +679,15 @@ export function KeuanganClient({
                 <Link
                   key={p.id}
                   href={`/penggarap/${p.id}`}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
+                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition gap-2"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">{medal}</span>
-                    <span className="font-medium text-gray-900">{p.nama}</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="text-xl shrink-0">{medal}</span>
+                    <span className="font-medium text-gray-900 truncate">
+                      {p.nama}
+                    </span>
                   </div>
-                  <span className="font-bold text-green-700">
+                  <span className="font-bold text-green-700 text-right break-words shrink-0">
                     {formatRp(p.profit)}
                   </span>
                 </Link>
@@ -689,7 +697,7 @@ export function KeuanganClient({
         )}
       </div>
 
-      {/* ===== PROFIT PER LAHAN ===== */}
+      {/* PROFIT PER LAHAN */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <h2 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
           🗺️ Profit per Lahan
@@ -740,10 +748,10 @@ export function KeuanganClient({
                     <td className="py-2 px-2 text-right text-gray-700">
                       {l.totalHasil.toLocaleString("id-ID")}
                     </td>
-                    <td className="py-2 px-2 text-right font-bold text-green-700">
+                    <td className="py-2 px-2 text-right font-bold text-green-700 break-words">
                       {formatRp(l.profitOwner)}
                     </td>
-                    <td className="py-2 px-2 text-right font-bold text-orange-600">
+                    <td className="py-2 px-2 text-right font-bold text-orange-600 break-words">
                       {formatRp(l.profitPenggarap)}
                     </td>
                   </tr>

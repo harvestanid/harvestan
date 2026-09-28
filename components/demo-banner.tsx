@@ -52,7 +52,8 @@ export function DemoBanner({ expiresAt, daysRemaining, canRestart }: Props) {
 
   return (
     <>
-      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg sticky top-0 z-50">
+      {/* ✅ FIX: z-[9999] biar selalu di atas mini-map Leaflet */}
+      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg sticky top-0 z-[9999]">
         <div className="max-w-7xl mx-auto px-4 py-2.5 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3 flex-wrap">
             <span className="bg-white/20 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold border border-white/30 flex items-center gap-1.5">
@@ -93,7 +94,7 @@ export function DemoBanner({ expiresAt, daysRemaining, canRestart }: Props) {
       {/* Modal konfirmasi stop */}
       {showConfirmStop && (
         <div
-          className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
           onClick={() => setShowConfirmStop(false)}
         >
           <div

@@ -21,6 +21,15 @@ export function KategoriTab({
   kategoriList,
   komoditasLabel,
 }: Props) {
+  const safeKomoditasList = Array.isArray(komoditasList)
+    ? komoditasList
+    : [];
+  const safeKategoriList = Array.isArray(kategoriList) ? kategoriList : [];
+  const safeLabel =
+    komoditasLabel && typeof komoditasLabel === "object"
+      ? komoditasLabel
+      : {};
+
   return (
     <div>
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 text-sm text-blue-800">
@@ -46,15 +55,15 @@ export function KategoriTab({
       </div>
 
       <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-6 text-xs text-yellow-800">
-        📌 Menampilkan <strong>{komoditasList.length} komoditas</strong>. Semua
-        komoditas bawaan sistem (padi, jagung, kacang tanah, bawang merah,
-        cabai rawit) + komoditas dari data panen Anda.
+        📌 Menampilkan <strong>{safeKomoditasList.length} komoditas</strong>.
+        Semua komoditas bawaan sistem (padi, jagung, kacang tanah, bawang
+        merah, cabai rawit) + komoditas dari data panen Anda.
       </div>
 
       <PengaturanForm
-        komoditasList={komoditasList}
-        kategoriList={kategoriList}
-        komoditasLabel={komoditasLabel}
+        komoditasList={safeKomoditasList}
+        kategoriList={safeKategoriList}
+        komoditasLabel={safeLabel}
       />
     </div>
   );

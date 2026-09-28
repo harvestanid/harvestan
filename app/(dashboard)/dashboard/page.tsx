@@ -9,6 +9,7 @@ const KOMODITAS_LABEL: Record<string, string> = {
   kacang_tanah: "🥜 Kacang Tanah",
   bawang_merah: "🧅 Bawang Merah",
   cabai_rawit: "🌶️ Cabai Rawit",
+  cabai: "🌶️ Cabai",
 };
 
 const KOMODITAS_COLOR: Record<string, string> = {
@@ -17,6 +18,7 @@ const KOMODITAS_COLOR: Record<string, string> = {
   kacang_tanah: "bg-purple-100 text-purple-800 border-purple-300",
   bawang_merah: "bg-red-100 text-red-800 border-red-300",
   cabai_rawit: "bg-orange-100 text-orange-800 border-orange-300",
+  cabai: "bg-orange-100 text-orange-800 border-orange-300",
 };
 
 function formatRp(n: number) {
@@ -158,7 +160,12 @@ export default async function DashboardPage() {
     const penggarap = (penggaraps || []).find(
       (p) => p.id === land?.penggarap_id
     );
-    return { ...h, namaLahan: land?.nama || "?", namaPenggarap: penggarap?.nama || "?" };
+    return {
+      ...h,
+      namaLahan: land?.nama || "?",
+      luasLahan: Number(land?.luas || 0),
+      namaPenggarap: penggarap?.nama || "?",
+    };
   });
 
   return (
@@ -358,7 +365,8 @@ export default async function DashboardPage() {
                       {p.nama}
                     </div>
                     <div className="text-[10px] text-gray-500">
-                      {p.jmlPanen}x panen · {p.totalHasil.toLocaleString("id-ID")} Kg
+                      {p.jmlPanen}x panen ·{" "}
+                      {p.totalHasil.toLocaleString("id-ID")} Kg
                     </div>
                   </div>
                 </div>
@@ -374,7 +382,7 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* ===== PANEN TERBARU ===== */}
+      {/* ===== PANEN TERBARU (#1 — updated) ===== */}
       {panenTerbaru.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-6">
           <div className="font-bold text-gray-900 mb-4 flex items-center justify-between flex-wrap gap-2">
@@ -386,36 +394,71 @@ export default async function DashboardPage() {
               Lihat Keuangan →
             </Link>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {panenTerbaru.map((h) => {
               const kom = h.komoditas || "padi";
               const colorClass =
-                KOMODITAS_COLOR[kom] || "bg-gray-100 text-gray-800 border-gray-300";
+                KOMODITAS_COLOR[kom] ||
+                "bg-gray-100 text-gray-800 border-gray-300";
+              const persenOwner = Number(h.persen_owner || 50);
+              const persenPenggarap = Number(h.persen_penggarap || 50);
+
               return (
                 <div
                   key={h.id}
-                  className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 flex-wrap"
+                  className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-2"
                 >
-                  <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
-                    <span
-                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${colorClass}`}
-                    >
-                      {KOMODITAS_LABEL[kom] || kom}
-                    </span>
-                    <div className="text-xs text-gray-700 truncate">
-                      {h.namaPenggarap} · {h.namaLahan}
+                  {/* Header: komoditas + hasil */}
+                  <div className="flex items-start justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
+                      <span
+                        className={`text-[11px] px-2 py-0.5 rounded-full font-bold border ${colorClass}`}
+                      >
+                        {KOMODITAS_LABEL[kom] || kom}
+                      </span>
+                      <div className="text-xs text-gray-700 min-w-0">
+                        <div className="font-medium truncate">
+                          {h.namaPenggarap}
+                        </div>
+                        <div className="text-[10px] text-gray-500 flex flex-wrap gap-x-2">
+                          <span>🗺️ {h.namaLahan}</span>
+                          {h.luasLahan > 0 && (
+                            <span>📏 {h.luasLahan.toFixed(2)} Ha</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="font-bold text-gray-900 text-base">
+                        {Number(h.hasil_kg).toLocaleString("id-ID")} Kg
+                      </div>
+                      <div className="text-[10px] text-gray-500">
+                        {new Date(h.tanggal).toLocaleDateString("id-ID", {
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right flex-shrink-0">
-                    <div className="font-bold text-gray-900 text-sm">
-                      {Number(h.hasil_kg).toLocaleString("id-ID")} Kg
+
+                  {/* Rincian bagi profit */}
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200">
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center min-w-0">
+                      <div className="text-[10px] text-green-800 font-medium">
+                        👤 Owner ({persenOwner}%)
+                      </div>
+                      <div className="font-bold text-green-900 text-xs mt-0.5 break-words leading-tight">
+                        {formatRp(Number(h.profit_owner || 0))}
+                      </div>
                     </div>
-                    <div className="text-[10px] text-gray-500">
-                      {new Date(h.tanggal).toLocaleDateString("id-ID", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
+                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-center min-w-0">
+                      <div className="text-[10px] text-orange-800 font-medium">
+                        👨‍🌾 Penggarap ({persenPenggarap}%)
+                      </div>
+                      <div className="font-bold text-orange-900 text-xs mt-0.5 break-words leading-tight">
+                        {formatRp(Number(h.profit_penggarap || 0))}
+                      </div>
                     </div>
                   </div>
                 </div>

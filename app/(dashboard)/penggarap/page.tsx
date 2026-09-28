@@ -7,6 +7,7 @@ import {
   getKategoriList,
   hitungProduktivitasPerKomoditas,
 } from "@/lib/supabase/queries/kategori-server";
+import { CtaThreshold } from "@/components/cta-threshold";
 import { PenggarapKlien } from "./klien";
 
 export const metadata = {
@@ -19,6 +20,7 @@ const KOMODITAS_LABEL: Record<string, string> = {
   kacang_tanah: "🥜 Kacang Tanah",
   bawang_merah: "🧅 Bawang Merah",
   cabai_rawit: "🌶️ Cabai Rawit",
+  cabai: "🌶️ Cabai",
 };
 
 export default async function PenggarapPage() {
@@ -34,14 +36,12 @@ export default async function PenggarapPage() {
   const penggaraps = await getPenggarapList(filter.is_demo);
   const kategoriList = await getKategoriList();
 
-  // Ambil semua lahan
   const { data: lands } = await supabase
     .from("lands")
     .select("id, penggarap_id, nama, luas")
     .eq("user_id", filter.user_id)
     .eq("is_demo", filter.is_demo);
 
-  // Ambil semua harvests
   const { data: allHarvests } = await supabase
     .from("harvests")
     .select("*")
@@ -52,10 +52,6 @@ export default async function PenggarapPage() {
   const allLands = lands || [];
   const harvestsData = allHarvests || [];
 
-  // Untuk setiap penggarap, siapkan data lengkap:
-  // - totalLahan, totalLuas
-  // - produktivitas per komoditas
-  // - daftar lahan dengan riwayat panen
   const penggarapLengkap = penggaraps.map((p) => {
     const penggarapLands = allLands.filter((l) => l.penggarap_id === p.id);
     const landIds = penggarapLands.map((l) => l.id);
@@ -63,7 +59,6 @@ export default async function PenggarapPage() {
       landIds.includes(h.land_id)
     );
 
-    // Produktivitas per komoditas
     const produktivitas = hitungProduktivitasPerKomoditas(
       penggarapHarvests,
       penggarapLands,
@@ -72,7 +67,6 @@ export default async function PenggarapPage() {
 
     const totalLuas = penggarapLands.reduce((s, l) => s + Number(l.luas), 0);
 
-    // Daftar lahan dengan riwayat panen
     const lahanList = penggarapLands.map((l) => {
       const lahanHarvests = penggarapHarvests
         .filter((h) => h.land_id === l.id)
@@ -86,13 +80,11 @@ export default async function PenggarapPage() {
         0
       );
 
-      // Produktivitas rata-rata per lahan (semua komoditas di lahan itu)
       const rataProduktivitas =
         lahanHarvests.length > 0 && Number(l.luas) > 0
           ? totalHasilLahan / Number(l.luas) / lahanHarvests.length
           : 0;
 
-      // Komoditas unik di lahan ini
       const komoditasSet = new Set<string>();
       lahanHarvests.forEach((h) => komoditasSet.add(h.komoditas || "padi"));
 
@@ -115,6 +107,8 @@ export default async function PenggarapPage() {
           profitBersih: Number(h.profit_bersih || 0),
           profitOwner: Number(h.profit_owner || 0),
           profitPenggarap: Number(h.profit_penggarap || 0),
+          persenOwner: Number(h.persen_owner || 50),
+          persenPenggarap: Number(h.persen_penggarap || 50),
         })),
       };
     });
@@ -146,21 +140,32 @@ export default async function PenggarapPage() {
   return (
     <div>
       {/* Header */}
-      <div className="flex items-start justify-between mb-6 flex-wrap gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">👨‍🌾 Penggarap</h1>
-          <p className="text-gray-600 mt-1 text-sm">
-            {penggaraps.length === 0
-              ? "Belum ada penggarap. Tambahkan yang pertama!"
-              : `${penggaraps.length} penggarap terdaftar`}
-          </p>
+      <div className="mb-6">
+        <div className="flex items-start justify-between mb-3 flex-wrap gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
+              👨‍🌾 Penggarap
+            </h1>
+            <p className="text-gray-600 mt-1 text-sm">
+              {penggaraps.length === 0
+                ? "Belum ada penggarap. Tambahkan yang pertama!"
+                : `${penggaraps.length} penggarap terdaftar`}
+            </p>
+          </div>
+          <Link
+            href="/penggarap/baru"
+            className="bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-green-800 transition text-sm"
+          >
+            + Tambah Penggarap
+          </Link>
         </div>
-        <Link
-          href="/penggarap/baru"
-          className="bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-green-800 transition text-sm"
-        >
-          + Tambah Penggarap
-        </Link>
+
+        {/* CTA Threshold — sekali saja di header */}
+        {penggaraps.length > 0 && (
+          <div className="mt-3">
+            <CtaThreshold variant="card" />
+          </div>
+        )}
       </div>
 
       {/* Empty state */}

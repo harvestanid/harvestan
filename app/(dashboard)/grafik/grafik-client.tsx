@@ -15,6 +15,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { GrafikCabai } from "./grafik-cabai";
+import { CtaThreshold } from "@/components/cta-threshold";
 import {
   siapkanDataPerTanggal,
   siapkanKinerjaPenggarap,
@@ -37,25 +38,22 @@ function formatRp(n: number) {
   return "Rp " + Math.round(n).toLocaleString("id-ID");
 }
 
-// ===================================================
-// PALET WARNA PENGARAP — dari database34.html
-// ===================================================
 const WARNA_PALET: string[] = [
-  "#2c5e2e", // hijau tua
-  "#ff8c42", // oranye
-  "#4a90e2", // biru
-  "#e24a4a", // merah
-  "#9b59b6", // ungu
-  "#f1c40f", // kuning
-  "#e67e22", // oranye tua
-  "#1abc9c", // tosca
-  "#e84393", // pink
-  "#34495e", // biru tua
-  "#27ae60", // hijau terang
-  "#8e44ad", // violet
-  "#16a085", // hijau tosca
-  "#c0392b", // merah bata
-  "#2980b9", // biru sedang
+  "#2c5e2e",
+  "#ff8c42",
+  "#4a90e2",
+  "#e24a4a",
+  "#9b59b6",
+  "#f1c40f",
+  "#e67e22",
+  "#1abc9c",
+  "#e84393",
+  "#34495e",
+  "#27ae60",
+  "#8e44ad",
+  "#16a085",
+  "#c0392b",
+  "#2980b9",
 ];
 
 function getWarnaPenggarap(index: number): string {
@@ -131,7 +129,6 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
     (h) => (h.komoditas || "padi") === "cabai_rawit"
   );
 
-  // Statistik ringkas untuk header kinerja
   const statsKinerja = useMemo(() => {
     if (dataKinerja.length === 0)
       return { min: 0, max: 0, avg: 0, total: 0 };
@@ -158,7 +155,7 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
 
   return (
     <div className="space-y-6">
-      {/* ===== FILTER GLOBAL ===== */}
+      {/* FILTER GLOBAL */}
       <div className="bg-white border border-gray-200 rounded-xl p-4">
         <div className="flex flex-wrap gap-4 items-center">
           <div className="flex items-center gap-2">
@@ -185,7 +182,7 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
         </div>
       </div>
 
-      {/* ===== GRAFIK 1: PRODUKSI PER KOMODITAS ===== */}
+      {/* GRAFIK 1: PRODUKSI PER KOMODITAS */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <div className="mb-4">
           <h2 className="font-bold text-gray-900 text-lg">
@@ -265,15 +262,18 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
         )}
       </div>
 
-      {/* ===== GRAFIK 2: PRODUKTIVITAS PER KOMODITAS ===== */}
+      {/* GRAFIK 2: PRODUKTIVITAS PER KOMODITAS */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <div className="mb-4">
-          <h2 className="font-bold text-gray-900 text-lg">
-            ⚡ Produktivitas Panen per Komoditas
-          </h2>
-          <p className="text-xs text-gray-500 mt-1">
-            Grafik garis produktivitas (Kg/Ha) — setiap komoditas dipisah
-          </p>
+        <div className="mb-4 flex items-start justify-between flex-wrap gap-2">
+          <div>
+            <h2 className="font-bold text-gray-900 text-lg">
+              ⚡ Produktivitas Panen per Komoditas
+            </h2>
+            <p className="text-xs text-gray-500 mt-1">
+              Grafik garis produktivitas (Kg/Ha) — setiap komoditas dipisah
+            </p>
+          </div>
+          <CtaThreshold />
         </div>
 
         {komoditasTersedia.length === 0 ? (
@@ -341,7 +341,7 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
         )}
       </div>
 
-      {/* ===== GRAFIK 3: KINERJA PENGGARAP ===== */}
+      {/* GRAFIK 3: KINERJA PENGGARAP */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <div className="mb-4 flex items-start justify-between flex-wrap gap-3">
           <div>
@@ -377,7 +377,6 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
           </div>
         ) : (
           <>
-            {/* Statistik Ringkas */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-2 text-center overflow-hidden">
                 <div className="text-[10px] text-gray-500 font-medium truncate">
@@ -413,7 +412,6 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
               </div>
             </div>
 
-            {/* Bar Chart Warna-Warni */}
             <div style={{ width: "100%", height: 400 }}>
               <ResponsiveContainer>
                 <BarChart
@@ -462,10 +460,7 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
                       return label;
                     }}
                   />
-                  <Bar
-                    dataKey="rataProduktivitas"
-                    radius={[8, 8, 0, 0]}
-                  >
+                  <Bar dataKey="rataProduktivitas" radius={[8, 8, 0, 0]}>
                     {dataKinerja.map((entry: any, index: number) => (
                       <Cell
                         key={`cell-${index}`}
@@ -477,7 +472,6 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
               </ResponsiveContainer>
             </div>
 
-            {/* Legend warna penggarap */}
             <div className="mt-4 pt-4 border-t border-gray-100">
               <div className="text-[11px] font-medium text-gray-500 uppercase mb-2">
                 Keterangan Warna
@@ -496,9 +490,7 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
                       className="w-2.5 h-2.5 rounded-full"
                       style={{ backgroundColor: getWarnaPenggarap(i) }}
                     />
-                    <span className="text-gray-800 font-medium">
-                      {d.nama}
-                    </span>
+                    <span className="text-gray-800 font-medium">{d.nama}</span>
                     <span className="text-gray-500 text-[10px]">
                       ({Math.round(Number(d.rataProduktivitas)).toLocaleString(
                         "id-ID"
@@ -512,7 +504,7 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
         )}
       </div>
 
-      {/* ===== GRAFIK 4: DETAIL PER PENGGARAP ===== */}
+      {/* GRAFIK 4: DETAIL PER PENGGARAP */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <div className="mb-4 flex items-start justify-between flex-wrap gap-3">
           <div>
@@ -652,7 +644,7 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
         )}
       </div>
 
-      {/* ===== GRAFIK 5: CABAI PER MUSIM ===== */}
+      {/* GRAFIK 5: CABAI PER MUSIM */}
       {adaDataCabai && (
         <div className="bg-gradient-to-br from-red-50 to-orange-50 border-2 border-orange-300 rounded-xl p-5">
           <div className="mb-4">

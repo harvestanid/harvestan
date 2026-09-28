@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 type Kategori = {
@@ -11,11 +11,34 @@ type Kategori = {
   sangat_baik: number | null;
 };
 
+type FormField = {
+  cukup: string;
+  baik: string;
+  sangat_baik: string;
+};
+
 type Props = {
   komoditasList: string[];
   kategoriList: Kategori[];
   komoditasLabel: Record<string, string>;
 };
+
+function buildInitialForm(
+  komoditasList: string[],
+  kategoriList: Kategori[]
+): Record<string, FormField> {
+  const init: Record<string, FormField> = {};
+  komoditasList.forEach((kom) => {
+    const existing = kategoriList.find((k) => k.komoditas === kom);
+    init[kom] = {
+      cukup: existing?.cukup != null ? String(existing.cukup) : "",
+      baik: existing?.baik != null ? String(existing.baik) : "",
+      sangat_baik:
+        existing?.sangat_baik != null ? String(existing.sangat_baik) : "",
+    };
+  });
+  return init;
+}
 
 export function PengaturanForm({
   komoditasList,
@@ -26,42 +49,53 @@ export function PengaturanForm({
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
 
-  // State form: map komoditas → { cukup, baik, sangat_baik }
-  const [form, setForm] = useState<Record<string, {
-    cukup: string;
-    baik: string;
-    sangat_baik: string;
-  }>>(() => {
-    const init: Record<string, { cukup: string; baik: string; sangat_baik: string }> = {};
-    komoditasList.forEach((kom) => {
-      const existing = kategoriList.find((k) => k.komoditas === kom);
-      init[kom] = {
-        cukup: existing?.cukup != null ? String(existing.cukup) : "",
-        baik: existing?.baik != null ? String(existing.baik) : "",
-        sangat_baik:
-          existing?.sangat_baik != null ? String(existing.sangat_baik) : "",
-      };
+  const [form, setForm] = useState<Record<string, FormField>>(() =>
+    buildInitialForm(komoditasList, kategoriList)
+  );
+
+  // ✅ FIX: sync kalau komoditasList / kategoriList berubah dari server
+  useEffect(() => {
+    setForm((prev) => {
+      const next = buildInitialForm(komoditasList, kategoriList);
+      // Pertahankan input user yang sudah diketik tapi belum disimpan
+      Object.keys(next).forEach((kom) => {
+        if (prev[kom]) {
+          // Kalau server kosong tapi user sudah isi → pakai input user
+          const p = prev[kom];
+          const n = next[kom];
+          if (p.cukup && !n.cukup) next[kom].cukup = p.cukup;
+          if (p.baik && !n.baik) next[kom].baik = p.baik;
+          if (p.sangat_baik && !n.sangat_baik)
+            next[kom].sangat_baik = p.sangat_baik;
+        }
+      });
+      return next;
     });
-    return init;
-  });
+  }, [komoditasList, kategoriList]);
 
   function updateField(
     komoditas: string,
     field: "cukup" | "baik" | "sangat_baik",
     value: string
   ) {
-    setForm((prev) => ({
-      ...prev,
-      [komoditas]: { ...prev[komoditas], [field]: value },
-    }));
+    setForm((prev) => {
+      const current = prev[komoditas] || {
+        cukup: "",
+        baik: "",
+        sangat_baik: "",
+      };
+      return {
+        ...prev,
+        [komoditas]: { ...current, [field]: value },
+      };
+    });
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    // Siapkan data
     const items = komoditasList.map((kom) => {
-      const f = form[kom];
+      const f = form[kom] || { cukup: "", baik: "", sangat_baik: "" };
       return {
         komoditas: kom,
         cukup: f.cukup === "" ? null : parseFloat(f.cukup),
@@ -70,7 +104,6 @@ export function PengaturanForm({
       };
     });
 
-    // Validasi
     for (const item of items) {
       const vals = [item.cukup, item.baik, item.sangat_baik].filter(
         (v) => v !== null
@@ -110,17 +143,21 @@ export function PengaturanForm({
   async function resetDefault() {
     if (
       !confirm(
-        "Reset semua kategori ke default?\n\nDefault:\n- Padi: 5000 / 6000 / 7000\n- Jagung: 4000 / 5000 / 6000"
+        "Reset semua kategori ke default?\n\nDefault:\n- Padi: 5000 / 6000 / 7000\n- Jagung: 4500 / 5500 / 6500\n- Cabai: 6000 / 8000 / 10000"
       )
     )
       return;
 
-    const defaults: Record<string, { cukup: number; baik: number; sangat_baik: number }> = {
+    const defaults: Record<
+      string,
+      { cukup: number; baik: number; sangat_baik: number }
+    > = {
       padi: { cukup: 5000, baik: 6000, sangat_baik: 7000 },
-      jagung: { cukup: 4000, baik: 5000, sangat_baik: 6000 },
+      jagung: { cukup: 4500, baik: 5500, sangat_baik: 6500 },
+      cabai_rawit: { cukup: 6000, baik: 8000, sangat_baik: 10000 },
     };
 
-    const newForm: Record<string, { cukup: string; baik: string; sangat_baik: string }> = {};
+    const newForm: Record<string, FormField> = {};
     komoditasList.forEach((kom) => {
       const d = defaults[kom];
       newForm[kom] = {
@@ -133,7 +170,7 @@ export function PengaturanForm({
   }
 
   function getPreview(kom: string) {
-    const f = form[kom];
+    const f = form[kom] || { cukup: "", baik: "", sangat_baik: "" };
     const c = f.cukup === "" ? null : parseFloat(f.cukup);
     const b = f.baik === "" ? null : parseFloat(f.baik);
     const s = f.sangat_baik === "" ? null : parseFloat(f.sangat_baik);
@@ -179,62 +216,67 @@ export function PengaturanForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      {komoditasList.map((kom) => (
-        <div
-          key={kom}
-          className="bg-white border border-gray-200 rounded-xl p-5"
-        >
-          <div className="font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">
-            {komoditasLabel[kom] || kom}
-          </div>
+      {komoditasList.map((kom) => {
+        const f = form[kom] || { cukup: "", baik: "", sangat_baik: "" };
+        return (
+          <div
+            key={kom}
+            className="bg-white border border-gray-200 rounded-xl p-5"
+          >
+            <div className="font-bold text-gray-900 mb-4 pb-2 border-b border-gray-100">
+              {komoditasLabel[kom] || kom}
+            </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-            <div>
-              <label className="block text-xs font-medium text-orange-700 mb-1">
-                ⭐ Cukup ≥ (Kg/Ha)
-              </label>
-              <input
-                type="number"
-                value={form[kom].cukup}
-                onChange={(e) => updateField(kom, "cukup", e.target.value)}
-                placeholder="Contoh: 5000"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-medium text-orange-700 mb-1">
+                  ⭐ Cukup ≥ (Kg/Ha)
+                </label>
+                <input
+                  type="number"
+                  value={f.cukup}
+                  onChange={(e) => updateField(kom, "cukup", e.target.value)}
+                  placeholder="Contoh: 5000"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-blue-700 mb-1">
+                  ⭐⭐ Baik ≥ (Kg/Ha)
+                </label>
+                <input
+                  type="number"
+                  value={f.baik}
+                  onChange={(e) => updateField(kom, "baik", e.target.value)}
+                  placeholder="Contoh: 6000"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-green-700 mb-1">
+                  ⭐⭐⭐ Sangat Baik ≥ (Kg/Ha)
+                </label>
+                <input
+                  type="number"
+                  value={f.sangat_baik}
+                  onChange={(e) =>
+                    updateField(kom, "sangat_baik", e.target.value)
+                  }
+                  placeholder="Contoh: 7000"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-xs font-medium text-blue-700 mb-1">
-                ⭐⭐ Baik ≥ (Kg/Ha)
-              </label>
-              <input
-                type="number"
-                value={form[kom].baik}
-                onChange={(e) => updateField(kom, "baik", e.target.value)}
-                placeholder="Contoh: 6000"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-green-700 mb-1">
-                ⭐⭐⭐ Sangat Baik ≥ (Kg/Ha)
-              </label>
-              <input
-                type="number"
-                value={form[kom].sangat_baik}
-                onChange={(e) => updateField(kom, "sangat_baik", e.target.value)}
-                placeholder="Contoh: 7000"
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-              />
-            </div>
-          </div>
 
-          <div className="bg-gray-50 rounded-lg p-3">
-            <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
-              Preview Kategori
+            <div className="bg-gray-50 rounded-lg p-3">
+              <div className="text-[10px] text-gray-500 uppercase font-bold mb-1">
+                Preview Kategori
+              </div>
+              {getPreview(kom)}
             </div>
-            {getPreview(kom)}
           </div>
-        </div>
-      ))}
+        );
+      })}
 
       <div className="flex gap-3 flex-wrap items-center">
         <button

@@ -279,7 +279,8 @@ export async function GET(request: Request) {
     const { data: kategoriList } = await supabase
       .from("categories")
       .select("*")
-      .eq("user_id", filter.user_id);
+      .eq("user_id", filter.user_id)
+      .eq("is_demo", filter.is_demo);
 
     const filterPeriode = (h: any) => {
       const y = new Date(h.tanggal).getFullYear();

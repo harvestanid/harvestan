@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getDataFilter } from "@/lib/demo/demo-mode";
 import { AkunTab } from "./akun-tab";
 import { KategoriTab } from "./kategori-tab";
 
@@ -11,27 +12,32 @@ export default async function PengaturanPage() {
 
   if (!user) redirect("/login");
 
+  const filter = await getDataFilter(user.id);
+
   // ===== DATA UNTUK TAB AKUN =====
-  // Statistik user
   const { count: penggarapCount } = await supabase
     .from("penggaraps")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo);
 
   const { count: lahanCount } = await supabase
     .from("lands")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo);
 
   const { count: panenCount } = await supabase
     .from("harvests")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo);
 
   const { data: hutangData } = await supabase
     .from("debts")
     .select("sisa")
-    .eq("user_id", user.id)
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo)
     .gt("sisa", 0);
 
   const totalHutangAktif = (hutangData || []).reduce(
@@ -43,12 +49,14 @@ export default async function PengaturanPage() {
   const { data: kategoriList } = await supabase
     .from("categories")
     .select("*")
-    .eq("user_id", user.id);
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo);
 
   const { data: harvests } = await supabase
     .from("harvests")
     .select("komoditas")
-    .eq("user_id", user.id);
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo);
 
   const KOMODITAS_LABEL: Record<string, string> = {
     padi: "🌾 Padi",
@@ -56,6 +64,7 @@ export default async function PengaturanPage() {
     kacang_tanah: "🥜 Kacang Tanah",
     bawang_merah: "🧅 Bawang Merah",
     cabai_rawit: "🌶️ Cabai Rawit",
+    cabai: "🌶️ Cabai",
   };
 
   const KOMODITAS_DEFAULT = [
@@ -66,13 +75,19 @@ export default async function PengaturanPage() {
     "cabai_rawit",
   ];
 
+  // Normalisasi: cabai → cabai_rawit
+  function normalisasiKomoditas(kom: string): string {
+    if (kom === "cabai") return "cabai_rawit";
+    return kom;
+  }
+
   const komoditasSet = new Set<string>();
   KOMODITAS_DEFAULT.forEach((k) => komoditasSet.add(k));
   (harvests || []).forEach((h) => {
-    if (h.komoditas) komoditasSet.add(h.komoditas);
+    if (h.komoditas) komoditasSet.add(normalisasiKomoditas(h.komoditas));
   });
   (kategoriList || []).forEach((k) => {
-    if (k.komoditas) komoditasSet.add(k.komoditas);
+    if (k.komoditas) komoditasSet.add(normalisasiKomoditas(k.komoditas));
   });
 
   const order = KOMODITAS_DEFAULT;
@@ -85,6 +100,12 @@ export default async function PengaturanPage() {
     return ia - ib;
   });
 
+  // Normalisasi kategoriList biar komoditas "cabai" jadi "cabai_rawit"
+  const kategoriListNormal = (kategoriList || []).map((k) => ({
+    ...k,
+    komoditas: normalisasiKomoditas(k.komoditas),
+  }));
+
   return (
     <div className="p-4 md:p-6 max-w-3xl mx-auto">
       <div className="mb-6">
@@ -94,7 +115,6 @@ export default async function PengaturanPage() {
         </p>
       </div>
 
-      {/* Tab Navigation */}
       <TabContainer
         akunContent={
           <AkunTab
@@ -118,7 +138,7 @@ export default async function PengaturanPage() {
         kategoriContent={
           <KategoriTab
             komoditasList={komoditasList}
-            kategoriList={kategoriList || []}
+            kategoriList={kategoriListNormal}
             komoditasLabel={KOMODITAS_LABEL}
           />
         }
@@ -127,5 +147,4 @@ export default async function PengaturanPage() {
   );
 }
 
-// Client component untuk tab switching
 import { TabContainer } from "./tab-container";

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getDataFilter } from "@/lib/demo/demo-mode";
 
 export type Kategori = {
   id: string;
@@ -29,11 +30,23 @@ export type ProduktivitasPerKomoditas = {
   kategoriRata: KategoriInfo | null;
 };
 
+// ✅ FIX: filter user_id + is_demo supaya tidak nyampur data user lain
 export async function getKategoriList(): Promise<Kategori[]> {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return [];
+
+  const filter = await getDataFilter(user.id);
+
   const { data, error } = await supabase
     .from("categories")
     .select("*")
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo)
     .order("komoditas");
 
   if (error) {
@@ -47,9 +60,20 @@ export async function getKategoriByKomoditas(
   komoditas: string
 ): Promise<Kategori | null> {
   const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return null;
+
+  const filter = await getDataFilter(user.id);
+
   const { data, error } = await supabase
     .from("categories")
     .select("*")
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo)
     .eq("komoditas", komoditas)
     .maybeSingle();
 
@@ -113,21 +137,12 @@ export function hitungKategori(
   };
 }
 
-// ===================================================
-// HELPER BARU: Hitung produktivitas per komoditas
-// (dari list harvests, pisah per komoditas)
-// ===================================================
+// Helper hitung produktivitas per komoditas
 export function hitungProduktivitasPerKomoditas(
   harvests: any[],
   lands: { id: string; luas: number }[],
   kategoriList: Kategori[]
 ): ProduktivitasPerKomoditas[] {
-  // Group harvests per komoditas
-  const byKomoditas = new Map<
-    string,
-    { hasilKg: number; luasTotal: number; tanggal: string; panenList: { tgl: string; prod: number }[] }[]
-  >();
-
   const data: Record<
     string,
     {
@@ -160,13 +175,11 @@ export function hitungProduktivitasPerKomoditas(
     data[kom].panenList.push({ tanggal: h.tanggal, prod });
   });
 
-  // Build hasil dengan kategori
   const hasil: ProduktivitasPerKomoditas[] = [];
 
   Object.entries(data).forEach(([kom, d]) => {
     const rata = d.jmlPanen > 0 ? d.totalProdSum / d.jmlPanen : 0;
 
-    // Panen terakhir (dari list ini)
     const sorted = [...d.panenList].sort(
       (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
     );
@@ -185,8 +198,14 @@ export function hitungProduktivitasPerKomoditas(
     });
   });
 
-  // Sort: padi dulu, lalu yang lain
-  const order = ["padi", "jagung", "kacang_tanah", "bawang_merah", "cabai_rawit"];
+  const order = [
+    "padi",
+    "jagung",
+    "kacang_tanah",
+    "bawang_merah",
+    "cabai_rawit",
+    "cabai",
+  ];
   hasil.sort((a, b) => {
     const ia = order.indexOf(a.komoditas);
     const ib = order.indexOf(b.komoditas);

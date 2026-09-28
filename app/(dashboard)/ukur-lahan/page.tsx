@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { checkPremiumStatus } from "@/lib/supabase/queries/subscription-server";
-import { UkurContent } from "./ukur-content";
+import UkurLahanContent from "./ukur-content";
 
 export const metadata = {
   title: "Ukur Lahan",
@@ -101,7 +101,10 @@ export default async function UkurLahanPage({
         </p>
       </div>
 
-      <UkurContent mode={mode as "new" | "edit"} landId={params.landId} />
+      <UkurLahanContent
+        mode={mode as "new" | "edit"}
+        landId={params.landId}
+      />
     </div>
   );
 }

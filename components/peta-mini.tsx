@@ -12,7 +12,6 @@ type Props = {
 };
 
 export default function PetaMini({ polygon, luas }: Props) {
-  // Ambil ring luar dari polygon
   const ring = polygon.coordinates?.[0] || [];
 
   if (ring.length < 3) {
@@ -23,33 +22,32 @@ export default function PetaMini({ polygon, luas }: Props) {
     );
   }
 
-  // Convert ke format Leaflet: [lat, lng]
   const coords: [number, number][] = ring.map((c) => [c[1], c[0]]);
 
-  // Hitung center (centroid sederhana)
-  const centerLat =
-    coords.reduce((s, c) => s + c[0], 0) / coords.length;
-  const centerLng =
-    coords.reduce((s, c) => s + c[1], 0) / coords.length;
+  const centerLat = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+  const centerLng = coords.reduce((s, c) => s + c[1], 0) / coords.length;
 
-  // Hitung zoom otomatis (perkiraan)
   const lats = coords.map((c) => c[0]);
   const lngs = coords.map((c) => c[1]);
   const maxDiff = Math.max(
     Math.max(...lats) - Math.min(...lats),
     Math.max(...lngs) - Math.min(...lngs)
   );
-  // Estimasi zoom: 0.0001 derajat ≈ zoom 17, 1 derajat ≈ zoom 6
   let zoom = 18;
-  if (maxDiff > 0.0001) zoom = Math.min(18, Math.max(6, Math.floor(14 - Math.log2(maxDiff * 10000))));
+  if (maxDiff > 0.0001)
+    zoom = Math.min(
+      18,
+      Math.max(6, Math.floor(14 - Math.log2(maxDiff * 10000)))
+    );
 
+  // ✅ FIX: z-0 biar tidak nutupin banner demo
   return (
-    <div className="relative">
+    <div className="relative z-0">
       <div className="w-full h-48 rounded-lg overflow-hidden border border-gray-200">
         <MapContainer
           center={[centerLat, centerLng]}
           zoom={zoom}
-          style={{ width: "100%", height: "100%" }}
+          style={{ width: "100%", height: "100%", zIndex: 0 }}
           scrollWheelZoom={false}
           zoomControl={false}
           dragging={true}

@@ -114,16 +114,16 @@ export function PremiumGratisKlien({
   // Kalau baru sukses submit
   if (sukses) {
     return (
-      <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-8 text-center">
+      <div className="bg-emerald-50 border-2 border-emerald-400 rounded-2xl p-8 text-center">
         <div className="text-6xl mb-4">✅</div>
-        <h2 className="text-xl font-bold text-green-900 mb-3">
+        <h2 className="text-xl font-bold text-emerald-900 mb-3">
           Request Terkirim!
         </h2>
-        <p className="text-sm text-green-800 mb-4 leading-relaxed max-w-md mx-auto">
+        <p className="text-sm text-emerald-800 mb-4 leading-relaxed max-w-md mx-auto">
           Tim kami akan verifikasi dalam 1×24 jam. Anda akan dapat notifikasi
           lewat email setelah diverifikasi.
         </p>
-        <p className="text-xs text-green-700 italic">
+        <p className="text-xs text-emerald-700 italic">
           Mohon tunggu. Jangan submit request duplikat.
         </p>
       </div>
@@ -134,14 +134,14 @@ export function PremiumGratisKlien({
     <div className="space-y-5">
       {/* Kalau ada pending */}
       {hasPending && (
-        <div className="bg-yellow-50 border-2 border-yellow-300 rounded-2xl p-5">
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5">
           <div className="flex items-start gap-3">
             <div className="text-3xl flex-shrink-0">⏳</div>
             <div>
-              <div className="font-bold text-yellow-900 text-sm mb-1">
+              <div className="font-bold text-amber-900 text-sm mb-1">
                 Request Sedang Diverifikasi
               </div>
-              <p className="text-xs text-yellow-800 leading-relaxed">
+              <p className="text-xs text-amber-800 leading-relaxed">
                 Anda sudah submit request. Tim kami akan verifikasi dalam 1×24
                 jam. Tidak bisa submit lagi sampai request sebelumnya selesai
                 diverifikasi.
@@ -178,7 +178,7 @@ export function PremiumGratisKlien({
                 onClick={() => setTipe("social_media")}
                 className={`p-3 rounded-xl border-2 transition text-left ${
                   tipe === "social_media"
-                    ? "border-purple-500 bg-purple-50"
+                    ? "border-emerald-500 bg-emerald-50"
                     : "border-gray-200 bg-gray-50 hover:border-gray-300"
                 }`}
               >
@@ -192,7 +192,7 @@ export function PremiumGratisKlien({
                 onClick={() => setTipe("referral")}
                 className={`p-3 rounded-xl border-2 transition text-left ${
                   tipe === "referral"
-                    ? "border-purple-500 bg-purple-50"
+                    ? "border-emerald-500 bg-emerald-50"
                     : "border-gray-200 bg-gray-50 hover:border-gray-300"
                 }`}
               >
@@ -214,7 +214,7 @@ export function PremiumGratisKlien({
                 <select
                   value={platform}
                   onChange={(e) => setPlatform(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
                 >
                   {PLATFORM_OPTIONS.map((p) => (
                     <option key={p.val} value={p.val}>
@@ -233,7 +233,7 @@ export function PremiumGratisKlien({
                   value={linkPost}
                   onChange={(e) => setLinkPost(e.target.value)}
                   placeholder="https://instagram.com/p/xxxxx"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
                 />
                 <p className="text-[10px] text-gray-500 mt-1">
                   Copy link postingan Anda (klik 3 titik → Copy Link)
@@ -249,7 +249,7 @@ export function PremiumGratisKlien({
                   value={screenshotUrl}
                   onChange={(e) => setScreenshotUrl(e.target.value)}
                   placeholder="https://drive.google.com/xxxxx"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none"
                 />
                 <p className="text-[10px] text-gray-500 mt-1">
                   Upload screenshot postingan ke Google Drive / Imgur (set
@@ -269,7 +269,7 @@ export function PremiumGratisKlien({
               onChange={(e) => setCatatan(e.target.value)}
               placeholder="Informasi tambahan untuk admin..."
               rows={3}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none resize-none"
             />
           </div>
 
@@ -277,7 +277,7 @@ export function PremiumGratisKlien({
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-bold py-3 rounded-xl transition disabled:opacity-50"
+            className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-bold py-3 rounded-xl transition disabled:opacity-50"
           >
             {loading ? "⏳ Mengirim..." : "🎁 Ajukan Premium Gratis"}
           </button>
@@ -297,10 +297,10 @@ export function PremiumGratisKlien({
                 key={r.id}
                 className={`border-2 rounded-xl p-4 ${
                   r.status === "approved"
-                    ? "border-green-300 bg-green-50"
+                    ? "border-emerald-300 bg-emerald-50"
                     : r.status === "rejected"
                     ? "border-red-300 bg-red-50"
-                    : "border-yellow-300 bg-yellow-50"
+                    : "border-amber-300 bg-amber-50"
                 }`}
               >
                 <div className="flex items-start justify-between gap-2 flex-wrap mb-2">

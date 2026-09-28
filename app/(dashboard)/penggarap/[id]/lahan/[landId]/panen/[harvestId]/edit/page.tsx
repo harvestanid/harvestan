@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { SkemaBagiHasilV2 } from "@/components/skema-bagi-hasil-v2";
+import { isDemoActive } from "@/lib/demo/demo-mode";
 
 async function editPanen(formData: FormData) {
   "use server";
@@ -211,7 +212,6 @@ async function editPanen(formData: FormData) {
     totalHutangSebelum - potonganHutangBaru
   );
 
-  // Log panen
   const panenLogLama = Array.isArray(panenLama.potongan_hutang_log)
     ? panenLama.potongan_hutang_log
     : [];
@@ -280,6 +280,54 @@ export default async function EditPanenPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // 🔒 KUNCI: Cek mode demo — kalau demo aktif, tampilkan layar terkunci
+  const demoActive = await isDemoActive(user.id);
+  if (demoActive) {
+    return (
+      <div className="p-4 md:p-6 max-w-2xl mx-auto">
+        <div className="mb-6">
+          <Link
+            href={`/penggarap/${id}/lahan/${landId}/panen/${harvestId}`}
+            className="text-green-700 hover:text-green-800 text-sm font-medium"
+          >
+            ← Kembali ke Detail Panen
+          </Link>
+        </div>
+
+        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-8 text-center">
+          <div className="text-6xl mb-4">🔒</div>
+          <h1 className="text-xl font-bold text-amber-900 mb-3">
+            Edit Panen Terkunci di Mode Demo
+          </h1>
+          <p className="text-sm text-amber-800 mb-6 leading-relaxed max-w-md mx-auto">
+            Di mode demo, Anda tidak bisa mengubah data panen. Ini supaya Anda
+            bisa melihat data contoh yang realistis tanpa khawatir datanya
+            berubah.
+            <br />
+            <br />
+            Untuk mengedit panen, selesaikan demo dulu dan kembali ke data
+            Anda.
+          </p>
+          <div className="flex gap-3 justify-center flex-wrap">
+            <Link
+              href={`/penggarap/${id}/lahan/${landId}/panen/${harvestId}`}
+              className="px-5 py-2 bg-white border-2 border-amber-400 text-amber-900 rounded-xl font-bold text-sm hover:bg-amber-100 transition"
+            >
+              ← Kembali ke Detail Panen
+            </Link>
+            <Link
+              href="/demo"
+              className="px-5 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-bold text-sm hover:from-emerald-600 hover:to-teal-700 transition"
+            >
+              Selesai Demo
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Bukan demo → lanjutkan seperti biasa
   const { data: panen } = await supabase
     .from("harvests")
     .select("*")
@@ -483,7 +531,7 @@ export default async function EditPanenPage({
           />
         </div>
 
-        {/* ===== SKEMA BAGI HASIL (PAKAI KOMPONEN BARU) ===== */}
+        {/* ===== SKEMA BAGI HASIL ===== */}
         <SkemaBagiHasilV2 />
 
         <div className="grid grid-cols-3 gap-3">

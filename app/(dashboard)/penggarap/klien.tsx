@@ -9,6 +9,7 @@ const KOMODITAS_LABEL: Record<string, string> = {
   kacang_tanah: "🥜 Kacang Tanah",
   bawang_merah: "🧅 Bawang Merah",
   cabai_rawit: "🌶️ Cabai Rawit",
+  cabai: "🌶️ Cabai",
 };
 
 function formatRp(n: number) {
@@ -45,6 +46,8 @@ type RiwayatPanen = {
   profitBersih: number;
   profitOwner: number;
   profitPenggarap: number;
+  persenOwner?: number;
+  persenPenggarap?: number;
 };
 
 type LahanItem = {
@@ -111,7 +114,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
               isExpanded ? "border-green-500 shadow-lg" : "border-gray-200"
             }`}
           >
-            {/* ===== HEADER PENGGARAP (klik untuk expand) ===== */}
+            {/* HEADER PENGGARAP */}
             <button
               onClick={() => togglePenggarap(p.id)}
               className="w-full text-left p-4 hover:bg-gray-50 transition"
@@ -144,7 +147,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                 </div>
               </div>
 
-              {/* Badge Kategori Produktivitas per Komoditas (hanya kalau collapsed) */}
+              {/* Badge Kategori per Komoditas (collapsed) */}
               {!isExpanded && p.produktivitas.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-gray-100 space-y-1">
                   {p.produktivitas.slice(0, 3).map((pk) => (
@@ -186,7 +189,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
               )}
             </button>
 
-            {/* ===== DROPDOWN DETAIL ===== */}
+            {/* DROPDOWN DETAIL */}
             {isExpanded && (
               <div className="border-t border-gray-200 bg-gray-50 p-4 space-y-4">
                 {/* Produktivitas per Komoditas */}
@@ -204,7 +207,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                           <span className="font-medium text-gray-800">
                             {KOMODITAS_LABEL[pk.komoditas] || pk.komoditas}
                           </span>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 flex-wrap">
                             <span className="text-gray-500">
                               {pk.jmlPanen}x · {formatKg(pk.totalHasilKg)}
                             </span>
@@ -251,7 +254,6 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                 : "border-gray-200 bg-gray-50"
                             }`}
                           >
-                            {/* Header Lahan (klik untuk expand) */}
                             <button
                               onClick={() => toggleLahan(l.id)}
                               className="w-full text-left p-3 hover:bg-white/50 transition"
@@ -330,7 +332,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                         key={h.id}
                                         className="bg-gray-50 border border-gray-200 rounded-lg p-2.5"
                                       >
-                                        <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
+                                        <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
                                           <div className="flex items-center gap-2 flex-wrap">
                                             <span className="text-[10px] font-bold text-gray-700 bg-white border border-gray-200 rounded-full px-2 py-0.5">
                                               {KOMODITAS_LABEL[h.komoditas] ||
@@ -347,35 +349,59 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                           </div>
                                         </div>
 
-                                        <div className="grid grid-cols-3 gap-2 text-[10px] mb-2">
+                                        {/* Row 1: Hasil + Profit Bersih */}
+                                        <div className="grid grid-cols-2 gap-2 text-[10px] mb-2 pb-2 border-b border-gray-200">
                                           <div>
                                             <div className="text-gray-500">
-                                              Hasil
+                                              Hasil Panen
                                             </div>
                                             <div className="font-bold text-gray-800">
                                               {h.hasilKg.toLocaleString("id-ID")} Kg
                                             </div>
                                           </div>
-                                          <div>
+                                          <div className="text-right">
                                             <div className="text-gray-500">
-                                              Profit Bersih
+                                              💵 Profit Bersih
                                             </div>
-                                            <div className="font-bold text-blue-700">
+                                            <div className="font-bold text-blue-700 break-words">
                                               {formatRp(h.profitBersih)}
                                             </div>
                                           </div>
-                                          <div>
-                                            <div className="text-gray-500">
-                                              Penggarap
+                                        </div>
+
+                                        {/* Row 2: Owner + Penggarap */}
+                                        <div className="grid grid-cols-2 gap-2 text-[10px]">
+                                          <div className="bg-green-50 border border-green-200 rounded-lg p-2 min-w-0">
+                                            <div className="text-green-800 font-medium">
+                                              👤 Owner
+                                              {h.persenOwner !== undefined && (
+                                                <span className="text-[9px] text-green-600 ml-1">
+                                                  ({h.persenOwner}%)
+                                                </span>
+                                              )}
                                             </div>
-                                            <div className="font-bold text-orange-700">
+                                            <div className="font-bold text-green-900 mt-0.5 break-words leading-tight">
+                                              {formatRp(h.profitOwner)}
+                                            </div>
+                                          </div>
+                                          <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 min-w-0">
+                                            <div className="text-orange-800 font-medium">
+                                              👨‍🌾 Penggarap
+                                              {h.persenPenggarap !==
+                                                undefined && (
+                                                <span className="text-[9px] text-orange-600 ml-1">
+                                                  ({h.persenPenggarap}%)
+                                                </span>
+                                              )}
+                                            </div>
+                                            <div className="font-bold text-orange-900 mt-0.5 break-words leading-tight">
                                               {formatRp(h.profitPenggarap)}
                                             </div>
                                           </div>
                                         </div>
 
                                         {/* Tombol Aksi */}
-                                        <div className="flex flex-wrap gap-1.5 pt-2 border-t border-gray-200">
+                                        <div className="flex flex-wrap gap-1.5 pt-2 mt-2 border-t border-gray-200">
                                           <Link
                                             href={`/penggarap/${p.id}/lahan/${l.id}/panen/${h.id}`}
                                             className="text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-2 py-1 rounded transition"
