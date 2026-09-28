@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { checkPremiumStatus } from "@/lib/supabase/queries/subscription-server";
+import { getDataFilter } from "@/lib/demo/demo-mode";
 import { ExportPremiumGate } from "./export-gate";
 
 export const metadata = {
@@ -16,43 +17,53 @@ export default async function ExportPage() {
 
   if (!user) redirect("/login");
 
+  const filter = await getDataFilter(user.id);
+
   const premium = await checkPremiumStatus(user.id);
   const isPremiumActive = premium.isPremium && premium.isActive;
+  const isDemo = filter.is_demo;
 
   const { count: penggarapCount } = await supabase
     .from("penggaraps")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo);
 
   const { count: landsCount } = await supabase
     .from("lands")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo);
 
   const { count: harvestsCount } = await supabase
     .from("harvests")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo);
 
   const { count: debtsCount } = await supabase
     .from("debts")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo);
 
   const { count: kategoriCount } = await supabase
     .from("categories")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo);
 
   const { count: musimCount } = await supabase
     .from("musim_cabai")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", user.id);
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo);
 
   const { data: penggaraps } = await supabase
     .from("penggaraps")
     .select("id, nama, kontak")
-    .eq("user_id", user.id)
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo)
     .order("nama");
 
   return (
@@ -64,8 +75,7 @@ export default async function ExportPage() {
         </p>
       </div>
 
-      {/* Banner premium status */}
-      {!isPremiumActive && (
+      {!isPremiumActive && !isDemo && (
         <div className="bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-300 rounded-2xl p-5 mb-6">
           <div className="flex items-start gap-3">
             <div className="text-3xl">🔒</div>
@@ -92,6 +102,24 @@ export default async function ExportPage() {
                   🎬 Lihat Demo
                 </Link>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isDemo && (
+        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-300 rounded-2xl p-5 mb-6">
+          <div className="flex items-start gap-3">
+            <div className="text-3xl">🎬</div>
+            <div className="flex-1">
+              <div className="font-bold text-emerald-900 mb-1">
+                Mode Demo — Semua Export Terbuka!
+              </div>
+              <p className="text-xs text-emerald-800 leading-relaxed">
+                Anda bisa coba semua fitur export gratis di mode demo. Semua
+                file akan diberi watermark <strong>"DEMO"</strong>. Upgrade
+                Premium untuk export data Anda sendiri tanpa watermark.
+              </p>
             </div>
           </div>
         </div>
@@ -160,7 +188,11 @@ export default async function ExportPage() {
           Panen, Hutang, Kategori, MusimCabai, Info)
         </div>
 
-        <ExportPremiumGate isPremium={isPremiumActive} feature="Export Backup">
+        <ExportPremiumGate
+          isPremium={isPremiumActive}
+          isDemo={isDemo}
+          feature="Export Backup"
+        >
           <a
             href="/api/export-backup"
             download
@@ -190,7 +222,11 @@ export default async function ExportPage() {
           dengan statistik lengkap.
         </div>
 
-        <ExportPremiumGate isPremium={isPremiumActive} feature="Export Laporan Excel">
+        <ExportPremiumGate
+          isPremium={isPremiumActive}
+          isDemo={isDemo}
+          feature="Export Laporan Excel"
+        >
           <a
             href="/api/export"
             download
@@ -246,6 +282,7 @@ export default async function ExportPage() {
                   </Link>
                   <ExportPremiumGate
                     isPremium={isPremiumActive}
+                    isDemo={isDemo}
                     feature="Export PDF Penggarap"
                     inline
                   >
@@ -265,8 +302,8 @@ export default async function ExportPage() {
       </div>
 
       <p className="text-xs text-gray-500 text-center mt-4">
-        💡 Tips: PDF cocok untuk penggarap yang tidak pakai smartphone —
-        bisa dicetak atau dikirim via WhatsApp
+        💡 Tips: PDF cocok untuk penggarap yang tidak pakai smartphone — bisa
+        dicetak atau dikirim via WhatsApp
       </p>
     </div>
   );

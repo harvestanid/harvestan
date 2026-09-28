@@ -14,14 +14,11 @@ export const metadata = {
   title: "Penggarap",
 };
 
-const KOMODITAS_LABEL: Record<string, string> = {
-  padi: "🌾 Padi",
-  jagung: "🌽 Jagung",
-  kacang_tanah: "🥜 Kacang Tanah",
-  bawang_merah: "🧅 Bawang Merah",
-  cabai_rawit: "🌶️ Cabai Rawit",
-  cabai: "🌶️ Cabai",
-};
+function normalisasiKomoditas(kom: string | null | undefined): string {
+  if (!kom) return "padi";
+  if (kom === "cabai") return "cabai_rawit";
+  return kom;
+}
 
 export default async function PenggarapPage() {
   const supabase = await createClient();
@@ -67,6 +64,13 @@ export default async function PenggarapPage() {
 
     const totalLuas = penggarapLands.reduce((s, l) => s + Number(l.luas), 0);
 
+    // Komoditas yang ditanam penggarap (unique)
+    const komoditasSetGlobal = new Set<string>();
+    penggarapHarvests.forEach((h) =>
+      komoditasSetGlobal.add(normalisasiKomoditas(h.komoditas))
+    );
+    const komoditasDitanam = Array.from(komoditasSetGlobal);
+
     const lahanList = penggarapLands.map((l) => {
       const lahanHarvests = penggarapHarvests
         .filter((h) => h.land_id === l.id)
@@ -86,7 +90,100 @@ export default async function PenggarapPage() {
           : 0;
 
       const komoditasSet = new Set<string>();
-      lahanHarvests.forEach((h) => komoditasSet.add(h.komoditas || "padi"));
+      lahanHarvests.forEach((h) =>
+        komoditasSet.add(normalisasiKomoditas(h.komoditas))
+      );
+
+      // Hitung jml panen per komoditas (cabai per musim, lain per panen)
+      const perKomoditas: Record<
+        string,
+        { jml: number; totalHasilKg: number }
+      > = {};
+      const musimCabaiSet = new Set<string>();
+
+      lahanHarvests.forEach((h) => {
+        const kom = normalisasiKomoditas(h.komoditas);
+        if (!perKomoditas[kom]) perKomoditas[kom] = { jml: 0, totalHasilKg: 0 };
+
+        if (kom === "cabai_rawit") {
+          const musim = h.musim || "Tanpa Musim";
+          if (!musimCabaiSet.has(musim)) {
+            musimCabaiSet.add(musim);
+            perKomoditas[kom].jml += 1;
+          }
+          perKomoditas[kom].totalHasilKg += Number(h.hasil_kg);
+        } else {
+          perKomoditas[kom].jml += 1;
+          perKomoditas[kom].totalHasilKg += Number(h.hasil_kg);
+        }
+      });
+
+      const komoditasRingkas = Object.entries(perKomoditas).map(
+        ([kom, d]) => ({
+          komoditas: kom,
+          jml: d.jml,
+          isPerMusim: kom === "cabai_rawit",
+          totalHasilKg: d.totalHasilKg,
+        })
+      );
+
+      // Group per tahun
+      const perTahun: Record<
+        number,
+        {
+          komoditasSet: Set<string>;
+          totalHasilKg: number;
+          jmlPanenRaw: number;
+          jmlMusim: number;
+          profitOwner: number;
+          profitPenggarap: number;
+        }
+      > = {};
+      const musimSetGlobal = new Set<string>();
+
+      lahanHarvests.forEach((h) => {
+        const tahun = new Date(h.tanggal).getFullYear();
+        const kom = normalisasiKomoditas(h.komoditas);
+
+        if (!perTahun[tahun]) {
+          perTahun[tahun] = {
+            komoditasSet: new Set(),
+            totalHasilKg: 0,
+            jmlPanenRaw: 0,
+            jmlMusim: 0,
+            profitOwner: 0,
+            profitPenggarap: 0,
+          };
+        }
+        const t = perTahun[tahun];
+        t.komoditasSet.add(kom);
+        t.totalHasilKg += Number(h.hasil_kg);
+        t.jmlPanenRaw += 1;
+        t.profitOwner += Number(h.profit_owner || 0);
+        t.profitPenggarap += Number(h.profit_penggarap || 0);
+
+        const musimKey =
+          kom === "cabai_rawit"
+            ? `${h.musim || "Tanpa Musim"}`
+            : `${kom}-${h.tanggal.slice(0, 7)}`;
+        const musimGlobalKey = `${tahun}-${musimKey}`;
+        if (!musimSetGlobal.has(musimGlobalKey)) {
+          musimSetGlobal.add(musimGlobalKey);
+          t.jmlMusim += 1;
+        }
+      });
+
+      const tahunRingkas = Object.entries(perTahun)
+        .map(([tahun, d]) => ({
+          tahun: parseInt(tahun),
+          komoditasList: Array.from(d.komoditasSet),
+          totalHasilKg: d.totalHasilKg,
+          jmlPanenRaw: d.jmlPanenRaw,
+          jmlMusim: d.jmlMusim,
+          profitOwner: d.profitOwner,
+          profitPenggarap: d.profitPenggarap,
+        }))
+        .sort((a, b) => b.tahun - a.tahun);
 
       return {
         id: l.id,
@@ -97,16 +194,21 @@ export default async function PenggarapPage() {
         totalHasilKg: totalHasilLahan,
         rataProduktivitas,
         komoditasList: Array.from(komoditasSet),
-        riwayatPanen: lahanHarvests.slice(0, 10).map((h) => ({
+        komoditasRingkas,
+        tahunRingkas,
+        riwayatPanen: lahanHarvests.map((h) => ({
           id: h.id,
           tanggal: h.tanggal,
-          komoditas: h.komoditas || "padi",
+          komoditas: normalisasiKomoditas(h.komoditas),
           musim: h.musim || null,
           hasilKg: Number(h.hasil_kg),
           hargaGabah: Number(h.harga_gabah),
           profitBersih: Number(h.profit_bersih || 0),
           profitOwner: Number(h.profit_owner || 0),
           profitPenggarap: Number(h.profit_penggarap || 0),
+          potonganHutang: Number(h.potongan_hutang || 0),
+          sisaHutangSesudah: Number(h.sisa_hutang_sesudah || 0),
+          totalHutangSebelum: Number(h.total_hutang_sebelum || 0),
           persenOwner: Number(h.persen_owner || 50),
           persenPenggarap: Number(h.persen_penggarap || 50),
         })),
@@ -121,6 +223,7 @@ export default async function PenggarapPage() {
       totalLahan: penggarapLands.length,
       totalLuas,
       jmlPanen: penggarapHarvests.length,
+      komoditasDitanam,
       produktivitas: produktivitas.map((pk: any) => {
         const kat = pk.kategoriRata || pk.kategoriTerakhir;
         return {
@@ -139,7 +242,6 @@ export default async function PenggarapPage() {
 
   return (
     <div>
-      {/* Header */}
       <div className="mb-6">
         <div className="flex items-start justify-between mb-3 flex-wrap gap-4">
           <div>
@@ -160,7 +262,6 @@ export default async function PenggarapPage() {
           </Link>
         </div>
 
-        {/* CTA Threshold — sekali saja di header */}
         {penggaraps.length > 0 && (
           <div className="mt-3">
             <CtaThreshold variant="card" />
@@ -168,7 +269,6 @@ export default async function PenggarapPage() {
         )}
       </div>
 
-      {/* Empty state */}
       {penggarapLengkap.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
           <div className="text-6xl mb-4">📭</div>

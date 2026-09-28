@@ -73,7 +73,6 @@ export default async function DetailPanenPage({
   const profitOwnerFinal = Number(panen.profit_owner || 0);
   const profitPenggarapFinal = Number(panen.profit_penggarap || 0);
 
-  // ===== PENYESUAIAN GABAH BAWA PULANG =====
   const bawaPenggarap = Number(panen.bawa_penggarap || 0);
   const bawaOwner = Number(panen.bawa_owner || 0);
   const bawaLain = Number(panen.bawa_lain || 0);
@@ -96,6 +95,20 @@ export default async function DetailPanenPage({
     nilaiBawaOwner -
     nilaiBawaLain * 0.5;
 
+  const { data: hutangAktifSekarang } = await supabase
+    .from("debts")
+    .select("id, sisa")
+    .eq("penggarap_id", id)
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo)
+    .gt("sisa", 0);
+
+  const adaHutangSekarang = (hutangAktifSekarang || []).length > 0;
+  const totalHutangSekarang = (hutangAktifSekarang || []).reduce(
+    (s, h) => s + Number(h.sisa || 0),
+    0
+  );
+
   const log = Array.isArray(panen.potongan_hutang_log)
     ? panen.potongan_hutang_log
     : [];
@@ -117,7 +130,6 @@ export default async function DetailPanenPage({
         </p>
       </div>
 
-      {/* TOMBOL DOWNLOAD PDF */}
       <div className="mb-4">
         <TombolDownloadInvoice
           panen={panen}
@@ -213,7 +225,7 @@ export default async function DetailPanenPage({
           </div>
         </div>
 
-        {/* ===== BAGI HASIL DASAR ===== */}
+        {/* BAGI HASIL DASAR */}
         <div className="pt-4 border-t bg-gray-50 -mx-6 px-6 py-4">
           <p className="text-xs text-gray-500 uppercase mb-1">
             🧮 Bagi Hasil Dasar
@@ -227,7 +239,7 @@ export default async function DetailPanenPage({
               <p className="text-xs text-green-800 font-medium">
                 👤 OWNER ({persenOwner}%)
               </p>
-              <p className="font-bold text-green-900 text-base mt-1 leading-tight break-words">
+              <p className="font-bold text-green-900 text-sm mt-1 leading-tight break-all">
                 {formatRp(profitOwnerMurni)}
               </p>
             </div>
@@ -235,14 +247,14 @@ export default async function DetailPanenPage({
               <p className="text-xs text-orange-800 font-medium">
                 👨‍🌾 PENGGARAP ({persenPenggarap}%)
               </p>
-              <p className="font-bold text-orange-900 text-base mt-1 leading-tight break-words">
+              <p className="font-bold text-orange-900 text-sm mt-1 leading-tight break-all">
                 {formatRp(profitPenggarapMurni)}
               </p>
             </div>
           </div>
         </div>
 
-        {/* ===== PENYESUAIAN GABAH BAWA PULANG ===== */}
+        {/* PENYESUAIAN GABAH BAWA PULANG */}
         {adaBawaPulang && (
           <div className="pt-4 border-t">
             <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
@@ -261,7 +273,7 @@ export default async function DetailPanenPage({
                       <span>
                         👨‍🌾 Penggarap bawa {bawaPenggarap} Kg
                       </span>
-                      <span className="font-mono break-words">
+                      <span className="font-mono break-all">
                         {formatRp(nilaiBawaPenggarap)}
                       </span>
                     </div>
@@ -282,7 +294,7 @@ export default async function DetailPanenPage({
                   <div className="bg-white rounded-lg p-2.5 border border-orange-200">
                     <div className="flex justify-between font-medium text-orange-900 gap-2 flex-wrap">
                       <span>👤 Owner bawa {bawaOwner} Kg</span>
-                      <span className="font-mono break-words">
+                      <span className="font-mono break-all">
                         {formatRp(nilaiBawaOwner)}
                       </span>
                     </div>
@@ -303,7 +315,7 @@ export default async function DetailPanenPage({
                   <div className="bg-white rounded-lg p-2.5 border border-orange-200">
                     <div className="flex justify-between font-medium text-orange-900 gap-2 flex-wrap">
                       <span>📦 Lainnya {bawaLain} Kg</span>
-                      <span className="font-mono break-words">
+                      <span className="font-mono break-all">
                         {formatRp(nilaiBawaLain)}
                       </span>
                     </div>
@@ -324,25 +336,14 @@ export default async function DetailPanenPage({
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div className="text-center min-w-0">
                     <p className="text-xs text-green-800">👤 OWNER</p>
-                    <p className="font-bold text-green-900 text-base break-words leading-tight">
+                    <p className="font-bold text-green-900 text-sm break-all leading-tight">
                       {formatRp(profitOwnerSetelahBawa)}
-                    </p>
-                    <p className="text-[10px] text-gray-500 break-words">
-                      {formatRp(profitOwnerMurni)} +{" "}
-                      {formatRp(nilaiBawaPenggarap)} −{" "}
-                      {formatRp(nilaiBawaOwner + nilaiBawaLain * 0.5)}
                     </p>
                   </div>
                   <div className="text-center min-w-0">
                     <p className="text-xs text-orange-800">👨‍🌾 PENGGARAP</p>
-                    <p className="font-bold text-orange-900 text-base break-words leading-tight">
+                    <p className="font-bold text-orange-900 text-sm break-all leading-tight">
                       {formatRp(profitPenggarapSetelahBawa)}
-                    </p>
-                    <p className="text-[10px] text-gray-500 break-words">
-                      {formatRp(profitPenggarapMurni)} −{" "}
-                      {formatRp(nilaiBawaPenggarap)} +{" "}
-                      {formatRp(nilaiBawaOwner)} −{" "}
-                      {formatRp(nilaiBawaLain * 0.5)}
                     </p>
                   </div>
                 </div>
@@ -351,141 +352,163 @@ export default async function DetailPanenPage({
           </div>
         )}
 
-        {/* ===== POTONGAN HUTANG (#8 highlight) ===== */}
-        {potonganHutang > 0 && (
-          <div className="pt-4 border-t">
-            <div className="bg-red-50 border-2 border-red-300 rounded-xl p-4">
-              <div className="flex items-center gap-2 mb-3 flex-wrap">
-                <p className="text-sm text-red-700 uppercase font-bold">
-                  💸 Potongan Hutang Otomatis
-                </p>
+        {/* ✅ POTONG HUTANG — SELALU TAMPIL */}
+        <div className="pt-4 border-t">
+          <div
+            className={`border-2 rounded-xl p-4 ${
+              potonganHutang > 0
+                ? "bg-red-50 border-red-300"
+                : "bg-blue-50 border-blue-200"
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <p
+                className={`text-sm uppercase font-bold ${
+                  potonganHutang > 0 ? "text-red-700" : "text-blue-700"
+                }`}
+              >
+                💸 Potong Hutang Otomatis
+              </p>
+              {potonganHutang > 0 ? (
                 <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold">
                   FITUR UNGGULAN
                 </span>
-              </div>
+              ) : (
+                <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-bold">
+                  FITUR PREMIUM
+                </span>
+              )}
+            </div>
 
-              <p className="text-[11px] text-red-700 italic mb-3">
-                Profit penggarap otomatis dipotong untuk bayar hutang — owner
-                menerima penggantinya.
-              </p>
-
-              <div className="space-y-2 text-sm mb-4">
-                <div className="flex justify-between gap-2 flex-wrap">
-                  <span className="text-gray-600">Hutang sebelum:</span>
-                  <span className="font-medium break-words">
-                    {formatRp(totalHutangSebelum)}
-                  </span>
-                </div>
-                <div className="flex justify-between gap-2 flex-wrap">
-                  <span className="text-gray-600">
-                    Dipotong dari profit penggarap:
-                  </span>
-                  <span className="font-bold text-red-600 break-words">
-                    − {formatRp(potonganHutang)}
-                  </span>
-                </div>
-                <div className="flex justify-between pt-2 border-t gap-2 flex-wrap">
-                  <span className="text-gray-600 font-medium">
-                    Sisa hutang:
-                  </span>
-                  <span
-                    className={`font-bold break-words ${
-                      sisaHutangSesudah > 0
-                        ? "text-red-600"
-                        : "text-green-600"
-                    }`}
-                  >
-                    {sisaHutangSesudah > 0
-                      ? formatRp(sisaHutangSesudah)
-                      : "LUNAS ✅"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="bg-white border-2 border-green-300 rounded-lg p-3">
-                <p className="text-xs font-bold text-green-800 uppercase mb-2">
-                  ✅ Total Diterima (Final)
+            {potonganHutang > 0 ? (
+              <>
+                <p className="text-[11px] text-red-700 italic mb-3">
+                  Profit penggarap otomatis dipotong untuk bayar hutang — owner
+                  menerima penggantinya.
                 </p>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-green-50 rounded-lg p-3 text-center border border-green-200 min-w-0">
-                    <p className="text-xs text-green-800 font-medium">
-                      👤 OWNER
-                    </p>
-                    <p className="font-bold text-green-900 text-base mt-1 leading-tight break-words">
-                      {formatRp(profitOwnerFinal)}
-                    </p>
-                    <p className="text-[10px] text-green-700 mt-1 break-words">
-                      = {formatRp(profitOwnerSetelahBawa)} +{" "}
-                      {formatRp(potonganHutang)}
-                    </p>
+
+                <div className="space-y-2 text-sm mb-4">
+                  <div className="flex justify-between gap-2 flex-wrap">
+                    <span className="text-gray-600">Hutang sebelum:</span>
+                    <span className="font-medium break-all">
+                      {formatRp(totalHutangSebelum)}
+                    </span>
                   </div>
-                  <div className="bg-orange-50 rounded-lg p-3 text-center border border-orange-200 min-w-0">
-                    <p className="text-xs text-orange-800 font-medium">
-                      👨‍🌾 PENGGARAP
-                    </p>
-                    <p className="font-bold text-orange-900 text-base mt-1 leading-tight break-words">
-                      {formatRp(profitPenggarapFinal)}
-                    </p>
-                    <p className="text-[10px] text-orange-700 mt-1 break-words">
-                      = {formatRp(profitPenggarapSetelahBawa)} −{" "}
-                      {formatRp(potonganHutang)}
-                    </p>
+                  <div className="flex justify-between gap-2 flex-wrap">
+                    <span className="text-gray-600">
+                      Dipotong dari profit penggarap:
+                    </span>
+                    <span className="font-bold text-red-600 break-all">
+                      − {formatRp(potonganHutang)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between pt-2 border-t gap-2 flex-wrap">
+                    <span className="text-gray-600 font-medium">
+                      Sisa hutang:
+                    </span>
+                    <span
+                      className={`font-bold break-all ${
+                        sisaHutangSesudah > 0
+                          ? "text-red-600"
+                          : "text-green-600"
+                      }`}
+                    >
+                      {sisaHutangSesudah > 0
+                        ? formatRp(sisaHutangSesudah)
+                        : "LUNAS ✅"}
+                    </span>
                   </div>
                 </div>
-              </div>
 
-              <p className="text-xs text-red-700 mt-3 italic">
-                💡 Potongan hutang mengurangi profit penggarap dan menambah
-                profit owner (karena hutang dibayar ke owner).
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* ===== TOTAL FINAL TANPA POTONG HUTANG ===== */}
-        {potonganHutang === 0 && (
-          <div className="pt-4 border-t">
-            <div className="bg-green-50 border-2 border-green-300 rounded-xl p-4">
-              <p className="text-xs font-bold text-green-800 uppercase mb-2">
-                ✅ Total Diterima
-              </p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white rounded-lg p-3 text-center border border-green-200 min-w-0">
-                  <p className="text-xs text-green-800 font-medium">👤 OWNER</p>
-                  <p className="font-bold text-green-900 text-base mt-1 leading-tight break-words">
-                    {formatRp(profitOwnerFinal)}
+                <div className="bg-white border-2 border-green-300 rounded-lg p-3">
+                  <p className="text-xs font-bold text-green-800 uppercase mb-2">
+                    ✅ Total Diterima (Final)
                   </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-green-50 rounded-lg p-3 text-center border border-green-200 min-w-0">
+                      <p className="text-xs text-green-800 font-medium">
+                        👤 OWNER
+                      </p>
+                      <p className="font-bold text-green-900 text-sm mt-1 leading-tight break-all">
+                        {formatRp(profitOwnerFinal)}
+                      </p>
+                      <p className="text-[10px] text-green-700 mt-1 break-all">
+                        = {formatRp(profitOwnerSetelahBawa)} +{" "}
+                        {formatRp(potonganHutang)}
+                      </p>
+                    </div>
+                    <div className="bg-orange-50 rounded-lg p-3 text-center border border-orange-200 min-w-0">
+                      <p className="text-xs text-orange-800 font-medium">
+                        👨‍🌾 PENGGARAP
+                      </p>
+                      <p className="font-bold text-orange-900 text-sm mt-1 leading-tight break-all">
+                        {formatRp(profitPenggarapFinal)}
+                      </p>
+                      <p className="text-[10px] text-orange-700 mt-1 break-all">
+                        = {formatRp(profitPenggarapSetelahBawa)} −{" "}
+                        {formatRp(potonganHutang)}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <div className="bg-white rounded-lg p-3 text-center border border-orange-200 min-w-0">
-                  <p className="text-xs text-orange-800 font-medium">
-                    👨‍🌾 PENGGARAP
-                  </p>
-                  <p className="font-bold text-orange-900 text-base mt-1 leading-tight break-words">
-                    {formatRp(profitPenggarapFinal)}
-                  </p>
+              </>
+            ) : adaHutangSekarang || totalHutangSebelum > 0 ? (
+              <>
+                <p className="text-[11px] text-blue-700 italic mb-3">
+                  Panen ini <strong>tidak</strong> memotong hutang. Tapi
+                  penggarap masih punya hutang aktif yang bisa dipotong
+                  otomatis.
+                </p>
+
+                <div className="bg-white rounded-lg p-3 border border-blue-200 mb-3">
+                  <div className="flex justify-between gap-2 text-sm flex-wrap">
+                    <span className="text-gray-600">
+                      Hutang aktif saat ini:
+                    </span>
+                    <span className="font-bold text-red-600 break-all">
+                      {formatRp(totalHutangSekarang || totalHutangSebelum)}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* ===== INFO JIKA PUNYA HUTANG TAPI TIDAK DIPOTONG ===== */}
-        {potonganHutang === 0 && totalHutangSebelum > 0 && (
-          <div className="pt-4 border-t">
-            <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-3 text-xs text-blue-800">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-base">💡</span>
-                <strong>Peluang Potong Hutang Otomatis</strong>
-              </div>
-              Saat panen ini, <strong>{penggarap?.nama}</strong> masih punya
-              hutang <strong>{formatRp(totalHutangSebelum)}</strong> yang{" "}
-              <strong>belum dipotong</strong>. Edit panen ini untuk mengaktifkan
-              potong hutang otomatis.
-            </div>
-          </div>
-        )}
+                <div className="text-xs text-blue-800">
+                  💡 <strong>Cara aktifkan:</strong> Klik{" "}
+                  <strong>Edit Panen</strong> di bawah → centang{" "}
+                  <strong>"Potong Hutang Otomatis"</strong> → simpan.
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-[11px] text-blue-700 italic mb-3">
+                  Fitur ini akan{" "}
+                  <strong>otomatis memotong hutang penggarap</strong> dari hasil
+                  panen kalau penggarap punya hutang aktif.
+                </p>
 
-        {/* ===== RIWAYAT PERUBAHAN HUTANG ===== */}
+                <div className="bg-white rounded-lg p-3 border border-green-200 mb-3">
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-green-600 text-lg">✅</span>
+                    <span className="text-green-800 font-medium">
+                      {penggarap?.nama} tidak punya hutang aktif saat ini
+                    </span>
+                  </div>
+                </div>
+
+                <div className="text-xs text-blue-800 space-y-1">
+                  <p className="font-bold">💡 Cara kerja fitur:</p>
+                  <ul className="list-disc list-inside space-y-0.5 ml-1">
+                    <li>Penggarap punya hutang (misal beli pupuk)</li>
+                    <li>Saat panen, profit penggarap otomatis dipotong</li>
+                    <li>Hutang berkurang, owner terima pengganti</li>
+                    <li>Tidak perlu bayar manual lagi ✅</li>
+                  </ul>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* RIWAYAT PERUBAHAN HUTANG — ✅ FIX NaN */}
         {log.length > 0 && (
           <div className="pt-4 border-t">
             <p className="text-xs text-gray-500 uppercase mb-3">
@@ -505,23 +528,25 @@ export default async function DetailPanenPage({
                         <div className="font-bold text-blue-800 flex justify-between flex-wrap gap-1">
                           <span>✏️ Edit Panen</span>
                           <span className="text-blue-600 font-normal">
-                            {new Date(entry.waktu).toLocaleString("id-ID", {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
+                            {entry.waktu
+                              ? new Date(entry.waktu).toLocaleString("id-ID", {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "-"}
                           </span>
                         </div>
                         <div className="mt-2 text-blue-900">
                           Potongan lama:{" "}
                           <strong>
-                            {formatRp(Number(entry.potongan_lama))}
+                            {formatRp(Number(entry.potongan_lama || 0))}
                           </strong>{" "}
                           → Potongan baru:{" "}
                           <strong>
-                            {formatRp(Number(entry.potongan_baru))}
+                            {formatRp(Number(entry.potongan_baru || 0))}
                           </strong>
                         </div>
                         {entry.revert_log && entry.revert_log.length > 0 && (
@@ -537,16 +562,20 @@ export default async function DetailPanenPage({
                             )
                           </div>
                         )}
-                        {entry.potong_baru_log &&
-                          entry.potong_baru_log.length > 0 && (
-                            <div className="mt-0.5 text-red-700">
-                              💸 Potong ulang {entry.potong_baru_log.length}{" "}
-                              hutang
-                            </div>
-                          )}
                       </div>
                     );
                   }
+                  // ✅ FIX: Fallback jumlah || jumlah_dipotong
+                  const jumlah =
+                    entry.jumlah !== undefined
+                      ? Number(entry.jumlah)
+                      : entry.jumlah_dipotong !== undefined
+                      ? Number(entry.jumlah_dipotong)
+                      : 0;
+
+                  const tanggalHutang = entry.tanggal_hutang || "-";
+                  const keperluan = entry.keperluan || "";
+
                   return (
                     <div
                       key={i}
@@ -555,24 +584,24 @@ export default async function DetailPanenPage({
                       <div className="font-bold text-red-800 flex justify-between flex-wrap gap-1">
                         <span>💸 Potong Hutang</span>
                         <span className="text-red-600 font-normal">
-                          {new Date(entry.waktu_potong).toLocaleString(
-                            "id-ID",
-                            {
-                              day: "numeric",
-                              month: "short",
-                              year: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            }
-                          )}
+                          {entry.waktu_potong
+                            ? new Date(entry.waktu_potong).toLocaleString(
+                                "id-ID",
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  year: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )
+                            : "-"}
                         </span>
                       </div>
                       <div className="mt-1 text-red-900">
-                        Hutang {entry.tanggal_hutang}
-                        {entry.keperluan ? ` (${entry.keperluan})` : ""} —{" "}
-                        <strong>
-                          {formatRp(Number(entry.jumlah_dipotong))}
-                        </strong>
+                        Hutang {tanggalHutang}
+                        {keperluan ? ` (${keperluan})` : ""} —{" "}
+                        <strong>{formatRp(jumlah)}</strong>
                       </div>
                     </div>
                   );

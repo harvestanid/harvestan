@@ -57,7 +57,6 @@ export async function POST() {
     await supabase.from("penggaraps").delete().eq("user_id", user.id).eq("is_demo", true);
     await supabase.from("categories").delete().eq("user_id", user.id).eq("is_demo", true);
 
-    // Load data demo
     const filePath = path.join(process.cwd(), "public", "demo-data.json");
     const raw = fs.readFileSync(filePath, "utf8");
     const demoData: DemoData = JSON.parse(raw);
@@ -100,7 +99,7 @@ export async function POST() {
       });
     }
 
-    // Insert Categories (threshold produktivitas demo)
+    // Insert Categories — threshold produktivitas demo (#12)
     for (const c of demoData.categories || []) {
       await supabase.from("categories").insert({
         user_id: user.id,
@@ -112,7 +111,27 @@ export async function POST() {
       });
     }
 
-    // Insert Harvests — baca potongan_hutang + log dari JSON
+    // Insert Debts — simpan mapping ID lama → ID baru
+    for (const d of demoData.debts) {
+      const newDebtId = genUUID();
+      mapDebt[d.id] = newDebtId;
+      const newPenggarapId = mapPenggarap[d.penggarap_id];
+
+      await supabase.from("debts").insert({
+        id: newDebtId,
+        user_id: user.id,
+        penggarap_id: newPenggarapId,
+        tanggal: d.tanggal,
+        jumlah: d.jumlah,
+        dibayar: d.dibayar || 0,
+        sisa: d.sisa !== undefined ? d.sisa : d.jumlah,
+        keperluan: d.keperluan,
+        log_perubahan: d.log_perubahan || [],
+        is_demo: true,
+      });
+    }
+
+    // Insert Harvests — baca potongan_hutang dari JSON (#13)
     const harvestsBatch = demoData.harvests.map((h) => {
       const pendapatan = Number(h.hasil_kg) * Number(h.harga_gabah);
       const biaya = Number(h.hasil_kg) * Number(h.biaya_panen_per_kg);
@@ -122,7 +141,18 @@ export async function POST() {
       const persenPenggarap = Number(h.persen_penggarap || 50) / 100;
 
       const profitOwner = Number(h.profit_owner || profit * persenOwner);
-      const profitPenggarap = Number(h.profit_penggarap || profit * persenPenggarap);
+      const profitPenggarap = Number(
+        h.profit_penggarap || profit * persenPenggarap
+      );
+
+      // Remap debt_id di log ke ID baru
+      const potonganLog = Array.isArray(h.potongan_hutang_log)
+        ? h.potongan_hutang_log.map((log: any) => ({
+            ...log,
+            debt_id: mapDebt[log.debt_id] || log.debt_id,
+            waktu_potong: new Date().toISOString(),
+          }))
+        : [];
 
       return {
         id: genUUID(),
@@ -146,7 +176,7 @@ export async function POST() {
         profit_owner: profitOwner,
         profit_penggarap: profitPenggarap,
         potongan_hutang: h.potongan_hutang || 0,
-        potongan_hutang_log: h.potongan_hutang_log || [],
+        potongan_hutang_log: potonganLog,
         total_hutang_sebelum: h.total_hutang_sebelum || 0,
         sisa_hutang_sesudah: h.sisa_hutang_sesudah || 0,
         catatan: null,
@@ -157,26 +187,6 @@ export async function POST() {
     for (let i = 0; i < harvestsBatch.length; i += 50) {
       const chunk = harvestsBatch.slice(i, i + 50);
       await supabase.from("harvests").insert(chunk);
-    }
-
-    // Insert Debts — dengan dibayar & sisa dari JSON
-    for (const d of demoData.debts) {
-      const newDebtId = genUUID();
-      mapDebt[d.id] = newDebtId;
-      const newPenggarapId = mapPenggarap[d.penggarap_id];
-
-      await supabase.from("debts").insert({
-        id: newDebtId,
-        user_id: user.id,
-        penggarap_id: newPenggarapId,
-        tanggal: d.tanggal,
-        jumlah: d.jumlah,
-        dibayar: d.dibayar || 0,
-        sisa: d.sisa !== undefined ? d.sisa : d.jumlah,
-        keperluan: d.keperluan,
-        log_perubahan: d.log_perubahan || [],
-        is_demo: true,
-      });
     }
 
     // Insert Musim Cabai

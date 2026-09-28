@@ -30,7 +30,7 @@ export type ProduktivitasPerKomoditas = {
   kategoriRata: KategoriInfo | null;
 };
 
-// ✅ FIX: filter user_id + is_demo supaya tidak nyampur data user lain
+// ✅ Filter user_id + is_demo
 export async function getKategoriList(): Promise<Kategori[]> {
   const supabase = await createClient();
 
@@ -84,7 +84,6 @@ export async function getKategoriByKomoditas(
   return data as Kategori | null;
 }
 
-// Hitung kategori dari produktivitas
 export function hitungKategori(
   produktivitas: number,
   kategori: Kategori | null | undefined
@@ -137,75 +136,121 @@ export function hitungKategori(
   };
 }
 
+function normalisasiKomoditas(kom: string | null | undefined): string {
+  if (!kom) return "padi";
+  if (kom === "cabai") return "cabai_rawit";
+  return kom;
+}
+
+// =============================================================
 // Helper hitung produktivitas per komoditas
+// ✅ Cabai: aggregate per musim (bukan per panen)
+// =============================================================
 export function hitungProduktivitasPerKomoditas(
   harvests: any[],
   lands: { id: string; luas: number }[],
   kategoriList: Kategori[]
 ): ProduktivitasPerKomoditas[] {
-  const data: Record<
-    string,
-    {
-      totalHasil: number;
-      totalProdSum: number;
-      jmlPanen: number;
-      panenList: { tanggal: string; prod: number }[];
-    }
-  > = {};
+  const perKomoditas: Record<string, any[]> = {};
 
   harvests.forEach((h) => {
-    const kom = h.komoditas || "padi";
+    const kom = normalisasiKomoditas(h.komoditas);
     const land = lands.find((l) => l.id === h.land_id);
     if (!land || Number(land.luas) <= 0) return;
 
-    const prod = Number(h.hasil_kg) / Number(land.luas);
-
-    if (!data[kom]) {
-      data[kom] = {
-        totalHasil: 0,
-        totalProdSum: 0,
-        jmlPanen: 0,
-        panenList: [],
-      };
-    }
-
-    data[kom].totalHasil += Number(h.hasil_kg);
-    data[kom].totalProdSum += prod;
-    data[kom].jmlPanen += 1;
-    data[kom].panenList.push({ tanggal: h.tanggal, prod });
+    if (!perKomoditas[kom]) perKomoditas[kom] = [];
+    perKomoditas[kom].push({ ...h, _landLuas: Number(land.luas) });
   });
 
   const hasil: ProduktivitasPerKomoditas[] = [];
 
-  Object.entries(data).forEach(([kom, d]) => {
-    const rata = d.jmlPanen > 0 ? d.totalProdSum / d.jmlPanen : 0;
-
-    const sorted = [...d.panenList].sort(
-      (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
-    );
-    const terakhir = sorted[0]?.prod || 0;
-
+  Object.entries(perKomoditas).forEach(([kom, panenList]) => {
     const kat = kategoriList.find((k) => k.komoditas === kom) || null;
 
-    hasil.push({
-      komoditas: kom,
-      produktivitasTerakhir: terakhir,
-      produktivitasRata: rata,
-      jmlPanen: d.jmlPanen,
-      totalHasilKg: d.totalHasil,
-      kategoriTerakhir: hitungKategori(terakhir, kat),
-      kategoriRata: hitungKategori(rata, kat),
-    });
+    // ✅ Khusus cabai: aggregate PER MUSIM
+    if (kom === "cabai_rawit") {
+      const musimMap = new Map<
+        string,
+        { totalHasil: number; luasSet: Set<number>; jmlPanen: number }
+      >();
+
+      panenList.forEach((h) => {
+        const musim = h.musim || "Tanpa Musim";
+        if (!musimMap.has(musim)) {
+          musimMap.set(musim, { totalHasil: 0, luasSet: new Set(), jmlPanen: 0 });
+        }
+        const m = musimMap.get(musim)!;
+        m.totalHasil += Number(h.hasil_kg);
+        if (h._landLuas > 0) m.luasSet.add(h._landLuas);
+        m.jmlPanen += 1;
+      });
+
+      let totalHasilAll = 0;
+      let totalJmlPanen = 0;
+      const produktivitasPerMusim: number[] = [];
+
+      musimMap.forEach((m) => {
+        const luasMax = Math.max(...Array.from(m.luasSet), 1);
+        produktivitasPerMusim.push(m.totalHasil / luasMax);
+        totalHasilAll += m.totalHasil;
+        totalJmlPanen += m.jmlPanen;
+      });
+
+      const rataProduktivitas =
+        produktivitasPerMusim.length > 0
+          ? produktivitasPerMusim.reduce((s, p) => s + p, 0) /
+            produktivitasPerMusim.length
+          : 0;
+
+      const terakhir =
+        produktivitasPerMusim.length > 0
+          ? produktivitasPerMusim[produktivitasPerMusim.length - 1]
+          : 0;
+
+      hasil.push({
+        komoditas: kom,
+        produktivitasTerakhir: terakhir,
+        produktivitasRata: rataProduktivitas,
+        jmlPanen: totalJmlPanen,
+        totalHasilKg: totalHasilAll,
+        kategoriTerakhir: hitungKategori(terakhir, kat),
+        kategoriRata: hitungKategori(rataProduktivitas, kat),
+      });
+    } else {
+      // Padi/Jagung/Kacang/Bawang: per panen
+      let totalHasil = 0;
+      let totalProdSum = 0;
+      let jmlPanen = 0;
+      const panenDetail: { tanggal: string; prod: number }[] = [];
+
+      panenList.forEach((h) => {
+        const prod = Number(h.hasil_kg) / h._landLuas;
+        totalHasil += Number(h.hasil_kg);
+        totalProdSum += prod;
+        jmlPanen += 1;
+        panenDetail.push({ tanggal: h.tanggal, prod });
+      });
+
+      const rata = jmlPanen > 0 ? totalProdSum / jmlPanen : 0;
+      const sorted = [...panenDetail].sort(
+        (a, b) =>
+          new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+      );
+      const terakhir = sorted[0]?.prod || 0;
+
+      hasil.push({
+        komoditas: kom,
+        produktivitasTerakhir: terakhir,
+        produktivitasRata: rata,
+        jmlPanen,
+        totalHasilKg: totalHasil,
+        kategoriTerakhir: hitungKategori(terakhir, kat),
+        kategoriRata: hitungKategori(rata, kat),
+      });
+    }
   });
 
-  const order = [
-    "padi",
-    "jagung",
-    "kacang_tanah",
-    "bawang_merah",
-    "cabai_rawit",
-    "cabai",
-  ];
+  const order = ["padi", "jagung", "kacang_tanah", "bawang_merah", "cabai_rawit"];
   hasil.sort((a, b) => {
     const ia = order.indexOf(a.komoditas);
     const ib = order.indexOf(b.komoditas);

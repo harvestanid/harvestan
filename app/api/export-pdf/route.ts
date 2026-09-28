@@ -21,6 +21,12 @@ const KOMODITAS_COLOR_RGB: Record<string, [number, number, number]> = {
   cabai: [192, 57, 43],
 };
 
+function normalisasiKomoditas(kom: string | null | undefined): string {
+  if (!kom) return "padi";
+  if (kom === "cabai") return "cabai_rawit";
+  return kom;
+}
+
 function formatRp(n: number) {
   return "Rp " + Math.round(n).toLocaleString("id-ID");
 }
@@ -90,6 +96,16 @@ function getKategoriFromThreshold(
   };
 }
 
+function cariKategori(kategoriList: any[], komoditas: string): any | null {
+  const norm = normalisasiKomoditas(komoditas);
+  let found = kategoriList.find((k) => k.komoditas === norm);
+  if (found) return found;
+  found = kategoriList.find(
+    (k) => normalisasiKomoditas(k.komoditas) === norm
+  );
+  return found || null;
+}
+
 function drawStar(pdf: jsPDF, cx: number, cy: number, r: number) {
   const points: [number, number][] = [];
   for (let i = 0; i < 10; i++) {
@@ -123,51 +139,13 @@ function drawStars(
   x: number,
   y: number,
   count: number,
-  size: number = 2
+  size: number = 1.6
 ): number {
   for (let i = 0; i < count; i++) {
-    const cx = x + i * (size * 2 + 1);
+    const cx = x + i * (size * 2 + 0.8);
     drawStar(pdf, cx, y, size);
   }
-  return x + count * (size * 2 + 1);
-}
-
-// ✅ Watermark DEMO di setiap halaman
-function addDemoWatermark(pdf: jsPDF) {
-  const totalPages = pdf.getNumberOfPages();
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-
-  for (let i = 1; i <= totalPages; i++) {
-    pdf.setPage(i);
-    pdf.setTextColor(230, 230, 230);
-    pdf.setFontSize(70);
-    pdf.setFont("helvetica", "bold");
-    pdf.text("DEMO", pageWidth / 2, pageHeight / 2, {
-      align: "center",
-      angle: 45,
-    });
-  }
-}
-
-// ✅ Footer DEMO + CTA upgrade
-function addDemoFooter(pdf: jsPDF) {
-  const totalPages = pdf.getNumberOfPages();
-  const pageWidth = pdf.internal.pageSize.getWidth();
-  const pageHeight = pdf.internal.pageSize.getHeight();
-
-  for (let i = 1; i <= totalPages; i++) {
-    pdf.setPage(i);
-    pdf.setFontSize(7);
-    pdf.setTextColor(200, 40, 40);
-    pdf.setFont("helvetica", "bold");
-    pdf.text(
-      "DATA DEMO - BUKAN DATA ASLI - Upgrade Premium untuk export data Anda",
-      pageWidth / 2,
-      pageHeight - 4,
-      { align: "center" }
-    );
-  }
+  return x + count * (size * 2 + 0.8);
 }
 
 function hitungProduktivitasPerKomoditasPDF(
@@ -175,6 +153,17 @@ function hitungProduktivitasPerKomoditasPDF(
   lands: { id: string; luas: number }[],
   kategoriList: any[]
 ) {
+  const nonCabai: any[] = [];
+  const cabai: any[] = [];
+
+  harvests.forEach((h) => {
+    const kom = normalisasiKomoditas(h.komoditas);
+    if (kom === "cabai_rawit") cabai.push(h);
+    else nonCabai.push({ ...h, _normKom: kom });
+  });
+
+  const hasil: any[] = [];
+
   const data: Record<
     string,
     {
@@ -185,8 +174,8 @@ function hitungProduktivitasPerKomoditasPDF(
     }
   > = {};
 
-  harvests.forEach((h) => {
-    const kom = h.komoditas || "padi";
+  nonCabai.forEach((h) => {
+    const kom = h._normKom;
     const land = lands.find((l) => l.id === h.land_id);
     if (!land || Number(land.luas) <= 0) return;
 
@@ -210,14 +199,13 @@ function hitungProduktivitasPerKomoditasPDF(
     });
   });
 
-  const hasil: any[] = [];
   Object.entries(data).forEach(([kom, d]) => {
     const rata = d.jmlPanen > 0 ? d.totalProdSum / d.jmlPanen : 0;
     const sorted = [...d.panenList].sort(
       (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
     );
     const terakhir = sorted[0]?.prod || 0;
-    const kat = kategoriList.find((k) => k.komoditas === kom) || null;
+    const kat = cariKategori(kategoriList, kom);
 
     const panenAsc = [...d.panenList].sort(
       (a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime()
@@ -235,13 +223,95 @@ function hitungProduktivitasPerKomoditasPDF(
     });
   });
 
+  // ✅ Cabai: per musim. Produktivitas = TOTAL seluruh panen musim ÷ luas
+  if (cabai.length > 0) {
+    const musimMap = new Map<
+      string,
+      {
+        totalHasil: number;
+        luasSet: Set<number>;
+        jmlPanen: number;
+        tanggalAkhir: string;
+      }
+    >();
+
+    cabai.forEach((h) => {
+      const musim = h.musim || "Tanpa Musim";
+      const land = lands.find((l) => l.id === h.land_id);
+      const luas = land ? Number(land.luas) : 0;
+
+      if (!musimMap.has(musim)) {
+        musimMap.set(musim, {
+          totalHasil: 0,
+          luasSet: new Set(),
+          jmlPanen: 0,
+          tanggalAkhir: h.tanggal,
+        });
+      }
+      const m = musimMap.get(musim)!;
+      m.totalHasil += Number(h.hasil_kg);
+      if (luas > 0) m.luasSet.add(luas);
+      m.jmlPanen += 1;
+      if (new Date(h.tanggal).getTime() > new Date(m.tanggalAkhir).getTime()) {
+        m.tanggalAkhir = h.tanggal;
+      }
+    });
+
+    // ✅ Untuk cabai: produktivitas per musim = TOTAL ÷ luas
+    const produktivitasPerMusim: number[] = [];
+    const panenList: any[] = [];
+    let totalHasilAll = 0;
+    let totalJmlPanen = 0;
+
+    musimMap.forEach((m) => {
+      const luas = Math.max(...Array.from(m.luasSet), 1);
+      const prod = m.totalHasil / luas;
+      produktivitasPerMusim.push(prod);
+      totalHasilAll += m.totalHasil;
+      totalJmlPanen += m.jmlPanen;
+      panenList.push({
+        tanggal: m.tanggalAkhir,
+        prod,
+        hasil: m.totalHasil,
+      });
+    });
+
+    // ✅ "Rata-rata" untuk cabai = rata-rata produktivitas per musim
+    const rataProd =
+      produktivitasPerMusim.length > 0
+        ? produktivitasPerMusim.reduce((s, p) => s + p, 0) /
+          produktivitasPerMusim.length
+        : 0;
+
+    const terakhir =
+      produktivitasPerMusim.length > 0
+        ? produktivitasPerMusim[produktivitasPerMusim.length - 1]
+        : 0;
+
+    const kat = cariKategori(kategoriList, "cabai_rawit");
+
+    const panenAsc = [...panenList].sort(
+      (a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime()
+    );
+
+    hasil.push({
+      komoditas: "cabai_rawit",
+      produktivitasTerakhir: terakhir,
+      produktivitasRata: rataProd,
+      jmlPanen: totalJmlPanen,
+      totalHasilKg: totalHasilAll,
+      kategoriTerakhir: getKategoriFromThreshold(terakhir, kat),
+      kategoriRata: getKategoriFromThreshold(rataProd, kat),
+      panenAsc,
+    });
+  }
+
   const order = [
     "padi",
     "jagung",
     "kacang_tanah",
     "bawang_merah",
     "cabai_rawit",
-    "cabai",
   ];
   hasil.sort((a, b) => {
     const ia = order.indexOf(a.komoditas);
@@ -389,31 +459,7 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // ✅ FIX: cek filter demo + premium
     const filter = await getDataFilter(user.id);
-
-    // Cek premium status
-    const { data: sub } = await supabase
-      .from("subscriptions")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("status", "aktif")
-      .maybeSingle();
-
-    const isPremiumActive = sub
-      ? new Date(sub.tanggal_berakhir).getTime() > Date.now()
-      : false;
-
-    // ✅ Akses kalau premium ATAU mode demo
-    if (!isPremiumActive && !filter.is_demo) {
-      return NextResponse.json(
-        {
-          error:
-            "Fitur ini premium. Upgrade atau coba di mode demo untuk preview.",
-        },
-        { status: 403 }
-      );
-    }
 
     const { data: penggarap } = await supabase
       .from("penggaraps")
@@ -561,6 +607,7 @@ export async function GET(request: Request) {
 
     let yPos = margin;
 
+    // HEADER
     pdf.setFillColor(44, 94, 46);
     pdf.rect(0, 0, pageWidth, 30, "F");
 
@@ -579,6 +626,7 @@ export async function GET(request: Request) {
 
     yPos = 38;
 
+    // DATA PENGGARAP
     pdf.setTextColor(44, 94, 46);
     pdf.setFontSize(11);
     pdf.setFont("helvetica", "bold");
@@ -624,6 +672,7 @@ export async function GET(request: Request) {
 
     yPos += 10;
 
+    // RINGKASAN KEUANGAN
     pdf.setFontSize(11);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(44, 94, 46);
@@ -644,7 +693,7 @@ export async function GET(request: Request) {
     pdf.setFontSize(8);
     pdf.setFont("helvetica", "normal");
     pdf.text("PROFIT OWNER", margin + 3, yPos + 5);
-    pdf.setFontSize(13);
+    pdf.setFontSize(12);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(21, 87, 36);
     pdf.text(formatRp(totalProfitOwner), margin + 3, yPos + 13);
@@ -657,7 +706,7 @@ export async function GET(request: Request) {
     pdf.setFontSize(8);
     pdf.setFont("helvetica", "normal");
     pdf.text("PROFIT PENGGARAP", margin + cardWidth + 9, yPos + 5);
-    pdf.setFontSize(13);
+    pdf.setFontSize(12);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(230, 81, 0);
     pdf.text(
@@ -676,7 +725,7 @@ export async function GET(request: Request) {
     pdf.setFontSize(8);
     pdf.setFont("helvetica", "normal");
     pdf.text(`HUTANG AKTIF (${hutangAktif.length})`, margin + 3, yPos + 5);
-    pdf.setFontSize(13);
+    pdf.setFontSize(12);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(183, 28, 28);
     pdf.text(formatRp(totalHutangAktif), margin + 3, yPos + 13);
@@ -693,14 +742,14 @@ export async function GET(request: Request) {
       margin + cardWidth + 9,
       yPos + 5
     );
-    pdf.setFontSize(13);
+    pdf.setFontSize(12);
     pdf.setFont("helvetica", "bold");
     pdf.setTextColor(13, 71, 161);
     pdf.text(formatKg(totalHasil), margin + cardWidth + 9, yPos + 13);
 
     yPos += cardHeight + 6;
 
-    pdf.setFontSize(9);
+    pdf.setFontSize(8);
     pdf.setFont("helvetica", "normal");
     pdf.setTextColor(100, 100, 100);
     pdf.text(
@@ -712,7 +761,7 @@ export async function GET(request: Request) {
       margin,
       yPos
     );
-    yPos += 5;
+    yPos += 4;
     pdf.text(
       `Total Potongan Hutang: ${formatRp(
         totalPotonganHutang
@@ -724,6 +773,7 @@ export async function GET(request: Request) {
     );
     yPos += 10;
 
+    // ✅ EVALUASI PRODUKTIVITAS — FIX LAYOUT (jarak lega)
     if (produktivitasPerKom.length > 0) {
       if (yPos > pageHeight - 80) {
         pdf.addPage();
@@ -739,30 +789,31 @@ export async function GET(request: Request) {
 
       yPos += 6;
 
-      pdf.setFontSize(8);
+      pdf.setFontSize(7);
       pdf.setFont("helvetica", "italic");
       pdf.setTextColor(120, 120, 120);
       pdf.text(
-        "* Setiap komoditas dihitung terpisah. ⭐ = kategori, ! = perlu pendampingan",
+        "* Setiap komoditas dihitung terpisah. Cabai dihitung per musim (total panen dibagi luas).",
         margin,
         yPos
       );
       yPos += 5;
 
+      // Header tabel
       pdf.setFillColor(240, 247, 237);
       pdf.rect(margin, yPos, contentWidth, 8, "F");
       pdf.setFontSize(8);
       pdf.setTextColor(44, 94, 46);
       pdf.setFont("helvetica", "bold");
 
-      const kc1 = margin + 2;
-      const kc2 = margin + 45;
-      const kc3 = margin + 75;
-      const kc4 = margin + 105;
-      const kc5 = margin + 135;
+      const kc1 = margin + 3;   // Komoditas
+      const kc2 = margin + 55;  // Jml Panen
+      const kc3 = margin + 80;  // Total Kg
+      const kc4 = margin + 115; // Rata-rata
+      const kc5 = margin + 145; // Kategori
 
       pdf.text("Komoditas", kc1, yPos + 5);
-      pdf.text("Jml Panen", kc2, yPos + 5);
+      pdf.text("Jml", kc2, yPos + 5);
       pdf.text("Total (Kg)", kc3, yPos + 5);
       pdf.text("Rata-rata (Kg/Ha)", kc4, yPos + 5);
       pdf.text("Kategori", kc5, yPos + 5);
@@ -774,55 +825,57 @@ export async function GET(request: Request) {
       pdf.setFontSize(9);
 
       produktivitasPerKom.forEach((pk: any, idx: number) => {
-        if (yPos > pageHeight - 30) {
+        if (yPos > pageHeight - 25) {
           pdf.addPage();
           yPos = margin;
         }
 
+        // Tinggi baris lebih lega (8mm) untuk bintang
         if (idx % 2 === 0) {
           pdf.setFillColor(249, 250, 251);
-          pdf.rect(margin, yPos, contentWidth, 7, "F");
+          pdf.rect(margin, yPos, contentWidth, 9, "F");
         }
 
         const label = KOMODITAS_LABEL[pk.komoditas] || pk.komoditas;
 
         pdf.setFont("helvetica", "normal");
         pdf.setTextColor(60, 60, 60);
-        pdf.text(label, kc1 + 4, yPos + 5);
-        pdf.text(String(pk.jmlPanen), kc2, yPos + 5);
+        pdf.text(label.substring(0, 18), kc1, yPos + 5.5);
+        pdf.text(String(pk.jmlPanen), kc2, yPos + 5.5);
         pdf.text(
           Number(pk.totalHasilKg).toLocaleString("id-ID"),
           kc3,
-          yPos + 5
+          yPos + 5.5
         );
-        pdf.text(`${pk.produktivitasRata.toFixed(0)} Kg/Ha`, kc4, yPos + 5);
+        pdf.text(`${pk.produktivitasRata.toFixed(0)}`, kc4, yPos + 5.5);
 
         const kat = pk.kategoriRata;
         if (kat) {
           pdf.setTextColor(kat.color[0], kat.color[1], kat.color[2]);
           pdf.setFont("helvetica", "bold");
 
+          // ✅ Bintang di tengah baris (yPos + 5.5), lebih tinggi
           if (kat.bintang > 0) {
             pdf.setDrawColor(255, 193, 7);
             pdf.setLineWidth(0.3);
-            drawStars(pdf, kc5, yPos + 3.5, kat.bintang, 1.8);
-            pdf.text(kat.label, kc5 + 14, yPos + 5);
+            drawStars(pdf, kc5, yPos + 5.5, kat.bintang, 1.6);
           } else {
-            pdf.text("! ", kc5, yPos + 5);
-            pdf.text(kat.label, kc5 + 3, yPos + 5);
+            pdf.text("! ", kc5, yPos + 5.5);
+            pdf.text(kat.label, kc5 + 3, yPos + 5.5);
           }
         } else {
           pdf.setTextColor(160, 160, 160);
           pdf.setFont("helvetica", "italic");
-          pdf.text("(belum diatur)", kc5, yPos + 5);
+          pdf.text("(belum diatur)", kc5, yPos + 5.5);
         }
 
-        yPos += 7;
+        yPos += 9;
       });
 
-      yPos += 8;
+      yPos += 6;
     }
 
+    // REWARD & PENDAMPINGAN
     if (adaKategori) {
       if (yPos > pageHeight - 70) {
         pdf.addPage();
@@ -864,17 +917,17 @@ export async function GET(request: Request) {
           }
           pdf.setDrawColor(255, 193, 7);
           pdf.setLineWidth(0.3);
-          drawStars(pdf, margin + 2, yPos - 1, 3, 2.5);
+          drawStars(pdf, margin + 2, yPos - 0.5, 3, 2);
           pdf.setFont("helvetica", "bold");
           pdf.text(
             KOMODITAS_LABEL[r.komoditas] || r.komoditas,
-            margin + 24,
+            margin + 22,
             yPos
           );
           pdf.setFont("helvetica", "normal");
           pdf.text(
             `— ${r.nilai.toFixed(0)} Kg/Ha (${r.label})`,
-            margin + 70,
+            margin + 65,
             yPos
           );
           yPos += 6;
@@ -955,6 +1008,7 @@ export async function GET(request: Request) {
       yPos += 14;
     }
 
+    // GRAFIK PRODUKSI & PRODUKTIVITAS
     if (produktivitasPerKom.length > 0) {
       if (yPos > pageHeight - 100) {
         pdf.addPage();
@@ -974,7 +1028,7 @@ export async function GET(request: Request) {
       pdf.setFont("helvetica", "italic");
       pdf.setTextColor(120, 120, 120);
       pdf.text(
-        "* Setiap komoditas memiliki grafik sendiri (tidak dicampur)",
+        "* Setiap komoditas memiliki grafik sendiri. Cabai per musim.",
         margin,
         yPos
       );
@@ -1047,6 +1101,7 @@ export async function GET(request: Request) {
       });
     }
 
+    // DAFTAR LAHAN
     if (lands && lands.length > 0) {
       if (yPos > pageHeight - 60) {
         pdf.addPage();
@@ -1107,6 +1162,7 @@ export async function GET(request: Request) {
       yPos += 5;
     }
 
+    // RINGKASAN SETIAP PANEN
     if (harvests.length > 0) {
       if (yPos > pageHeight - 60) {
         pdf.addPage();
@@ -1137,7 +1193,7 @@ export async function GET(request: Request) {
         pdf.setFillColor(232, 245, 233);
         pdf.rect(margin, yPos, contentWidth, 5, "F");
         pdf.setTextColor(44, 94, 46);
-        pdf.setFontSize(8.5);
+        pdf.setFontSize(8);
         pdf.setFont("helvetica", "bold");
         pdf.text(
           `${idx + 1}. ${KOMODITAS_LABEL[h.komoditas] || h.komoditas}${
@@ -1261,6 +1317,7 @@ export async function GET(request: Request) {
       });
     }
 
+    // RINCIAN HUTANG
     if (debts && debts.length > 0) {
       if (yPos > pageHeight - 60) {
         pdf.addPage();
@@ -1358,6 +1415,7 @@ export async function GET(request: Request) {
       });
     }
 
+    // FOOTER
     const totalPages = pdf.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       pdf.setPage(i);
@@ -1384,17 +1442,11 @@ export async function GET(request: Request) {
       pdf.line(margin, footerY - 3, pageWidth - margin, footerY - 3);
     }
 
-    // ✅ Watermark DEMO kalau mode demo
-    if (filter.is_demo) {
-      addDemoWatermark(pdf);
-      addDemoFooter(pdf);
-    }
-
     const pdfBuffer = pdf.output("arraybuffer");
 
     const filename = `Laporan_${penggarap.nama.replace(/\s+/g, "_")}_${
       new Date().toISOString().split("T")[0]
-    }${filter.is_demo ? "_DEMO" : ""}.pdf`;
+    }.pdf`;
 
     return new NextResponse(pdfBuffer, {
       status: 200,

@@ -5,20 +5,25 @@ import { UpgradeModal } from "@/components/upgrade-modal";
 
 type Props = {
   isPremium: boolean;
+  isDemo?: boolean;
   feature: string;
   children: React.ReactNode;
-  inline?: boolean; // Kalau true, tampilkan tombol dengan badge 🔒 kecil
+  inline?: boolean;
 };
 
 export function ExportPremiumGate({
   isPremium,
+  isDemo = false,
   feature,
   children,
   inline = false,
 }: Props) {
   const [showModal, setShowModal] = useState(false);
 
-  if (isPremium) {
+  // ✅ Akses kalau premium ATAU mode demo
+  const isUnlocked = isPremium || isDemo;
+
+  if (isUnlocked) {
     return <>{children}</>;
   }
 
