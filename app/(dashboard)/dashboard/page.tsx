@@ -1,6 +1,7 @@
-import { createClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
+import { getDataFilter } from "@/lib/demo/demo-mode";
 
 const KOMODITAS_LABEL: Record<string, string> = {
   padi: "🌾 Padi",
@@ -10,12 +11,23 @@ const KOMODITAS_LABEL: Record<string, string> = {
   cabai_rawit: "🌶️ Cabai Rawit",
 };
 
+const KOMODITAS_COLOR: Record<string, string> = {
+  padi: "bg-green-100 text-green-800 border-green-300",
+  jagung: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  kacang_tanah: "bg-purple-100 text-purple-800 border-purple-300",
+  bawang_merah: "bg-red-100 text-red-800 border-red-300",
+  cabai_rawit: "bg-orange-100 text-orange-800 border-orange-300",
+};
+
 function formatRp(n: number) {
   return "Rp " + Math.round(n).toLocaleString("id-ID");
 }
 
-function formatKg(n: number) {
-  return Math.round(n).toLocaleString("id-ID") + " Kg";
+function formatRingkas(n: number): string {
+  if (n >= 1_000_000_000) return "Rp " + (n / 1_000_000_000).toFixed(1) + " M";
+  if (n >= 1_000_000) return "Rp " + (n / 1_000_000).toFixed(1) + " jt";
+  if (n >= 1_000) return "Rp " + (n / 1_000).toFixed(0) + " rb";
+  return "Rp " + n.toLocaleString("id-ID");
 }
 
 export default async function DashboardPage() {
@@ -26,36 +38,43 @@ export default async function DashboardPage() {
 
   if (!user) redirect("/login");
 
+  const filter = await getDataFilter(user.id);
+
   const { data: penggaraps } = await supabase
     .from("penggaraps")
-    .select("id, nama")
-    .eq("user_id", user.id);
+    .select("id, nama, kontak, alamat")
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo)
+    .order("nama");
 
   const { data: lands } = await supabase
     .from("lands")
     .select("id, penggarap_id, nama, luas")
-    .eq("user_id", user.id);
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo);
 
   const { data: harvests } = await supabase
     .from("harvests")
     .select("*")
-    .eq("user_id", user.id)
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo)
     .order("tanggal", { ascending: false });
 
   const { data: debts } = await supabase
     .from("debts")
     .select("*")
-    .eq("user_id", user.id);
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo);
 
+  // ===== HITUNG STATISTIK =====
   const totalPenggarap = penggaraps?.length || 0;
   const totalLahan = lands?.length || 0;
   const totalLuas = (lands || []).reduce((s, l) => s + Number(l.luas), 0);
   const totalPanen = harvests?.length || 0;
-  const totalHasilKg = (harvests || []).reduce(
+  const totalHasil = (harvests || []).reduce(
     (s, h) => s + Number(h.hasil_kg),
     0
   );
-
   const totalProfitOwner = (harvests || []).reduce(
     (s, h) => s + Number(h.profit_owner || 0),
     0
@@ -64,283 +83,378 @@ export default async function DashboardPage() {
     (s, h) => s + Number(h.profit_penggarap || 0),
     0
   );
+  const totalHutang = (debts || []).reduce((s, d) => {
+    const sisa = d.sisa !== undefined ? Number(d.sisa) : Number(d.jumlah);
+    return s + (sisa > 0 ? sisa : 0);
+  }, 0);
 
-  const hutangAktif = (debts || []).filter((d) => Number(d.sisa) > 0);
-  const totalHutangAktif = hutangAktif.reduce((s, d) => s + Number(d.sisa), 0);
-
-  const profitByPenggarap = new Map<string, { nama: string; profit: number }>();
-  (harvests || []).forEach((h) => {
-    const land = lands?.find((l) => l.id === h.land_id);
-    if (!land) return;
-    const p = penggaraps?.find((pg) => pg.id === land.penggarap_id);
-    if (!p) return;
-    const existing = profitByPenggarap.get(p.id) || {
-      nama: p.nama,
-      profit: 0,
-    };
-    existing.profit += Number(h.profit_owner || 0);
-    profitByPenggarap.set(p.id, existing);
-  });
-  const topPenggarap = Array.from(profitByPenggarap.entries())
-    .map(([id, data]) => ({ id, ...data }))
-    .sort((a, b) => b.profit - a.profit)
-    .slice(0, 5);
-
-  const now = new Date();
-  const bulanLabels: string[] = [];
-  const bulanData: number[] = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const label = d.toLocaleDateString("id-ID", {
-      month: "short",
-      year: "numeric",
-    });
-    bulanLabels.push(label);
-    const total = (harvests || [])
-      .filter((h) => {
-        const hd = new Date(h.tanggal);
-        return (
-          hd.getFullYear() === d.getFullYear() &&
-          hd.getMonth() === d.getMonth()
-        );
-      })
-      .reduce((s, h) => s + Number(h.hasil_kg), 0);
-    bulanData.push(total);
-  }
-  const maxBulan = Math.max(...bulanData, 1);
-
-  type Aktivitas = {
-    tipe: "panen" | "hutang";
-    tanggal: string;
-    deskripsi: string;
-    nilai: number;
-    penggarap: string;
-  };
-  const aktivitas: Aktivitas[] = [];
-
-  (harvests || []).slice(0, 5).forEach((h) => {
-    const land = lands?.find((l) => l.id === h.land_id);
-    const p = penggaraps?.find((pg) => pg.id === land?.penggarap_id);
-    aktivitas.push({
-      tipe: "panen",
-      tanggal: h.tanggal,
-      deskripsi: `${KOMODITAS_LABEL[h.komoditas] || h.komoditas} ${formatKg(
-        Number(h.hasil_kg)
-      )}`,
-      nilai: Number(h.hasil_kg),
-      penggarap: p?.nama || "?",
-    });
-  });
-
-  [...(debts || [])]
-    .sort(
-      (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
-    )
-    .slice(0, 5)
-    .forEach((d) => {
-      const p = penggaraps?.find((pg) => pg.id === d.penggarap_id);
-      aktivitas.push({
-        tipe: "hutang",
-        tanggal: d.tanggal,
-        deskripsi: d.keperluan || "Hutang baru",
-        nilai: Number(d.jumlah),
-        penggarap: p?.nama || "?",
-      });
-    });
-
-  aktivitas.sort(
-    (a, b) => new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+  const totalBawaPenggarap = (harvests || []).reduce(
+    (s, h) => s + Number(h.bawa_penggarap || 0),
+    0
   );
-  const aktivitasTerbaru = aktivitas.slice(0, 5);
+  const totalBawaOwner = (harvests || []).reduce(
+    (s, h) => s + Number(h.bawa_owner || 0),
+    0
+  );
 
-  const nama =
-    user.user_metadata?.nama || user.email?.split("@")[0] || "Petani";
+  // ===== TOP 5 PENGGARAP =====
+  type StatPenggarap = {
+    id: string;
+    nama: string;
+    totalHasil: number;
+    totalProfit: number;
+    jmlPanen: number;
+  };
+
+  const statsPenggarap: StatPenggarap[] = [];
+
+  (penggaraps || []).forEach((p) => {
+    const penggarapLands = (lands || []).filter(
+      (l) => l.penggarap_id === p.id
+    );
+    const landIds = penggarapLands.map((l) => l.id);
+    const penggarapHarvests = (harvests || []).filter((h) =>
+      landIds.includes(h.land_id)
+    );
+
+    const totalHasilP = penggarapHarvests.reduce(
+      (s, h) => s + Number(h.hasil_kg),
+      0
+    );
+    const totalProfitP = penggarapHarvests.reduce(
+      (s, h) =>
+        s + Number(h.profit_owner || 0) + Number(h.profit_penggarap || 0),
+      0
+    );
+
+    statsPenggarap.push({
+      id: p.id,
+      nama: p.nama,
+      totalHasil: totalHasilP,
+      totalProfit: totalProfitP,
+      jmlPanen: penggarapHarvests.length,
+    });
+  });
+
+  statsPenggarap.sort((a, b) => b.totalProfit - a.totalProfit);
+  const top5 = statsPenggarap.slice(0, 5);
+
+  // ===== KOMPOSISI KOMODITAS =====
+  const komoditasData: Record<string, { hasil: number; jml: number }> = {};
+  (harvests || []).forEach((h) => {
+    const kom = h.komoditas || "padi";
+    if (!komoditasData[kom]) komoditasData[kom] = { hasil: 0, jml: 0 };
+    komoditasData[kom].hasil += Number(h.hasil_kg);
+    komoditasData[kom].jml += 1;
+  });
+
+  const komoditasList = Object.entries(komoditasData)
+    .map(([kom, val]) => ({ komoditas: kom, ...val }))
+    .sort((a, b) => b.hasil - a.hasil);
+
+  // ===== PANEN TERBARU =====
+  const panenTerbaru = (harvests || []).slice(0, 5).map((h) => {
+    const land = (lands || []).find((l) => l.id === h.land_id);
+    const penggarap = (penggaraps || []).find(
+      (p) => p.id === land?.penggarap_id
+    );
+    return { ...h, namaLahan: land?.nama || "?", namaPenggarap: penggarap?.nama || "?" };
+  });
 
   return (
     <div>
+      {/* ===== HEADER ===== */}
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">
-          Selamat datang, {nama}! 👋
+          Selamat datang, {user.email?.split("@")[0]}! 👋
         </h1>
         <p className="text-gray-600 text-sm mt-1">
           Ringkasan kebun & keuangan Anda
         </p>
       </div>
 
+      {/* ===== STATISTIK UTAMA ===== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl p-4">
           <div className="text-2xl mb-1">👨‍🌾</div>
-          <div className="text-xs text-gray-500 font-medium">PENGGARAP</div>
+          <div className="text-[10px] text-gray-500 font-medium uppercase">
+            Penggarap
+          </div>
           <div className="text-2xl font-bold text-gray-900 mt-1">
             {totalPenggarap}
           </div>
-          <div className="text-xs text-gray-500">Orang</div>
+          <div className="text-[10px] text-gray-500 mt-1">orang</div>
         </div>
-
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl p-4">
           <div className="text-2xl mb-1">🗺️</div>
-          <div className="text-xs text-gray-500 font-medium">LAHAN</div>
+          <div className="text-[10px] text-gray-500 font-medium uppercase">
+            Lahan
+          </div>
           <div className="text-2xl font-bold text-gray-900 mt-1">
             {totalLahan}
           </div>
-          <div className="text-xs text-gray-500">
+          <div className="text-[10px] text-gray-500 mt-1">
             {totalLuas.toFixed(2)} Ha total
           </div>
         </div>
-
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
+        <div className="bg-white border border-gray-200 rounded-2xl p-4">
           <div className="text-2xl mb-1">🌾</div>
-          <div className="text-xs text-gray-500 font-medium">PANEN</div>
+          <div className="text-[10px] text-gray-500 font-medium uppercase">
+            Panen
+          </div>
           <div className="text-2xl font-bold text-gray-900 mt-1">
             {totalPanen}
           </div>
-          <div className="text-xs text-gray-500">{formatKg(totalHasilKg)}</div>
-        </div>
-
-        <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <div className="text-2xl mb-1">💰</div>
-          <div className="text-xs text-gray-500 font-medium">HUTANG AKTIF</div>
-          <div className="text-2xl font-bold text-red-600 mt-1">
-            {hutangAktif.length}
+          <div className="text-[10px] text-gray-500 mt-1">
+            {totalHasil.toLocaleString("id-ID")} Kg
           </div>
-          <div className="text-xs text-gray-500">
-            {formatRp(totalHutangAktif)}
+        </div>
+        <div className="bg-white border border-gray-200 rounded-2xl p-4">
+          <div className="text-2xl mb-1">💰</div>
+          <div className="text-[10px] text-gray-500 font-medium uppercase">
+            Hutang Aktif
+          </div>
+          <div
+            className={`text-2xl font-bold mt-1 ${
+              totalHutang > 0 ? "text-red-600" : "text-gray-900"
+            }`}
+          >
+            {formatRingkas(totalHutang)}
+          </div>
+          <div className="text-[10px] text-gray-500 mt-1">
+            {formatRp(totalHutang)}
           </div>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
-        <h2 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
+      {/* ===== PROFIT SUMMARY ===== */}
+      <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-2xl p-5 mb-6">
+        <div className="text-xs font-bold text-green-800 uppercase tracking-wider mb-4 flex items-center gap-2">
           💵 Profit Summary
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <div className="text-xs text-green-700 font-medium">
-              👤 PROFIT OWNER
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white rounded-xl p-4 border-2 border-green-300">
+            <div className="text-[10px] text-green-700 font-bold uppercase mb-1">
+              👤 Owner
             </div>
-            <div className="text-2xl font-bold text-green-900 mt-1">
+            <div className="text-xl font-bold text-green-800">
+              {formatRingkas(totalProfitOwner)}
+            </div>
+            <div className="text-[10px] text-gray-500 mt-1">
               {formatRp(totalProfitOwner)}
             </div>
           </div>
-          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
-            <div className="text-xs text-orange-700 font-medium">
-              👨‍🌾 PROFIT PENGGARAP
+          <div className="bg-white rounded-xl p-4 border-2 border-orange-300">
+            <div className="text-[10px] text-orange-700 font-bold uppercase mb-1">
+              👨‍🌾 Penggarap
             </div>
-            <div className="text-2xl font-bold text-orange-900 mt-1">
+            <div className="text-xl font-bold text-orange-800">
+              {formatRingkas(totalProfitPenggarap)}
+            </div>
+            <div className="text-[10px] text-gray-500 mt-1">
               {formatRp(totalProfitPenggarap)}
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
-        <h2 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
-          🏆 Top 5 Penggarap (by Profit Owner)
-        </h2>
-        {topPenggarap.length === 0 ? (
-          <p className="text-gray-500 text-sm italic text-center py-4">
-            Belum ada data profit
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {topPenggarap.map((p, i) => {
-              const medal = ["🥇", "🥈", "🥉", "4️⃣", "5️⃣"][i];
-              return (
-                <Link
-                  key={p.id}
-                  href={`/penggarap/${p.id}`}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">{medal}</span>
-                    <span className="font-medium text-gray-900">{p.nama}</span>
-                  </div>
-                  <span className="font-bold text-green-700">
-                    {formatRp(p.profit)}
-                  </span>
-                </Link>
-              );
-            })}
+        {(totalBawaPenggarap > 0 || totalBawaOwner > 0) && (
+          <div className="mt-4 pt-4 border-t border-green-200 text-xs text-green-800">
+            <div className="font-bold mb-1">🏠 Gabah Dibawa Pulang:</div>
+            {totalBawaPenggarap > 0 && (
+              <div className="flex justify-between">
+                <span>Penggarap</span>
+                <span className="font-bold">
+                  {totalBawaPenggarap.toLocaleString("id-ID")} Kg
+                </span>
+              </div>
+            )}
+            {totalBawaOwner > 0 && (
+              <div className="flex justify-between">
+                <span>Owner</span>
+                <span className="font-bold">
+                  {totalBawaOwner.toLocaleString("id-ID")} Kg
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
-        <h2 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
-          📈 Produksi 6 Bulan Terakhir
-        </h2>
-        {totalHasilKg === 0 ? (
-          <p className="text-gray-500 text-sm italic text-center py-4">
-            Belum ada data panen
-          </p>
-        ) : (
+      {/* ===== KOMPOSISI KOMODITAS ===== */}
+      {komoditasList.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-6">
+          <div className="font-bold text-gray-900 mb-4">
+            🏷️ Komposisi Komoditas
+          </div>
           <div className="space-y-3">
-            {bulanLabels.map((label, i) => {
-              const val = bulanData[i];
-              const pct = (val / maxBulan) * 100;
+            {komoditasList.map((k) => {
+              const percent =
+                totalHasil > 0 ? (k.hasil / totalHasil) * 100 : 0;
               return (
-                <div key={label}>
-                  <div className="flex justify-between text-xs text-gray-600 mb-1">
-                    <span className="font-medium">{label}</span>
-                    <span className="font-bold text-green-700">
-                      {formatKg(val)}
+                <div key={k.komoditas}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="font-medium text-gray-700">
+                      {KOMODITAS_LABEL[k.komoditas] || k.komoditas}
+                    </span>
+                    <span className="text-gray-600">
+                      {k.hasil.toLocaleString("id-ID")} Kg ({k.jml} panen) ·{" "}
+                      {percent.toFixed(1)}%
                     </span>
                   </div>
-                  <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-green-600 rounded-full transition-all"
-                      style={{ width: `${pct}%` }}
+                      className={`h-full rounded-full ${
+                        k.komoditas === "padi"
+                          ? "bg-green-500"
+                          : k.komoditas === "jagung"
+                          ? "bg-yellow-500"
+                          : k.komoditas === "kacang_tanah"
+                          ? "bg-purple-500"
+                          : k.komoditas === "bawang_merah"
+                          ? "bg-red-500"
+                          : "bg-orange-500"
+                      }`}
+                      style={{ width: `${Math.max(percent, 2)}%` }}
                     />
                   </div>
                 </div>
               );
             })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <h2 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
-          📋 Aktivitas Terbaru
-        </h2>
-        {aktivitasTerbaru.length === 0 ? (
-          <p className="text-gray-500 text-sm italic text-center py-4">
-            Belum ada aktivitas
-          </p>
-        ) : (
+      {/* ===== TOP 5 PENGGARAP ===== */}
+      {top5.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-6">
+          <div className="font-bold text-gray-900 mb-4 flex items-center justify-between flex-wrap gap-2">
+            <span>🏆 Top 5 Penggarap</span>
+            <Link
+              href="/penggarap"
+              className="text-xs text-green-700 hover:text-green-800 font-medium"
+            >
+              Lihat Semua →
+            </Link>
+          </div>
           <div className="space-y-2">
-            {aktivitasTerbaru.map((a, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+            {top5.map((p, idx) => (
+              <Link
+                key={p.id}
+                href={`/penggarap/${p.id}`}
+                className="flex items-center justify-between gap-3 p-3 bg-gray-50 hover:bg-green-50 rounded-xl transition border border-gray-100"
               >
-                <span className="text-xl">
-                  {a.tipe === "panen" ? "🌾" : "💰"}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-gray-900 truncate">
-                    {a.deskripsi}
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    {a.penggarap} &middot;{" "}
-                    {new Date(a.tanggal).toLocaleDateString("id-ID", {
-                      day: "numeric",
-                      month: "short",
-                      year: "numeric",
-                    })}
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <span className="text-2xl flex-shrink-0">
+                    {idx === 0
+                      ? "🥇"
+                      : idx === 1
+                      ? "🥈"
+                      : idx === 2
+                      ? "🥉"
+                      : `${idx + 1}.`}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-bold text-gray-900 text-sm truncate">
+                      {p.nama}
+                    </div>
+                    <div className="text-[10px] text-gray-500">
+                      {p.jmlPanen}x panen · {p.totalHasil.toLocaleString("id-ID")} Kg
+                    </div>
                   </div>
                 </div>
-                <span
-                  className={`text-sm font-bold ${
-                    a.tipe === "panen" ? "text-green-700" : "text-red-600"
-                  }`}
-                >
-                  {a.tipe === "panen" ? formatKg(a.nilai) : formatRp(a.nilai)}
-                </span>
-              </div>
+                <div className="text-right flex-shrink-0">
+                  <div className="font-bold text-green-700 text-sm">
+                    {formatRingkas(p.totalProfit)}
+                  </div>
+                  <div className="text-[10px] text-gray-500">Total Profit</div>
+                </div>
+              </Link>
             ))}
           </div>
-        )}
+        </div>
+      )}
+
+      {/* ===== PANEN TERBARU ===== */}
+      {panenTerbaru.length > 0 && (
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-6">
+          <div className="font-bold text-gray-900 mb-4 flex items-center justify-between flex-wrap gap-2">
+            <span>📅 Panen Terbaru</span>
+            <Link
+              href="/keuangan"
+              className="text-xs text-green-700 hover:text-green-800 font-medium"
+            >
+              Lihat Keuangan →
+            </Link>
+          </div>
+          <div className="space-y-2">
+            {panenTerbaru.map((h) => {
+              const kom = h.komoditas || "padi";
+              const colorClass =
+                KOMODITAS_COLOR[kom] || "bg-gray-100 text-gray-800 border-gray-300";
+              return (
+                <div
+                  key={h.id}
+                  className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100 flex-wrap"
+                >
+                  <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
+                    <span
+                      className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${colorClass}`}
+                    >
+                      {KOMODITAS_LABEL[kom] || kom}
+                    </span>
+                    <div className="text-xs text-gray-700 truncate">
+                      {h.namaPenggarap} · {h.namaLahan}
+                    </div>
+                  </div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="font-bold text-gray-900 text-sm">
+                      {Number(h.hasil_kg).toLocaleString("id-ID")} Kg
+                    </div>
+                    <div className="text-[10px] text-gray-500">
+                      {new Date(h.tanggal).toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ===== QUICK ACTIONS ===== */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Link
+          href="/penggarap/baru"
+          className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl p-4 text-center hover:from-green-600 hover:to-green-700 transition shadow-md hover:shadow-lg"
+        >
+          <div className="text-3xl mb-1">+</div>
+          <div className="text-xs font-bold">Tambah Penggarap</div>
+        </Link>
+        <Link
+          href="/panen-multi"
+          className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-2xl p-4 text-center hover:from-yellow-600 hover:to-yellow-700 transition shadow-md hover:shadow-lg"
+        >
+          <div className="text-3xl mb-1">🌾</div>
+          <div className="text-xs font-bold">Input Panen</div>
+        </Link>
+        <Link
+          href="/keuangan"
+          className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl p-4 text-center hover:from-blue-600 hover:to-blue-700 transition shadow-md hover:shadow-lg"
+        >
+          <div className="text-3xl mb-1">💰</div>
+          <div className="text-xs font-bold">Keuangan</div>
+        </Link>
+        <Link
+          href="/grafik"
+          className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl p-4 text-center hover:from-purple-600 hover:to-purple-700 transition shadow-md hover:shadow-lg"
+        >
+          <div className="text-3xl mb-1">📊</div>
+          <div className="text-xs font-bold">Grafik</div>
+        </Link>
       </div>
     </div>
   );

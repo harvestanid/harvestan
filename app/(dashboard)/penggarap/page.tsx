@@ -1,12 +1,17 @@
-import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import {
-  getPenggarapList,
-} from "@/lib/supabase/queries/penggarap-server";
+import { redirect } from "next/navigation";
+import Link from "next/link";
+import { getDataFilter } from "@/lib/demo/demo-mode";
+import { getPenggarapList } from "@/lib/supabase/queries/penggarap-server";
 import {
   getKategoriList,
   hitungProduktivitasPerKomoditas,
 } from "@/lib/supabase/queries/kategori-server";
+import { PenggarapKlien } from "./klien";
+
+export const metadata = {
+  title: "Penggarap",
+};
 
 const KOMODITAS_LABEL: Record<string, string> = {
   padi: "🌾 Padi",
@@ -16,70 +21,126 @@ const KOMODITAS_LABEL: Record<string, string> = {
   cabai_rawit: "🌶️ Cabai Rawit",
 };
 
-function formatRp(n: number) {
-  return "Rp " + Math.round(n).toLocaleString("id-ID");
-}
-
 export default async function PenggarapPage() {
-  const penggaraps = await getPenggarapList();
-  const kategoriList = await getKategoriList();
-
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Ambil semua lahan + harvests (untuk hitung produktivitas per komoditas)
-  let allLands: { id: string; penggarap_id: string; luas: number }[] = [];
-  let allHarvests: any[] = [];
+  if (!user) redirect("/login");
 
-  if (user && penggaraps.length > 0) {
-    const { data: lands } = await supabase
-      .from("lands")
-      .select("id, penggarap_id, luas")
-      .eq("user_id", user.id);
-    allLands = lands || [];
+  const filter = await getDataFilter(user.id);
 
-    const { data: harvests } = await supabase
-      .from("harvests")
-      .select("id, land_id, komoditas, hasil_kg, tanggal")
-      .eq("user_id", user.id);
-    allHarvests = harvests || [];
-  }
+  const penggaraps = await getPenggarapList(filter.is_demo);
+  const kategoriList = await getKategoriList();
 
-  // Group lands & harvests per penggarap
-  const dataPerPenggarap = new Map<
-    string,
-    {
-      totalLahan: number;
-      totalLuas: number;
-      produktivitas: ReturnType<typeof hitungProduktivitasPerKomoditas>;
-    }
-  >();
+  // Ambil semua lahan
+  const { data: lands } = await supabase
+    .from("lands")
+    .select("id, penggarap_id, nama, luas")
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo);
 
-  penggaraps.forEach((p) => {
+  // Ambil semua harvests
+  const { data: allHarvests } = await supabase
+    .from("harvests")
+    .select("*")
+    .eq("user_id", filter.user_id)
+    .eq("is_demo", filter.is_demo)
+    .order("tanggal", { ascending: false });
+
+  const allLands = lands || [];
+  const harvestsData = allHarvests || [];
+
+  // Untuk setiap penggarap, siapkan data lengkap:
+  // - totalLahan, totalLuas
+  // - produktivitas per komoditas
+  // - daftar lahan dengan riwayat panen
+  const penggarapLengkap = penggaraps.map((p) => {
     const penggarapLands = allLands.filter((l) => l.penggarap_id === p.id);
     const landIds = penggarapLands.map((l) => l.id);
-    const penggarapHarvests = allHarvests.filter((h) =>
+    const penggarapHarvests = harvestsData.filter((h) =>
       landIds.includes(h.land_id)
     );
 
+    // Produktivitas per komoditas
     const produktivitas = hitungProduktivitasPerKomoditas(
       penggarapHarvests,
       penggarapLands,
       kategoriList
     );
 
-    const totalLuas = penggarapLands.reduce(
-      (s, l) => s + Number(l.luas),
-      0
-    );
+    const totalLuas = penggarapLands.reduce((s, l) => s + Number(l.luas), 0);
 
-    dataPerPenggarap.set(p.id, {
+    // Daftar lahan dengan riwayat panen
+    const lahanList = penggarapLands.map((l) => {
+      const lahanHarvests = penggarapHarvests
+        .filter((h) => h.land_id === l.id)
+        .sort(
+          (a, b) =>
+            new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+        );
+
+      const totalHasilLahan = lahanHarvests.reduce(
+        (s, h) => s + Number(h.hasil_kg),
+        0
+      );
+
+      // Produktivitas rata-rata per lahan (semua komoditas di lahan itu)
+      const rataProduktivitas =
+        lahanHarvests.length > 0 && Number(l.luas) > 0
+          ? totalHasilLahan / Number(l.luas) / lahanHarvests.length
+          : 0;
+
+      // Komoditas unik di lahan ini
+      const komoditasSet = new Set<string>();
+      lahanHarvests.forEach((h) => komoditasSet.add(h.komoditas || "padi"));
+
+      return {
+        id: l.id,
+        nama: l.nama,
+        luas: Number(l.luas),
+        lokasi_koordinat: null,
+        jmlPanen: lahanHarvests.length,
+        totalHasilKg: totalHasilLahan,
+        rataProduktivitas,
+        komoditasList: Array.from(komoditasSet),
+        riwayatPanen: lahanHarvests.slice(0, 10).map((h) => ({
+          id: h.id,
+          tanggal: h.tanggal,
+          komoditas: h.komoditas || "padi",
+          musim: h.musim || null,
+          hasilKg: Number(h.hasil_kg),
+          hargaGabah: Number(h.harga_gabah),
+          profitBersih: Number(h.profit_bersih || 0),
+          profitOwner: Number(h.profit_owner || 0),
+          profitPenggarap: Number(h.profit_penggarap || 0),
+        })),
+      };
+    });
+
+    return {
+      id: p.id,
+      nama: p.nama,
+      kontak: p.kontak || null,
+      alamat: p.alamat || null,
       totalLahan: penggarapLands.length,
       totalLuas,
-      produktivitas,
-    });
+      jmlPanen: penggarapHarvests.length,
+      produktivitas: produktivitas.map((pk: any) => {
+        const kat = pk.kategoriRata || pk.kategoriTerakhir;
+        return {
+          komoditas: pk.komoditas,
+          produktivitasRata: pk.produktivitasRata,
+          jmlPanen: pk.jmlPanen,
+          totalHasilKg: pk.totalHasilKg,
+          kategori: kat
+            ? { label: kat.label, icon: kat.icon, color: kat.color }
+            : null,
+        };
+      }),
+      lahanList,
+    };
   });
 
   return (
@@ -103,12 +164,10 @@ export default async function PenggarapPage() {
       </div>
 
       {/* Empty state */}
-      {penggaraps.length === 0 ? (
+      {penggarapLengkap.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-xl p-12 text-center">
           <div className="text-6xl mb-4">📭</div>
-          <h3 className="font-bold text-gray-900 mb-2">
-            Belum ada penggarap
-          </h3>
+          <h3 className="font-bold text-gray-900 mb-2">Belum ada penggarap</h3>
           <p className="text-gray-600 text-sm mb-6 max-w-md mx-auto">
             Mulai kelola lahan dan bagi hasil dengan menambahkan penggarap
             pertama Anda.
@@ -121,86 +180,7 @@ export default async function PenggarapPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid gap-3">
-          {penggaraps.map((p) => {
-            const info = dataPerPenggarap.get(p.id);
-            const produktivitas = info?.produktivitas || [];
-            const topKomoditas = produktivitas.slice(0, 3);
-
-            return (
-              <Link
-                key={p.id}
-                href={`/penggarap/${p.id}`}
-                className="bg-white border border-gray-200 rounded-xl p-4 hover:border-green-500 transition block"
-              >
-                <div className="flex items-start justify-between flex-wrap gap-3 mb-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="font-bold text-lg text-gray-900">
-                      👨‍🌾 {p.nama}
-                    </div>
-                    <div className="text-xs text-gray-600 mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
-                      <span>
-                        🗺️ {info?.totalLahan || 0} lahan &middot;{" "}
-                        {(info?.totalLuas || 0).toFixed(2)} Ha
-                      </span>
-                      {p.kontak && <span>📞 {p.kontak}</span>}
-                      {p.alamat && (
-                        <span className="truncate">📍 {p.alamat}</span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="text-green-700 text-sm font-medium whitespace-nowrap">
-                    Detail →
-                  </div>
-                </div>
-
-                {/* Badge Kategori per Komoditas */}
-                {topKomoditas.length > 0 ? (
-                  <div className="space-y-1.5 mt-3 pt-3 border-t border-gray-100">
-                    {topKomoditas.map((pk) => {
-                      const kat = pk.kategoriRata || pk.kategoriTerakhir;
-                      return (
-                        <div
-                          key={pk.komoditas}
-                          className="flex items-center justify-between flex-wrap gap-2 text-xs"
-                        >
-                          <span className="font-medium text-gray-700">
-                            {KOMODITAS_LABEL[pk.komoditas] || pk.komoditas}
-                          </span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-600 font-mono">
-                              {pk.produktivitasRata.toFixed(0)} Kg/Ha
-                            </span>
-                            {kat ? (
-                              <span
-                                className={`text-[10px] px-2 py-0.5 rounded-full font-bold border ${kat.bg} ${kat.color}`}
-                              >
-                                {kat.icon} {kat.label}
-                              </span>
-                            ) : (
-                              <span className="text-[10px] text-gray-400 italic">
-                                (belum ada kategori)
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {produktivitas.length > 3 && (
-                      <div className="text-[10px] text-gray-400 italic">
-                        +{produktivitas.length - 3} komoditas lain
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-400 italic">
-                    Belum ada data panen
-                  </div>
-                )}
-              </Link>
-            );
-          })}
-        </div>
+        <PenggarapKlien penggarapLengkap={penggarapLengkap} />
       )}
     </div>
   );

@@ -19,6 +19,14 @@ const KOMODITAS_COLOR: Record<string, string> = {
   cabai_rawit: "bg-red-700",
 };
 
+const KOMODITAS_BORDER: Record<string, string> = {
+  padi: "border-green-300 bg-green-50",
+  jagung: "border-yellow-300 bg-yellow-50",
+  kacang_tanah: "border-purple-300 bg-purple-50",
+  bawang_merah: "border-red-300 bg-red-50",
+  cabai_rawit: "border-red-400 bg-red-50",
+};
+
 function formatRp(n: number) {
   return "Rp " + Math.round(n).toLocaleString("id-ID");
 }
@@ -179,28 +187,95 @@ export function KeuanganClient({
       .slice(0, 5);
   }, [harvests, lands, penggaraps]);
 
-  // ===== PROFIT PER KOMODITAS =====
-  const komoditasList = useMemo(() => {
+  // ===== STATISTIK PER KOMODITAS (DETAIL) =====
+  const statPerKomoditas = useMemo(() => {
     const map = new Map<
       string,
-      { hasilKg: number; profitOwner: number; profitPenggarap: number }
+      {
+        jmlPanen: number;
+        jmlPenggarapSet: Set<string>;
+        jmlLahanSet: Set<string>;
+        totalLuasSet: Map<string, number>;
+        totalHasilKg: number;
+        totalPendapatan: number;
+        totalBiayaPanen: number;
+        totalBiayaTambahan: number;
+        profitBersih: number;
+        profitOwner: number;
+        profitPenggarap: number;
+        potonganHutang: number;
+      }
     >();
+
     harvests.forEach((h) => {
       const kom = h.komoditas || "padi";
-      const existing = map.get(kom) || {
-        hasilKg: 0,
-        profitOwner: 0,
-        profitPenggarap: 0,
-      };
-      existing.hasilKg += Number(h.hasil_kg);
-      existing.profitOwner += Number(h.profit_owner || 0);
-      existing.profitPenggarap += Number(h.profit_penggarap || 0);
-      map.set(kom, existing);
+      const land = lands.find((l) => l.id === h.land_id);
+
+      if (!map.has(kom)) {
+        map.set(kom, {
+          jmlPanen: 0,
+          jmlPenggarapSet: new Set(),
+          jmlLahanSet: new Set(),
+          totalLuasSet: new Map(),
+          totalHasilKg: 0,
+          totalPendapatan: 0,
+          totalBiayaPanen: 0,
+          totalBiayaTambahan: 0,
+          profitBersih: 0,
+          profitOwner: 0,
+          profitPenggarap: 0,
+          potonganHutang: 0,
+        });
+      }
+
+      const d = map.get(kom)!;
+      d.jmlPanen += 1;
+      d.totalHasilKg += Number(h.hasil_kg);
+      d.totalPendapatan += Number(h.hasil_kg) * Number(h.harga_gabah || 0);
+      d.totalBiayaPanen +=
+        Number(h.hasil_kg) * Number(h.biaya_panen_per_kg || 0);
+      d.totalBiayaTambahan += Number(h.biaya_tambahan || 0);
+      d.profitBersih += Number(h.profit_bersih || 0);
+      d.profitOwner += Number(h.profit_owner || 0);
+      d.profitPenggarap += Number(h.profit_penggarap || 0);
+      d.potonganHutang += Number(h.potongan_hutang || 0);
+
+      if (land) {
+        d.jmlLahanSet.add(land.id);
+        d.totalLuasSet.set(land.id, Number(land.luas));
+        if (land.penggarap_id) {
+          d.jmlPenggarapSet.add(land.penggarap_id);
+        }
+      }
     });
+
     return Array.from(map.entries())
-      .map(([kom, data]) => ({ kom, ...data }))
-      .sort((a, b) => b.profitOwner - a.profitOwner);
-  }, [harvests]);
+      .map(([kom, d]) => {
+        const totalLuas = Array.from(d.totalLuasSet.values()).reduce(
+          (s, l) => s + l,
+          0
+        );
+        const produktivitas =
+          totalLuas > 0 ? d.totalHasilKg / totalLuas : 0;
+        return {
+          komoditas: kom,
+          jmlPanen: d.jmlPanen,
+          jmlPenggarap: d.jmlPenggarapSet.size,
+          jmlLahan: d.jmlLahanSet.size,
+          totalLuas,
+          totalHasilKg: d.totalHasilKg,
+          totalPendapatan: d.totalPendapatan,
+          totalBiayaPanen: d.totalBiayaPanen,
+          totalBiayaTambahan: d.totalBiayaTambahan,
+          profitBersih: d.profitBersih,
+          profitOwner: d.profitOwner,
+          profitPenggarap: d.profitPenggarap,
+          potonganHutang: d.potonganHutang,
+          produktivitas,
+        };
+      })
+      .sort((a, b) => b.profitBersih - a.profitBersih);
+  }, [harvests, lands]);
 
   // ===== PROFIT PER LAHAN =====
   const lahanList = useMemo(() => {
@@ -375,6 +450,137 @@ export function KeuanganClient({
         </div>
       </div>
 
+      {/* ===== STATISTIK PER KOMODITAS (BARU) ===== */}
+      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <h2 className="font-bold text-gray-900 text-sm uppercase tracking-wide">
+            📊 Statistik per Komoditas
+          </h2>
+          <span className="text-xs text-gray-500 italic">
+            Total panen & profit per komoditas (tidak digabung)
+          </span>
+        </div>
+
+        {statPerKomoditas.length === 0 ? (
+          <p className="text-gray-500 text-sm italic text-center py-6">
+            Belum ada data panen
+          </p>
+        ) : (
+          <div className="space-y-4">
+            {statPerKomoditas.map((k) => {
+              const borderClass =
+                KOMODITAS_BORDER[k.komoditas] ||
+                "border-gray-300 bg-gray-50";
+              const dotClass =
+                KOMODITAS_COLOR[k.komoditas] || "bg-gray-500";
+              return (
+                <div
+                  key={k.komoditas}
+                  className={`border-2 rounded-xl p-4 ${borderClass}`}
+                >
+                  {/* Header Komoditas */}
+                  <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-3 h-3 rounded-full ${dotClass}`} />
+                      <span className="font-bold text-gray-900 text-base">
+                        {KOMODITAS_LABEL[k.komoditas] || k.komoditas}
+                      </span>
+                    </div>
+                    <span className="text-xs text-gray-600 bg-white border border-gray-200 rounded-full px-2.5 py-1 font-medium">
+                      {k.jmlPanen} transaksi
+                    </span>
+                  </div>
+
+                  {/* Statistik Ringkas */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3 text-xs">
+                    <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
+                      <div className="text-gray-500">Penggarap</div>
+                      <div className="font-bold text-gray-900 text-sm mt-0.5">
+                        {k.jmlPenggarap}
+                      </div>
+                    </div>
+                    <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
+                      <div className="text-gray-500">Lahan</div>
+                      <div className="font-bold text-gray-900 text-sm mt-0.5">
+                        {k.jmlLahan} ({k.totalLuas.toFixed(2)} Ha)
+                      </div>
+                    </div>
+                    <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
+                      <div className="text-gray-500">Total Hasil</div>
+                      <div className="font-bold text-gray-900 text-sm mt-0.5">
+                        {formatKg(k.totalHasilKg)}
+                      </div>
+                    </div>
+                    <div className="bg-white border border-gray-200 rounded-lg p-2 text-center">
+                      <div className="text-gray-500">Produktivitas</div>
+                      <div className="font-bold text-gray-900 text-sm mt-0.5">
+                        {k.produktivitas.toFixed(0)} Kg/Ha
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Keuangan */}
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between py-1 border-b border-gray-200">
+                      <span className="text-gray-600">Pendapatan Kotor</span>
+                      <span className="font-medium text-gray-800">
+                        {formatRp(k.totalPendapatan)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between py-1 border-b border-gray-200">
+                      <span className="text-gray-600">Biaya Panen</span>
+                      <span className="font-medium text-red-600">
+                        − {formatRp(k.totalBiayaPanen)}
+                      </span>
+                    </div>
+                    {k.totalBiayaTambahan > 0 && (
+                      <div className="flex justify-between py-1 border-b border-gray-200">
+                        <span className="text-gray-600">Biaya Tambahan</span>
+                        <span className="font-medium text-red-600">
+                          − {formatRp(k.totalBiayaTambahan)}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between py-1.5 bg-white rounded px-2 border border-gray-200 font-bold">
+                      <span className="text-green-800">💵 Profit Bersih</span>
+                      <span className="text-green-700">
+                        {formatRp(k.profitBersih)}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      <div className="bg-green-100 rounded-lg p-2 text-center">
+                        <div className="text-green-700 font-medium">
+                          👤 Owner
+                        </div>
+                        <div className="font-bold text-green-900 text-sm mt-0.5">
+                          {formatRp(k.profitOwner)}
+                        </div>
+                      </div>
+                      <div className="bg-orange-100 rounded-lg p-2 text-center">
+                        <div className="text-orange-700 font-medium">
+                          👨‍🌾 Penggarap
+                        </div>
+                        <div className="font-bold text-orange-900 text-sm mt-0.5">
+                          {formatRp(k.profitPenggarap)}
+                        </div>
+                      </div>
+                    </div>
+                    {k.potonganHutang > 0 && (
+                      <div className="flex justify-between py-1 text-red-700 mt-1">
+                        <span>💸 Potongan Hutang</span>
+                        <span className="font-bold">
+                          − {formatRp(k.potonganHutang)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* ===== INFO POTONGAN HUTANG ===== */}
       {totalPotonganHutang > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
@@ -477,60 +683,6 @@ export function KeuanganClient({
                     {formatRp(p.profit)}
                   </span>
                 </Link>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* ===== PROFIT PER KOMODITAS ===== */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
-        <h2 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
-          🏷️ Profit per Komoditas
-        </h2>
-        {komoditasList.length === 0 ? (
-          <p className="text-gray-500 text-sm italic text-center py-4">
-            Belum ada data panen
-          </p>
-        ) : (
-          <div className="space-y-3">
-            {komoditasList.map((k) => {
-              const colorClass =
-                KOMODITAS_COLOR[k.kom] || "bg-gray-500";
-              return (
-                <div key={k.kom} className="bg-gray-50 rounded-lg p-3">
-                  <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={`w-3 h-3 rounded-full ${colorClass}`}
-                      />
-                      <span className="font-medium text-gray-900">
-                        {KOMODITAS_LABEL[k.kom] || k.kom}
-                      </span>
-                    </div>
-                    <span className="text-sm font-bold text-gray-700">
-                      {formatKg(k.hasilKg)}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="bg-green-100 rounded p-2">
-                      <div className="text-green-700 font-medium">
-                        👤 Owner
-                      </div>
-                      <div className="font-bold text-green-900 mt-0.5">
-                        {formatRp(k.profitOwner)}
-                      </div>
-                    </div>
-                    <div className="bg-orange-100 rounded p-2">
-                      <div className="text-orange-700 font-medium">
-                        👨‍🌾 Penggarap
-                      </div>
-                      <div className="font-bold text-orange-900 mt-0.5">
-                        {formatRp(k.profitPenggarap)}
-                      </div>
-                    </div>
-                  </div>
-                </div>
               );
             })}
           </div>

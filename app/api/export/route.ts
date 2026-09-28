@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import * as XLSX from "xlsx";
+import { getDataFilter } from "@/lib/demo/demo-mode";
 
 const KOMODITAS_LABEL: Record<string, string> = {
   padi: "Padi",
@@ -21,34 +22,41 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Ambil semua data
+    // Filter demo mode
+    const filter = await getDataFilter(user.id);
+
+    // Ambil semua data (filtered by is_demo)
     const { data: penggaraps } = await supabase
       .from("penggaraps")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", filter.user_id)
+      .eq("is_demo", filter.is_demo)
       .order("nama");
 
     const { data: lands } = await supabase
       .from("lands")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", filter.user_id)
+      .eq("is_demo", filter.is_demo)
       .order("nama");
 
     const { data: harvests } = await supabase
       .from("harvests")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", filter.user_id)
+      .eq("is_demo", filter.is_demo)
       .order("tanggal", { ascending: false });
 
     const { data: debts } = await supabase
       .from("debts")
       .select("*")
-      .eq("user_id", user.id)
+      .eq("user_id", filter.user_id)
+      .eq("is_demo", filter.is_demo)
       .order("tanggal", { ascending: false });
 
     const wb = XLSX.utils.book_new();
 
-    // Sheet 1: Penggarap
+    // ===== SHEET 1: PENGGARAP =====
     const penggarapRows = [
       [
         "ID",
@@ -111,7 +119,7 @@ export async function GET() {
     const ws1 = XLSX.utils.aoa_to_sheet(penggarapRows);
     XLSX.utils.book_append_sheet(wb, ws1, "Penggarap");
 
-    // Sheet 2: Lahan
+    // ===== SHEET 2: LAHAN =====
     const lahanRows = [
       [
         "ID",
@@ -156,7 +164,7 @@ export async function GET() {
     const ws2 = XLSX.utils.aoa_to_sheet(lahanRows);
     XLSX.utils.book_append_sheet(wb, ws2, "Lahan");
 
-    // Sheet 3: Panen
+    // ===== SHEET 3: PANEN =====
     const panenRows = [
       [
         "ID",
@@ -164,13 +172,18 @@ export async function GET() {
         "Penggarap",
         "Lahan",
         "Komoditas",
+        "Musim",
         "Hasil (Kg)",
         "Harga/Kg (Rp)",
         "Biaya Panen/Kg (Rp)",
         "Biaya Tambahan (Rp)",
-        "Profit Bersih (Rp)",
+        "Keterangan Biaya",
+        "Bawa Penggarap (Kg)",
+        "Bawa Owner (Kg)",
+        "Bawa Lain (Kg)",
         "Persen Owner",
         "Persen Penggarap",
+        "Profit Bersih (Rp)",
         "Profit Owner (Rp)",
         "Profit Penggarap (Rp)",
         "Potongan Hutang (Rp)",
@@ -192,13 +205,18 @@ export async function GET() {
         penggarap?.nama || "?",
         land?.nama || "?",
         KOMODITAS_LABEL[h.komoditas] || h.komoditas,
+        h.musim || "",
         Number(h.hasil_kg).toFixed(0),
         Number(h.harga_gabah).toFixed(0),
         Number(h.biaya_panen_per_kg).toFixed(0),
         Number(h.biaya_tambahan || 0).toFixed(0),
-        Number(h.profit_bersih).toFixed(0),
+        h.keterangan_biaya || "",
+        Number(h.bawa_penggarap || 0).toFixed(0),
+        Number(h.bawa_owner || 0).toFixed(0),
+        Number(h.bawa_lain || 0).toFixed(0),
         h.persen_owner,
         h.persen_penggarap,
+        Number(h.profit_bersih).toFixed(0),
         Number(h.profit_owner || 0).toFixed(0),
         Number(h.profit_penggarap || 0).toFixed(0),
         Number(h.potongan_hutang || 0).toFixed(0),
@@ -211,7 +229,7 @@ export async function GET() {
     const ws3 = XLSX.utils.aoa_to_sheet(panenRows);
     XLSX.utils.book_append_sheet(wb, ws3, "Panen");
 
-    // Sheet 4: Hutang
+    // ===== SHEET 4: HUTANG =====
     const hutangRows = [
       [
         "ID",
@@ -245,27 +263,51 @@ export async function GET() {
 
     const ws4 = XLSX.utils.aoa_to_sheet(hutangRows);
     XLSX.utils.book_append_sheet(wb, ws4, "Hutang");
-
-    // Generate buffer
-    const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
-
-    const filename = `Harvestan_Export_${
-      new Date().toISOString().split("T")[0]
-    }.xlsx`;
-
-    return new NextResponse(buf, {
-      status: 200,
-      headers: {
-        "Content-Type":
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="${filename}"`,
-      },
-    });
-  } catch (err) {
-    console.error("Export error:", err);
-    return NextResponse.json(
-      { error: "Terjadi kesalahan saat export" },
-      { status: 500 }
-    );
-  }
-}
+    // ===== SHEET 5: INFO =====
+        const infoRows = [
+          ["Keterangan", "Nilai"],
+          [
+            "Tipe Data",
+            filter.is_demo ? "⚠️ DEMO (Data Contoh)" : "Data Real",
+          ],
+          ["Tanggal Export", new Date().toLocaleString("id-ID")],
+          ["Jumlah Penggarap", (penggaraps || []).length],
+          ["Jumlah Lahan", (lands || []).length],
+          ["Jumlah Panen", (harvests || []).length],
+          ["Jumlah Hutang", (debts || []).length],
+        ];
+    
+        if (filter.is_demo) {
+          infoRows.push([
+            "⚠️ PERINGATAN",
+            "File ini berisi DATA DEMO dari petani contoh. Bukan data asli Anda.",
+          ]);
+        }
+    
+        const ws5 = XLSX.utils.aoa_to_sheet(infoRows);
+        XLSX.utils.book_append_sheet(wb, ws5, "Info");
+    
+        // ===== GENERATE BUFFER =====
+        const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
+    
+        const filenameSuffix = filter.is_demo ? "_DEMO" : "";
+        const filename = `Harvestan_Export_${new Date()
+          .toISOString()
+          .split("T")[0]}${filenameSuffix}.xlsx`;
+    
+        return new NextResponse(buf, {
+          status: 200,
+          headers: {
+            "Content-Type":
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "Content-Disposition": `attachment; filename="${filename}"`,
+          },
+        });
+      } catch (err) {
+        console.error("Export error:", err);
+        return NextResponse.json(
+          { error: "Terjadi kesalahan saat export" },
+          { status: 500 }
+        );
+      }
+    }

@@ -18,15 +18,14 @@ export type Subscription = {
 export type SubscriptionStatus = {
   isPremium: boolean;
   isActive: boolean;
+  isDemoActive: boolean;
+  effectivePremium: boolean;
   expiresAt: string | null;
   type: string | null;
   source: string | null;
   daysRemaining: number | null;
 };
 
-// ===================================================
-// AMBIL SUBSCRIPTION USER (single)
-// ===================================================
 export async function getUserSubscription(
   userId: string
 ): Promise<Subscription | null> {
@@ -46,43 +45,59 @@ export async function getUserSubscription(
   return data;
 }
 
-// ===================================================
-// CEK STATUS PREMIUM USER (dipanggil di layout)
-// ===================================================
 export async function checkPremiumStatus(
   userId: string
 ): Promise<SubscriptionStatus> {
+  const supabase = await createClient();
+
+  const { data: demoSession } = await supabase
+    .from("demo_sessions")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .single();
+
+  let isDemoActive = false;
+  if (demoSession) {
+    const now = Date.now();
+    const expiresAt = new Date(demoSession.expires_at).getTime();
+    isDemoActive = expiresAt > now;
+  }
+
   const sub = await getUserSubscription(userId);
 
-  // Kalau tidak ada subscription (user lama), treat sebagai free
   if (!sub) {
     return {
       isPremium: false,
       isActive: false,
+      isDemoActive,
+      effectivePremium: isDemoActive,
       expiresAt: null,
-      type: "free",
-      source: null,
+      type: isDemoActive ? "demo" : "free",
+      source: isDemoActive ? "demo" : null,
       daysRemaining: null,
     };
   }
 
-  // Kalau is_premium = false, langsung return free
   if (!sub.is_premium) {
     return {
       isPremium: false,
       isActive: false,
+      isDemoActive,
+      effectivePremium: isDemoActive,
       expiresAt: null,
-      type: "free",
-      source: null,
+      type: isDemoActive ? "demo" : "free",
+      source: isDemoActive ? "demo" : null,
       daysRemaining: null,
     };
   }
 
-  // Kalau premium_until = null → lifetime
   if (!sub.premium_until) {
     return {
       isPremium: true,
       isActive: true,
+      isDemoActive,
+      effectivePremium: true,
       expiresAt: null,
       type: sub.premium_type || "lifetime",
       source: sub.premium_source,
@@ -90,7 +105,6 @@ export async function checkPremiumStatus(
     };
   }
 
-  // Kalau ada premium_until, cek apakah masih berlaku
   const now = Date.now();
   const expiresAt = new Date(sub.premium_until).getTime();
   const isActive = expiresAt > now;
@@ -102,6 +116,8 @@ export async function checkPremiumStatus(
   return {
     isPremium: true,
     isActive,
+    isDemoActive,
+    effectivePremium: isActive || isDemoActive,
     expiresAt: sub.premium_until,
     type: sub.premium_type || "barter",
     source: sub.premium_source,
@@ -109,18 +125,12 @@ export async function checkPremiumStatus(
   };
 }
 
-// ===================================================
-// HITUNG LIMIT FREE TIER
-// ===================================================
 export const FREE_TIER_LIMITS = {
   MAX_PENGGARAP: 2,
   MAX_LAHAN: 2,
-  MAX_PANEN: 2, // total di semua lahan
+  MAX_PANEN: 2,
 } as const;
 
-// ===================================================
-// CEK APAKAH USER BISA INPUT LAGI (free tier)
-// ===================================================
 export async function canUserInput(
   userId: string,
   type: "penggarap" | "lahan" | "panen"
@@ -130,21 +140,39 @@ export async function canUserInput(
   currentCount?: number;
   maxCount?: number;
 }> {
+  const supabase = await createClient();
+
+  const { data: demoSession } = await supabase
+    .from("demo_sessions")
+    .select("is_active, expires_at")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .single();
+
+  if (demoSession) {
+    const now = Date.now();
+    const expiresAt = new Date(demoSession.expires_at).getTime();
+    if (expiresAt > now) {
+      return {
+        allowed: false,
+        reason:
+          "Anda sedang dalam MODE DEMO. Tidak bisa input data baru. Klik 'Selesai Demo' untuk kembali ke data Anda.",
+      };
+    }
+  }
+
   const status = await checkPremiumStatus(userId);
 
-  // Premium → bebas
   if (status.isPremium && status.isActive) {
     return { allowed: true };
   }
-
-  // Free tier → cek limit
-  const supabase = await createClient();
 
   if (type === "penggarap") {
     const { count } = await supabase
       .from("penggaraps")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .eq("is_demo", false);
 
     const current = count || 0;
     const max = FREE_TIER_LIMITS.MAX_PENGGARAP;
@@ -163,7 +191,8 @@ export async function canUserInput(
     const { count } = await supabase
       .from("lands")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .eq("is_demo", false);
 
     const current = count || 0;
     const max = FREE_TIER_LIMITS.MAX_LAHAN;
@@ -182,7 +211,8 @@ export async function canUserInput(
     const { count } = await supabase
       .from("harvests")
       .select("*", { count: "exact", head: true })
-      .eq("user_id", userId);
+      .eq("user_id", userId)
+      .eq("is_demo", false);
 
     const current = count || 0;
     const max = FREE_TIER_LIMITS.MAX_PANEN;

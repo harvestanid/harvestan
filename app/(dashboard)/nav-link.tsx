@@ -9,7 +9,9 @@ type Props = {
   label: string;
   badge?: number;
   premium?: boolean;
+  strictPremium?: boolean; // BARU: tidak di-bypass demo
   isPremiumActive?: boolean;
+  isDemoActive?: boolean;
   variant?: "sidebar" | "mobile" | "admin";
 };
 
@@ -19,19 +21,27 @@ export function NavLink({
   label,
   badge = 0,
   premium = false,
+  strictPremium = false,
   isPremiumActive = false,
+  isDemoActive = false,
   variant = "sidebar",
 }: Props) {
   const pathname = usePathname();
 
-  // Cek active
   const isActive =
     pathname === href ||
     (href !== "/dashboard" && pathname.startsWith(href + "/")) ||
     (href !== "/dashboard" && pathname === href);
 
-  // Apakah menu ini perlu lock
-  const isLocked = premium && !isPremiumActive;
+  // Lock logic:
+  // - strictPremium: HANYA unlock kalau premium aktif (demo TIDAK bypass)
+  // - premium: unlock kalau premium ATAU demo aktif
+  let isLocked = false;
+  if (strictPremium) {
+    isLocked = !isPremiumActive;
+  } else if (premium) {
+    isLocked = !isPremiumActive && !isDemoActive;
+  }
 
   // ===== MOBILE VARIANT =====
   if (variant === "mobile") {
@@ -79,14 +89,12 @@ export function NavLink({
       <span className="text-lg flex-shrink-0">{icon}</span>
       <span className="flex-1">{label}</span>
 
-      {/* Badge 🔒 untuk premium locked */}
       {isLocked && (
         <span className="text-[10px] bg-orange-100 text-orange-700 border border-orange-300 font-bold px-1.5 py-0.5 rounded-full flex-shrink-0">
           🔒
         </span>
       )}
 
-      {/* Badge angka (unread feedback) */}
       {badge > 0 && (
         <span
           className={`text-[10px] font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1.5 ${

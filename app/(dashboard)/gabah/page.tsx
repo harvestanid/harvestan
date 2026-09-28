@@ -17,10 +17,11 @@ export default async function GabahPage() {
   if (!user) redirect("/login");
 
   const premium = await checkPremiumStatus(user.id);
-  const isPremiumActive = premium.isPremium && premium.isActive;
 
-  // Kalau bukan premium → halaman locked
-  if (!isPremiumActive) {
+  // Gabah HANYA unlock kalau premium asli (demo TIDAK unlock)
+  const isPremiumReal = premium.isPremium && premium.isActive;
+
+  if (!isPremiumReal) {
     return (
       <div className="p-4 md:p-6 max-w-2xl mx-auto">
         <div className="mb-6">
@@ -58,6 +59,13 @@ export default async function GabahPage() {
             </ul>
           </div>
 
+          {premium.isDemoActive && (
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 my-4 text-xs text-blue-800 max-w-md mx-auto">
+              ℹ️ Fitur ini <strong>tidak termasuk</strong> dalam demo. Hanya
+              tersedia untuk pengguna Premium.
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-3 justify-center mt-6">
             <Link
               href="/premium"
@@ -66,10 +74,10 @@ export default async function GabahPage() {
               💎 Upgrade — Rp 59.000
             </Link>
             <Link
-              href="/demo"
-              className="bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium px-6 py-3 rounded-xl transition border border-blue-200"
+              href="/dashboard"
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-3 rounded-xl transition"
             >
-              🎬 Lihat Demo
+              ← Kembali
             </Link>
           </div>
         </div>
@@ -77,6 +85,5 @@ export default async function GabahPage() {
     );
   }
 
-  // Premium → tampilkan gabah
   return <GabahKlien />;
 }

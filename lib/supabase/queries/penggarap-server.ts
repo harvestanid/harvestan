@@ -9,15 +9,22 @@ export type Land = {
   luas: number;
   lokasi_koordinat: string | null;
   polygon: any;
+  is_demo: boolean;
   created_at: string;
   updated_at: string;
 };
 
-export async function getPenggarapList(): Promise<Penggarap[]> {
+// ===================================================
+// GET PENGGARAP LIST (dengan filter is_demo)
+// ===================================================
+export async function getPenggarapList(
+  isDemo: boolean = false
+): Promise<Penggarap[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("penggaraps")
     .select("*")
+    .eq("is_demo", isDemo)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -27,6 +34,9 @@ export async function getPenggarapList(): Promise<Penggarap[]> {
   return (data as Penggarap[]) || [];
 }
 
+// ===================================================
+// GET PENGGARAP BY ID
+// ===================================================
 export async function getPenggarapById(
   id: string
 ): Promise<Penggarap | null> {
@@ -41,6 +51,9 @@ export async function getPenggarapById(
   return data as Penggarap;
 }
 
+// ===================================================
+// GET LANDS BY PENGGARAP
+// ===================================================
 export async function getLandsByPenggarap(
   penggarapId: string
 ): Promise<Land[]> {
