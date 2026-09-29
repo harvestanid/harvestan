@@ -229,3 +229,153 @@ export async function canUserInput(
 
   return { allowed: true };
 }
+
+// =================================================================
+// AKTIVASI PREMIUM (dipakai webhook Mayar)
+// =================================================================
+
+export type ActivatePremiumInput = {
+  userId: string;
+  orderId: string;
+  amount: number;
+  paymentMethod?: string | null;
+  premiumType?: "lifetime" | "barter" | "trial";
+  source?: string;
+  notes?: string | null;
+};
+
+export async function activatePremium(
+  input: ActivatePremiumInput
+): Promise<{ ok: boolean; message: string }> {
+  const supabase = await createClient();
+
+  const {
+    userId,
+    orderId,
+    amount,
+    paymentMethod = null,
+    premiumType = "lifetime",
+    source = "mayar",
+    notes = null,
+  } = input;
+
+  const { data: existing } = await supabase
+    .from("subscriptions")
+    .select("id, payment_id, is_premium")
+    .eq("user_id", userId)
+    .single();
+
+  if (existing?.payment_id === orderId && existing?.is_premium) {
+    return { ok: true, message: "Order sudah diproses sebelumnya" };
+  }
+
+  const payload = {
+    user_id: userId,
+    is_premium: true,
+    premium_until: null,
+    premium_type: premiumType,
+    premium_source: source,
+    payment_id: orderId,
+    payment_amount: amount,
+    payment_method: paymentMethod,
+    notes,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (existing) {
+    const { error } = await supabase
+      .from("subscriptions")
+      .update(payload)
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("activatePremium update error:", error);
+      return { ok: false, message: error.message };
+    }
+  } else {
+    const { error } = await supabase.from("subscriptions").insert(payload);
+    if (error) {
+      console.error("activatePremium insert error:", error);
+      return { ok: false, message: error.message };
+    }
+  }
+
+  return { ok: true, message: "Premium berhasil diaktifkan" };
+}
+
+// =================================================================
+// MAYAR ORDERS — tracking order
+// =================================================================
+
+export async function saveMayarOrder(input: {
+  orderId: string;
+  userId: string;
+  mayarTransactionId?: string | null;
+  amount: number;
+  status: "pending" | "paid" | "failed" | "expired";
+  paymentUrl?: string | null;
+}): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("premium_orders").upsert(
+    {
+      order_id: input.orderId,
+      user_id: input.userId,
+      amount: input.amount,
+      status: input.status,
+      updated_at: new Date().toISOString(),
+      notes: input.mayarTransactionId
+        ? `Mayar transaction: ${input.mayarTransactionId}`
+        : null,
+    },
+    { onConflict: "order_id" }
+  );
+  if (error) {
+    console.error("saveMayarOrder error:", error);
+  }
+}
+
+export async function getMayarOrderUser(
+  orderId: string
+): Promise<{ userId: string; amount: number } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("premium_orders")
+    .select("user_id, amount")
+    .eq("order_id", orderId)
+    .single();
+
+  if (error || !data) return null;
+  return { userId: data.user_id, amount: Number(data.amount) };
+}
+
+export async function updateMayarOrderStatus(
+  orderId: string,
+  status: "pending" | "paid" | "failed" | "expired"
+): Promise<void> {
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("premium_orders")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("order_id", orderId);
+  if (error) {
+    console.error("updateMayarOrderStatus error:", error);
+  }
+}
+
+export async function findByMayarTransactionId(
+  mayarTransactionId: string
+): Promise<{ userId: string; orderId: string; amount: number } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("premium_orders")
+    .select("user_id, order_id, amount")
+    .ilike("notes", `%${mayarTransactionId}%`)
+    .single();
+
+  if (error || !data) return null;
+  return {
+    userId: data.user_id,
+    orderId: data.order_id,
+    amount: Number(data.amount),
+  };
+}

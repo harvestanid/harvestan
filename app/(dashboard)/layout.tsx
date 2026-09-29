@@ -8,8 +8,6 @@ import { DemoBanner } from "@/components/demo-banner";
 
 const ADMIN_EMAIL = "harvestan.id@gmail.com";
 
-// strictPremium: TRUE = hanya unlock kalau premium asli (demo TIDAK unlock)
-// premium: TRUE = unlock kalau premium ATAU demo aktif
 const MENU_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "📊", premium: false },
   { href: "/penggarap", label: "Penggarap", icon: "👨‍🌾", premium: false },
@@ -66,6 +64,7 @@ export default async function DashboardLayout({
   const isDemoActive = premiumStatus.isDemoActive;
 
   const showDemoButton = !isPremiumActive && !isDemoActive;
+  const showUpgradeButton = !isPremiumActive;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -77,21 +76,21 @@ export default async function DashboardLayout({
         />
       )}
 
-      <nav className="bg-white border-b border-gray-200 px-4 py-0 sticky top-0 z-40">
+      <nav className="bg-white border-b border-gray-200 px-3 md:px-4 py-0 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/dashboard" className="flex items-center">
+          <Link href="/dashboard" className="flex items-center flex-shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/logo.png"
               alt="Harvestan"
-              className="h-24 md:h-28 w-auto"
+              className="h-16 md:h-28 w-auto"
             />
           </Link>
-          <div className="flex items-center gap-2 md:gap-3">
+          <div className="flex items-center gap-1.5 md:gap-3">
             {showDemoButton && (
               <Link
                 href="/demo"
-                className="inline-flex items-center gap-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-[10px] md:text-xs font-bold px-2.5 md:px-3 py-1.5 rounded-full shadow-md transition"
+                className="inline-flex items-center gap-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-[10px] md:text-xs font-bold px-2 md:px-3 py-1.5 rounded-full shadow-md transition"
               >
                 🎬 <span className="hidden sm:inline">Coba Demo</span>
                 <span className="sm:hidden">Demo</span>
@@ -99,21 +98,21 @@ export default async function DashboardLayout({
             )}
 
             {isDemoActive && (
-              <span className="inline-flex items-center gap-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-[10px] md:text-xs font-bold px-2.5 md:px-3 py-1.5 rounded-full shadow-md">
+              <span className="inline-flex items-center gap-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-[10px] md:text-xs font-bold px-2 md:px-3 py-1.5 rounded-full shadow-md">
                 🎬 <span className="hidden sm:inline">DEMO</span>
               </span>
             )}
 
             {isPremiumActive && !isDemoActive && (
-              <span className="hidden md:inline-flex items-center gap-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md">
-                💎 PREMIUM
+              <span className="inline-flex items-center gap-1 bg-gradient-to-r from-yellow-400 to-orange-400 text-white text-[10px] md:text-xs font-bold px-2 md:px-3 py-1.5 rounded-full shadow-md">
+                💎 <span className="hidden sm:inline">PREMIUM</span>
               </span>
             )}
 
-            {showDemoButton && (
+            {showUpgradeButton && (
               <Link
                 href="/premium"
-                className="hidden md:inline-flex items-center gap-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-md transition"
+                className="inline-flex items-center gap-1 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-[10px] md:text-xs font-bold px-2 md:px-3 py-1.5 rounded-full shadow-md transition"
               >
                 💎 Upgrade
               </Link>
@@ -131,7 +130,7 @@ export default async function DashboardLayout({
         </div>
       </nav>
 
-      <div className="max-w-7xl mx-auto flex gap-6 px-4 py-6">
+      <div className="max-w-7xl mx-auto flex gap-6 px-3 md:px-4 py-4 md:py-6">
         <aside className="hidden md:block w-64 flex-shrink-0">
           <div className="bg-white rounded-xl border border-gray-200 p-3 sticky top-32">
             <nav className="space-y-1">

@@ -1,0 +1,15 @@
+{
+  "name": "Test User",
+  "email": "test@test.com",
+  "mobile": "08123456789",
+  "amount": 59000,
+  "description": "Test Payment",
+  "redirectUrl": "http://localhost:3000/premium/sukses",
+  "items": [
+    {
+      "name": "Test Product",
+      "rate": 59000,
+      "quantity": 1
+    }
+  ]
+}

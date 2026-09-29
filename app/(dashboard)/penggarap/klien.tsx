@@ -264,7 +264,6 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
     return tahunArr;
   }
 
-  // ✅ Komponen bagi hasil 2 tahap — FIX FONT AGAR TIDAK KEPOTONG
   function BagiHasilBox({
     profitBersih,
     profitOwnerFinal,
@@ -289,7 +288,6 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
 
     return (
       <div className="space-y-2">
-        {/* TAHAP 1: BAGI HASIL DASAR */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-2">
           <div className="text-[10px] font-bold text-blue-800 uppercase mb-1">
             Bagi Hasil Dasar ({persenOwner}:{persenPenggarap})
@@ -309,7 +307,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
             </div>
             <div className="bg-white border border-orange-200 rounded p-1.5 text-center min-w-0">
               <div className="text-[9px] text-orange-800 font-medium">
-                👨‍🌾 Penggarap ({persenPenggarap}%)
+                👨🌾 Penggarap ({persenPenggarap}%)
               </div>
               <div className="font-bold text-orange-900 text-[10px] break-all leading-tight">
                 {formatRp(profitPenggarapMurni)}
@@ -318,7 +316,6 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
           </div>
         </div>
 
-        {/* TAHAP 2: SETELAH POTONG HUTANG */}
         {adaPotongan && (
           <div className="bg-red-50 border-2 border-red-300 rounded-lg p-2">
             <div className="text-[10px] font-bold text-red-800 uppercase mb-1">
@@ -352,7 +349,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
               </div>
               <div className="bg-white border-2 border-orange-400 rounded p-1.5 text-center min-w-0">
                 <div className="text-[9px] text-orange-800 font-bold">
-                  👨‍🌾 Penggarap
+                  👨🌾 Penggarap
                 </div>
                 <div className="font-bold text-orange-900 text-[10px] break-all leading-tight">
                   {formatRp(profitPenggarapFinal)}
@@ -369,24 +366,35 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
     <div className="space-y-3">
       {penggarapLengkap.map((p) => {
         const isExpanded = expandedPenggarap === p.id;
+        // ✅ Header penggarap pudar kalau ada lahan kebuka
+        const penggarapHeaderMuted = isExpanded && expandedLahan !== null;
 
         return (
           <div
             key={p.id}
-            className={`bg-white border-2 rounded-2xl overflow-hidden transition ${
-              isExpanded ? "border-green-500 shadow-lg" : "border-gray-200"
+            className={`border-2 rounded-2xl overflow-hidden transition-all duration-300 ${
+              isExpanded
+                ? "border-amber-500 shadow-lg ring-2 ring-amber-200 bg-amber-50/40"
+                : "border-gray-200 bg-white"
             }`}
           >
             <button
               onClick={() => togglePenggarap(p.id)}
-              className="w-full text-left p-4 hover:bg-gray-50 transition"
+              className={`w-full text-left p-4 transition-all duration-300 ${
+                isExpanded ? "hover:bg-amber-100/50" : "hover:bg-gray-50"
+              } ${penggarapHeaderMuted ? "opacity-40" : "opacity-100"}`}
             >
               <div className="flex items-start justify-between flex-wrap gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className="font-bold text-lg text-gray-900">
-                      👨‍🌾 {p.nama}
+                      👨🌾 {p.nama}
                     </span>
+                    {isExpanded && (
+                      <span className="text-[9px] bg-amber-500 text-white rounded-full px-2 py-0.5 font-bold uppercase">
+                        Aktif
+                      </span>
+                    )}
                   </div>
                   <div className="text-xs text-gray-600 flex flex-wrap gap-x-3 gap-y-0.5">
                     {p.kontak && <span>📞 {p.kontak}</span>}
@@ -412,8 +420,8 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span
-                    className={`text-gray-500 text-xl transition-transform ${
-                      isExpanded ? "rotate-180" : ""
+                    className={`text-xl transition-transform ${
+                      isExpanded ? "rotate-180 text-amber-600" : "text-gray-500"
                     }`}
                   >
                     ▼
@@ -423,9 +431,9 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
             </button>
 
             {isExpanded && (
-              <div className="border-t border-gray-200 bg-gray-50 p-4 space-y-4">
-                <div className="bg-white rounded-xl p-3">
-                  <div className="text-xs font-bold text-gray-700 uppercase mb-2">
+              <div className="border-t-2 border-amber-300 bg-amber-50/30 p-4 space-y-4">
+                <div className="bg-white rounded-xl p-3 border border-amber-200">
+                  <div className="text-xs font-bold text-amber-800 uppercase mb-2">
                     🗺️ Daftar Lahan ({p.lahanList.length})
                   </div>
                   {p.lahanList.length === 0 ? (
@@ -436,6 +444,9 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                     <div className="space-y-2">
                       {p.lahanList.map((l) => {
                         const isLahanExpanded = expandedLahan === l.id;
+                        // ✅ Header lahan pudar kalau ada tahun kebuka
+                        const lahanHeaderMuted =
+                          isLahanExpanded && expandedTahun !== null;
                         const tahunKelompok = isLahanExpanded
                           ? kelompokkanPerTahun(l.riwayatPanen, l.luas)
                           : [];
@@ -443,20 +454,29 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                         return (
                           <div
                             key={l.id}
-                            className={`border-2 rounded-xl overflow-hidden transition ${
+                            className={`border-2 rounded-xl overflow-hidden transition-all duration-300 ${
                               isLahanExpanded
-                                ? "border-blue-400 bg-blue-50"
+                                ? "border-blue-500 ring-2 ring-blue-200 bg-blue-50/60"
                                 : "border-gray-200 bg-gray-50"
                             }`}
                           >
                             <button
                               onClick={() => toggleLahan(l.id)}
-                              className="w-full text-left p-3 hover:bg-white/50 transition"
+                              className={`w-full text-left p-3 transition-all duration-300 ${
+                                isLahanExpanded
+                                  ? "hover:bg-blue-100/60"
+                                  : "hover:bg-white/50"
+                              } ${lahanHeaderMuted ? "opacity-40" : "opacity-100"}`}
                             >
                               <div className="flex items-center justify-between flex-wrap gap-2">
                                 <div className="min-w-0 flex-1">
-                                  <div className="font-bold text-sm text-gray-900">
+                                  <div className="font-bold text-sm text-gray-900 flex items-center gap-2 flex-wrap">
                                     🗺️ {l.nama}
+                                    {isLahanExpanded && (
+                                      <span className="text-[9px] bg-blue-500 text-white rounded-full px-2 py-0.5 font-bold uppercase">
+                                        Aktif
+                                      </span>
+                                    )}
                                   </div>
                                   <div className="text-xs text-gray-600 mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5">
                                     <span>📏 {l.luas.toFixed(2)} Ha</span>
@@ -485,8 +505,10 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                     </span>
                                   )}
                                   <span
-                                    className={`text-gray-500 text-lg transition-transform ${
-                                      isLahanExpanded ? "rotate-180" : ""
+                                    className={`text-lg transition-transform ${
+                                      isLahanExpanded
+                                        ? "rotate-180 text-blue-600"
+                                        : "text-gray-500"
                                     }`}
                                   >
                                     ▼
@@ -496,9 +518,9 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                             </button>
 
                             {isLahanExpanded && (
-                              <div className="border-t border-blue-200 bg-white p-3">
+                              <div className="border-t-2 border-blue-300 bg-blue-50/40 p-3">
                                 <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
-                                  <div className="text-xs font-bold text-gray-700 uppercase">
+                                  <div className="text-xs font-bold text-blue-800 uppercase">
                                     📅 Riwayat Panen ({l.jmlPanen})
                                   </div>
                                   <div className="flex gap-2 flex-wrap">
@@ -527,6 +549,10 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                       const tahunKey = `${p.id}-${l.id}-${tahunData.tahun}`;
                                       const isTahunExpanded =
                                         expandedTahun === tahunKey;
+                                      // ✅ Header tahun pudar kalau ada musim kebuka
+                                      const tahunHeaderMuted =
+                                        isTahunExpanded &&
+                                        expandedMusim !== null;
                                       const tr = l.tahunRingkas.find(
                                         (t) => t.tahun === tahunData.tahun
                                       );
@@ -534,19 +560,32 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                       return (
                                         <div
                                           key={tahunData.tahun}
-                                          className="border-2 border-gray-300 rounded-lg overflow-hidden"
+                                          className={`border-2 rounded-lg overflow-hidden transition-all duration-300 ${
+                                            isTahunExpanded
+                                              ? "border-purple-500 ring-2 ring-purple-200 bg-purple-50/70"
+                                              : "border-gray-300 bg-gray-100"
+                                          }`}
                                         >
                                           <button
                                             onClick={() =>
                                               toggleTahun(tahunKey)
                                             }
-                                            className="w-full text-left p-2.5 bg-gray-100 hover:bg-gray-200 transition"
+                                            className={`w-full text-left p-2.5 transition-all duration-300 ${
+                                              isTahunExpanded
+                                                ? "hover:bg-purple-100/60"
+                                                : "hover:bg-gray-200"
+                                            } ${tahunHeaderMuted ? "opacity-40" : "opacity-100"}`}
                                           >
                                             <div className="flex items-center justify-between flex-wrap gap-2">
                                               <div className="flex items-center gap-2 flex-wrap">
                                                 <span className="text-sm font-bold text-gray-900">
                                                   📆 {tahunData.tahun}
                                                 </span>
+                                                {isTahunExpanded && (
+                                                  <span className="text-[9px] bg-purple-500 text-white rounded-full px-2 py-0.5 font-bold uppercase">
+                                                    Aktif
+                                                  </span>
+                                                )}
                                                 {tr && (
                                                   <span className="text-[10px] bg-white border border-gray-300 text-gray-700 rounded-full px-2 py-0.5 font-medium">
                                                     {tr.jmlMusim}x musim ·{" "}
@@ -555,10 +594,10 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                 )}
                                               </div>
                                               <span
-                                                className={`text-gray-600 text-sm transition-transform ${
+                                                className={`text-sm transition-transform ${
                                                   isTahunExpanded
-                                                    ? "rotate-180"
-                                                    : ""
+                                                    ? "rotate-180 text-purple-600"
+                                                    : "text-gray-600"
                                                 }`}
                                               >
                                                 ▼
@@ -599,7 +638,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                     </span>
                                                   </span>
                                                   <span className="text-orange-600">
-                                                    👨‍🌾{" "}
+                                                    👨🌾{" "}
                                                     <span className="font-bold">
                                                       {formatRp(
                                                         tr.profitPenggarap
@@ -612,7 +651,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                           </button>
 
                                           {isTahunExpanded && (
-                                            <div className="p-2 space-y-2 bg-white">
+                                            <div className="p-2 space-y-2 bg-purple-50/50 border-t-2 border-purple-300">
                                               {tahunData.items.map(
                                                 (item, idx) => {
                                                   if (item.tipe === "musim") {
@@ -632,7 +671,11 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                     return (
                                                       <div
                                                         key={`musim-${idx}`}
-                                                        className="bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-300 rounded-lg overflow-hidden"
+                                                        className={`border-2 rounded-lg overflow-hidden transition-all duration-300 ${
+                                                          isMusimExpanded
+                                                            ? "border-orange-500 ring-2 ring-orange-200 bg-gradient-to-br from-orange-100 to-red-100"
+                                                            : "border-orange-300 bg-gradient-to-br from-orange-50 to-red-50"
+                                                        }`}
                                                       >
                                                         <button
                                                           onClick={() =>
@@ -640,7 +683,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                               musimKey
                                                             )
                                                           }
-                                                          className="w-full text-left p-2.5 hover:bg-orange-100 transition"
+                                                          className="w-full text-left p-2.5 hover:bg-orange-100/60 transition"
                                                         >
                                                           <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
                                                             <div className="flex items-center gap-2 flex-wrap">
@@ -651,12 +694,17 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                                 {m.jmlPanen}x
                                                                 panen
                                                               </span>
+                                                              {isMusimExpanded && (
+                                                                <span className="text-[9px] bg-orange-500 text-white rounded-full px-2 py-0.5 font-bold uppercase">
+                                                                  Aktif
+                                                                </span>
+                                                              )}
                                                             </div>
                                                             <span
-                                                              className={`text-orange-700 text-sm transition-transform ${
+                                                              className={`text-sm transition-transform ${
                                                                 isMusimExpanded
-                                                                  ? "rotate-180"
-                                                                  : ""
+                                                                  ? "rotate-180 text-orange-700"
+                                                                  : "text-orange-700"
                                                               }`}
                                                             >
                                                               ▼
@@ -703,7 +751,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                             </div>
                                                             <div className="bg-orange-100 border border-orange-300 rounded p-1.5 min-w-0 text-center">
                                                               <div className="text-orange-800 font-medium text-[9px]">
-                                                                👨‍🌾 Total
+                                                                👨🌾 Total
                                                                 Penggarap
                                                               </div>
                                                               <div className="font-bold text-orange-900 text-[10px] break-all leading-tight">
@@ -748,7 +796,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                         </button>
 
                                                         {isMusimExpanded && (
-                                                          <div className="border-t border-orange-300 bg-white p-2 space-y-1.5">
+                                                          <div className="border-t-2 border-orange-400 bg-orange-50/40 p-2 space-y-1.5">
                                                             <div className="flex justify-end mb-1">
                                                               <Link
                                                                 href={`/penggarap/${p.id}/lahan/${l.id}/musim/${encodeURIComponent(
@@ -780,11 +828,11 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                                 return (
                                                                   <div
                                                                     key={h.id}
-                                                                    className="bg-orange-50 border border-orange-200 rounded-lg p-2"
+                                                                    className="bg-green-50 border-2 border-green-300 rounded-lg p-2"
                                                                   >
                                                                     <div className="flex items-center justify-between flex-wrap gap-2 mb-1.5">
-                                                                      <span className="text-[10px] font-bold text-orange-900">
-                                                                        Panen
+                                                                      <span className="text-[10px] font-bold text-green-900">
+                                                                        🌾 Panen
                                                                         ke-
                                                                         {
                                                                           nomorPanen
@@ -859,7 +907,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                                       }
                                                                     />
 
-                                                                    <div className="flex flex-wrap gap-1.5 pt-1.5 mt-1.5 border-t border-orange-200">
+                                                                    <div className="flex flex-wrap gap-1.5 pt-1.5 mt-1.5 border-t border-green-200">
                                                                       <Link
                                                                         href={`/penggarap/${p.id}/lahan/${l.id}/panen/${h.id}`}
                                                                         className="text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-2 py-1 rounded transition"
@@ -908,7 +956,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                   return (
                                                     <div
                                                       key={h.id}
-                                                      className="bg-gray-50 border border-gray-200 rounded-lg p-2.5"
+                                                      className="bg-green-50 border-2 border-green-300 rounded-lg p-2.5"
                                                     >
                                                       <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
                                                         <div className="flex items-center gap-2 flex-wrap">
@@ -932,7 +980,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                           )}
                                                         </div>
                                                       </div>
-                                                      <div className="grid grid-cols-3 gap-1.5 text-[10px] mb-2 pb-2 border-b border-gray-200">
+                                                      <div className="grid grid-cols-3 gap-1.5 text-[10px] mb-2 pb-2 border-b border-green-200">
                                                         <div>
                                                           <div className="text-gray-500">
                                                             Hasil Panen
@@ -990,7 +1038,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                         }
                                                       />
 
-                                                      <div className="flex flex-wrap gap-1.5 pt-2 mt-2 border-t border-gray-200">
+                                                      <div className="flex flex-wrap gap-1.5 pt-2 mt-2 border-t border-green-200">
                                                         <Link
                                                           href={`/penggarap/${p.id}/lahan/${l.id}/panen/${h.id}`}
                                                           className="text-[10px] bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-2 py-1 rounded transition"
