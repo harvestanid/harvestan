@@ -56,6 +56,62 @@ export type InvoiceStats = {
   premium_users: number;
 };
 
+export type Order = {
+  id: string;
+  order_code: string;
+  user_id: string;
+  user_email: string;
+  user_nama: string;
+  items: Array<{
+    product_id: string;
+    nama_produk: string;
+    harga: number;
+    qty: number;
+    satuan: string;
+    subtotal: number;
+    foto_url: string | null;
+  }>;
+  subtotal: number;
+  ongkir: number;
+  total: number;
+  nama_penerima: string;
+  no_hp: string;
+  alamat: string;
+  kota: string;
+  provinsi: string;
+  kode_pos: string | null;
+  kurir: string | null;
+  layanan_kurir: string | null;
+  estimasi_hari: string | null;
+  catatan: string | null;
+  status:
+    | "pending"
+    | "approved"
+    | "rejected"
+    | "expired"
+    | "dikirim"
+    | "selesai";
+  expires_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  resi: string | null;
+  kurir_resi: string | null;
+  catatan_admin: string | null;
+  created_at: string;
+};
+
+export type OrderStats = {
+  total_orders: number;
+  total_pending: number;
+  total_approved: number;
+  total_dikirim: number;
+  total_selesai: number;
+  total_rejected: number;
+  total_expired: number;
+  revenue_this_month: number;
+  revenue_total: number;
+};
+
 export const PAYMENT_INFO = {
   bank: "BCA",
   nomor_rekening: "8691873790",
@@ -534,14 +590,12 @@ export async function rejectInvoice(
   return { ok: true, message: "Invoice ditolak" };
 }
 
-export async function getPendingInvoices(
-  filters?: {
-    status?: string;
-    search?: string;
-    tanggal_dari?: string;
-    tanggal_sampai?: string;
-  }
-): Promise<Invoice[]> {
+export async function getPendingInvoices(filters?: {
+  status?: string;
+  search?: string;
+  tanggal_dari?: string;
+  tanggal_sampai?: string;
+}): Promise<Invoice[]> {
   const supabase = await createClient();
 
   await expireOldInvoices();
@@ -675,6 +729,268 @@ export async function getInvoiceStats(): Promise<InvoiceStats> {
     premium_users: premium_users || 0,
   };
 }
+
+// =================================================================
+// ORDERS (Katalog)
+// =================================================================
+
+export async function expireOldOrders(): Promise<void> {
+  const supabase = await createClient();
+  await supabase
+    .from("orders")
+    .update({ status: "expired" })
+    .eq("status", "pending")
+    .lt("expires_at", new Date().toISOString());
+}
+
+export async function getOrderByCode(code: string): Promise<Order | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("order_code", code)
+    .maybeSingle();
+
+  if (error) {
+    console.error("getOrderByCode error:", error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function getOrdersList(filters?: {
+  status?: string;
+  search?: string;
+}): Promise<Order[]> {
+  const supabase = await createClient();
+
+  await expireOldOrders();
+
+  let query = supabase
+    .from("orders")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (filters?.status && filters.status !== "all") {
+    query = query.eq("status", filters.status);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("getOrdersList error:", error);
+    return [];
+  }
+
+  let result = (data || []) as Order[];
+
+  if (filters?.search) {
+    const q = filters.search.toLowerCase().trim();
+    result = result.filter(
+      (o) =>
+        o.order_code.toLowerCase().includes(q) ||
+        o.user_nama.toLowerCase().includes(q) ||
+        o.user_email.toLowerCase().includes(q) ||
+        o.nama_penerima.toLowerCase().includes(q)
+    );
+  }
+
+  return result;
+}
+
+export async function approveOrder(
+  orderCode: string,
+  adminEmail: string
+): Promise<{ ok: boolean; message: string }> {
+  const supabase = await createClient();
+
+  const order = await getOrderByCode(orderCode);
+  if (!order) {
+    return { ok: false, message: "Pesanan tidak ditemukan" };
+  }
+
+  if (order.status === "approved") {
+    return { ok: true, message: "Pesanan sudah di-approve" };
+  }
+
+  if (order.status === "expired") {
+    return { ok: false, message: "Pesanan sudah kadaluarsa" };
+  }
+
+  const now = new Date().toISOString();
+
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      status: "approved",
+      approved_at: now,
+      approved_by: adminEmail,
+    })
+    .eq("order_code", orderCode);
+
+  if (error) {
+    console.error("approveOrder error:", error);
+    return { ok: false, message: error.message };
+  }
+
+  // Kurangi stok produk & tambah total_terjual
+  for (const item of order.items || []) {
+    if (!item.product_id) continue;
+
+    const { data: p } = await supabase
+      .from("products")
+      .select("stok, total_terjual")
+      .eq("id", item.product_id)
+      .single();
+
+    if (p) {
+      const newStok = Math.max(0, Number(p.stok) - Number(item.qty));
+      const newTerjual =
+        Number(p.total_terjual || 0) + Number(item.qty);
+
+      await supabase
+        .from("products")
+        .update({
+          stok: newStok,
+          total_terjual: newTerjual,
+          status: newStok <= 0 ? "sold_out" : "aktif",
+          updated_at: now,
+        })
+        .eq("id", item.product_id);
+    }
+  }
+
+  return { ok: true, message: "Pesanan disetujui" };
+}
+
+export async function rejectOrder(
+  orderCode: string,
+  catatan: string
+): Promise<{ ok: boolean; message: string }> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      status: "rejected",
+      catatan_admin: catatan || "Ditolak oleh admin",
+    })
+    .eq("order_code", orderCode);
+
+  if (error) {
+    console.error("rejectOrder error:", error);
+    return { ok: false, message: error.message };
+  }
+
+  return { ok: true, message: "Pesanan ditolak" };
+}
+
+export async function updateOrderResi(
+  orderCode: string,
+  resi: string,
+  kurirResi: string
+): Promise<{ ok: boolean; message: string }> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      status: "dikirim",
+      resi,
+      kurir_resi: kurirResi || "JNE",
+    })
+    .eq("order_code", orderCode);
+
+  if (error) {
+    console.error("updateOrderResi error:", error);
+    return { ok: false, message: error.message };
+  }
+
+  return { ok: true, message: "Resi disimpan" };
+}
+
+export async function markOrderSelesai(
+  orderCode: string
+): Promise<{ ok: boolean; message: string }> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("orders")
+    .update({ status: "selesai" })
+    .eq("order_code", orderCode);
+
+  if (error) {
+    console.error("markOrderSelesai error:", error);
+    return { ok: false, message: error.message };
+  }
+
+  return { ok: true, message: "Pesanan selesai" };
+}
+
+export async function getOrderStats(): Promise<OrderStats> {
+  const supabase = await createClient();
+
+  await expireOldOrders();
+
+  const { data: orders } = await supabase
+    .from("orders")
+    .select("status, total, approved_at, created_at");
+
+  const all = orders || [];
+
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+  let revenue_total = 0;
+  let revenue_this_month = 0;
+
+  all.forEach((o) => {
+    if (o.status === "rejected" || o.status === "expired") return;
+    if (o.status === "pending") return;
+    revenue_total += Number(o.total);
+    const approvedDate = o.approved_at ? new Date(o.approved_at) : null;
+    if (approvedDate && approvedDate >= startOfMonth) {
+      revenue_this_month += Number(o.total);
+    }
+  });
+
+  return {
+    total_orders: all.length,
+    total_pending: all.filter((o) => o.status === "pending").length,
+    total_approved: all.filter((o) => o.status === "approved").length,
+    total_dikirim: all.filter((o) => o.status === "dikirim").length,
+    total_selesai: all.filter((o) => o.status === "selesai").length,
+    total_rejected: all.filter((o) => o.status === "rejected").length,
+    total_expired: all.filter((o) => o.status === "expired").length,
+    revenue_this_month,
+    revenue_total,
+  };
+}
+
+export async function getUserOrders(userId: string): Promise<Order[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (error) {
+    console.error("getUserOrders error:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+// =================================================================
+// MAYAR (disimpan untuk masa depan)
+// =================================================================
 
 export async function saveMayarOrder(input: {
   orderId: string;

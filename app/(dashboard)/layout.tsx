@@ -11,6 +11,7 @@ const ADMIN_EMAIL = "harvestan.id@gmail.com";
 const MENU_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: "📊", premium: false },
   { href: "/penggarap", label: "Penggarap", icon: "👨‍🌾", premium: false },
+  { href: "/toko", label: "Toko", icon: "🛒", premium: false },
   {
     href: "/gabah",
     label: "Gabah",
@@ -31,6 +32,7 @@ const MENU_ITEMS = [
   { href: "/laporan", label: "Laporan", icon: "📄", premium: true },
   { href: "/export", label: "Export", icon: "📥", premium: true },
   { href: "/import", label: "Import", icon: "📤", premium: true },
+  { href: "/pesanan-saya", label: "Pesanan", icon: "📦", premium: false },
   { href: "/feedback", label: "Feedback", icon: "💬", premium: false },
   { href: "/bantuan", label: "Bantuan", icon: "❓", premium: false },
   { href: "/pengaturan", label: "Setting", icon: "⚙️", premium: false },
@@ -171,6 +173,18 @@ export default async function DashboardLayout({
                     label="Invoice"
                     variant="admin"
                   />
+                  <NavLink
+                    href="/admin/katalog"
+                    icon="📦"
+                    label="Katalog"
+                    variant="admin"
+                  />
+                  <NavLink
+                    href="/admin/pesanan"
+                    icon="🚚"
+                    label="Pesanan"
+                    variant="admin"
+                  />
                 </div>
               )}
             </nav>
@@ -264,6 +278,18 @@ export default async function DashboardLayout({
                 href="/admin/invoice"
                 icon="🧾"
                 label="Invoice"
+                variant="mobile"
+              />
+              <NavLink
+                href="/admin/katalog"
+                icon="📦"
+                label="Katalog"
+                variant="mobile"
+              />
+              <NavLink
+                href="/admin/pesanan"
+                icon="🚚"
+                label="Pesanan"
                 variant="mobile"
               />
             </>
