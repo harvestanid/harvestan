@@ -47,15 +47,16 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // ===== ROUTE PUBLIK (boleh diakses tanpa login) =====
+  // ===== ROUTE PUBLIK =====
   const isPublicRoute =
     pathname === "/" ||
     pathname.startsWith("/auth") ||
     pathname === "/login" ||
     pathname === "/register" ||
     pathname.startsWith("/reset-password") ||
-    pathname === "/toko" ||
-    pathname.startsWith("/toko/");
+    ((pathname === "/toko" || pathname.startsWith("/toko/")) &&
+      !pathname.startsWith("/toko/checkout") &&
+      !pathname.startsWith("/toko/pesanan"));
 
   if (isPublicRoute) {
     if (user && (pathname === "/login" || pathname === "/register")) {
@@ -64,7 +65,7 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // ===== ROUTE TERPROTEKSI (wajib login) =====
+  // ===== ROUTE TERPROTEKSI =====
   if (!user) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("redirect", pathname);

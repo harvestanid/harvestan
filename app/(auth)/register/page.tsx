@@ -10,8 +10,8 @@ export default function RegisterPage() {
   const supabase = createClient();
 
   const [nama, setNama] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
-  const [whatsapp, setWhatsapp] = useState("");
   const [password, setPassword] = useState("");
   const [konfirmasi, setKonfirmasi] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -20,22 +20,48 @@ export default function RegisterPage() {
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [error, setError] = useState("");
 
-  // Validasi real-time
+  // ===== VALIDASI USERNAME =====
+  const usernameRegex = /^[a-z0-9_]{3,20}$/;
+  const usernameValid = username.length === 0 || usernameRegex.test(username);
+  const usernameTooShort = username.length > 0 && username.length < 3;
+  const usernameTooLong = username.length > 20;
+  const usernameHasInvalidChar =
+    username.length > 0 && !usernameRegex.test(username);
+
+  // ===== VALIDASI PASSWORD =====
   const passwordMismatch = konfirmasi.length > 0 && password !== konfirmasi;
   const passwordTooShort = password.length > 0 && password.length < 8;
+
   const bisaSubmit =
     nama.trim() &&
+    username.trim() &&
+    usernameValid &&
     email.trim() &&
     password.length >= 8 &&
     password === konfirmasi &&
     !loading &&
     !loadingGoogle;
 
+  // Auto-format username: lowercase, hapus spasi & karakter aneh
+  function handleUsernameChange(val: string) {
+    const clean = val
+      .toLowerCase()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-z0-9_]/g, "");
+    setUsername(clean);
+  }
+
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setError("");
 
-    // Validasi ulang
+    if (!usernameRegex.test(username)) {
+      setError(
+        "Username hanya boleh huruf kecil, angka, dan underscore (_). 3-20 karakter."
+      );
+      return;
+    }
+
     if (password.length < 8) {
       setError("Password minimal 8 karakter");
       return;
@@ -52,8 +78,8 @@ export default function RegisterPage() {
       password,
       options: {
         data: {
-          nama: nama,
-          whatsapp: whatsapp,
+          nama: nama.trim(),
+          username: username.trim().toLowerCase(),
         },
       },
     });
@@ -76,6 +102,10 @@ export default function RegisterPage() {
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          access_type: "offline",
+          prompt: "consent",
+        },
       },
     });
 
@@ -159,6 +189,51 @@ export default function RegisterPage() {
             />
           </div>
 
+          {/* ===== USERNAME ===== */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Username <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">
+                @
+              </span>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) => handleUsernameChange(e.target.value)}
+                placeholder="budisantoso"
+                required
+                maxLength={20}
+                className={`w-full pl-9 pr-4 py-3 border rounded-lg focus:ring-2 focus:border-transparent outline-none transition ${
+                  usernameTooShort || usernameHasInvalidChar || usernameTooLong
+                    ? "border-red-300 focus:ring-red-500"
+                    : username.length >= 3 && usernameValid
+                    ? "border-green-300 focus:ring-green-500"
+                    : "border-gray-300 focus:ring-green-500"
+                }`}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Huruf kecil, angka, dan underscore (_). 3-20 karakter.
+            </p>
+            {usernameTooShort && (
+              <p className="text-xs text-red-600 mt-1">
+                ⚠️ Username minimal 3 karakter
+              </p>
+            )}
+            {usernameHasInvalidChar && (
+              <p className="text-xs text-red-600 mt-1">
+                ⚠️ Hanya huruf kecil, angka, dan underscore (_)
+              </p>
+            )}
+            {username.length >= 3 && usernameValid && (
+              <p className="text-xs text-green-600 mt-1">
+                ✅ Username <strong>@{username}</strong> siap digunakan
+              </p>
+            )}
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Email
@@ -169,19 +244,6 @@ export default function RegisterPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="nama@email.com"
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Nomor WhatsApp
-            </label>
-            <input
-              type="tel"
-              value={whatsapp}
-              onChange={(e) => setWhatsapp(e.target.value)}
-              placeholder="08123456789"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none transition"
             />
           </div>

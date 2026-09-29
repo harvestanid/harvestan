@@ -38,6 +38,16 @@ const MENU_ITEMS = [
   { href: "/pengaturan", label: "Setting", icon: "⚙️", premium: false },
 ];
 
+function getUsername(user: any): string {
+  if (!user) return "User";
+  const meta = user.user_metadata || {};
+  if (meta.username) return meta.username;
+  if (meta.nama) return meta.nama;
+  if (meta.full_name) return meta.full_name;
+  if (user.email) return user.email.split("@")[0];
+  return "User";
+}
+
 export default async function DashboardLayout({
   children,
 }: {
@@ -68,6 +78,8 @@ export default async function DashboardLayout({
   const showDemoButton = !isPremiumActive && !isDemoActive;
   const showUpgradeButton = !isPremiumActive;
 
+  const username = getUsername(user);
+
   return (
     <div className="min-h-screen bg-gray-50">
       {isDemoActive && demoStatus && (
@@ -89,6 +101,13 @@ export default async function DashboardLayout({
             />
           </Link>
           <div className="flex items-center gap-1.5 md:gap-3">
+            {/* Username chip */}
+            {user && (
+              <span className="hidden md:inline-flex items-center gap-1 bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-full">
+                👤 @{username}
+              </span>
+            )}
+
             {showDemoButton && (
               <Link
                 href="/demo"
