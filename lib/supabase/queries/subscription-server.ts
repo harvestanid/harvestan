@@ -32,13 +32,28 @@ export type Invoice = {
   user_id: string;
   user_email: string;
   user_nama: string;
+  user_whatsapp: string | null;
   nominal: number;
   status: "pending" | "approved" | "expired" | "rejected";
   expires_at: string;
   approved_at: string | null;
   approved_by: string | null;
+  notif_approved_sent: boolean | null;
+  notif_rejected_sent: boolean | null;
   catatan: string | null;
   created_at: string;
+};
+
+export type InvoiceStats = {
+  total_invoices: number;
+  total_pending: number;
+  total_approved: number;
+  total_rejected: number;
+  total_expired: number;
+  revenue_total: number;
+  revenue_this_month: number;
+  revenue_this_year: number;
+  premium_users: number;
 };
 
 export const PAYMENT_INFO = {
@@ -253,10 +268,6 @@ export async function canUserInput(
   return { allowed: true };
 }
 
-// =================================================================
-// AKTIVASI PREMIUM
-// =================================================================
-
 export type ActivatePremiumInput = {
   userId: string;
   orderId: string;
@@ -325,10 +336,6 @@ export async function activatePremium(
 
   return { ok: true, message: "Premium berhasil diaktifkan" };
 }
-
-// =================================================================
-// INVOICE (TRANSFER MANUAL)
-// =================================================================
 
 function generateInvoiceCode(): string {
   const d = new Date();
@@ -495,7 +502,7 @@ export async function approveInvoice(
     paymentMethod: "transfer_bca",
     premiumType: "lifetime",
     source: "manual_transfer",
-    notes: `Transfer manual approved by ${adminEmail}`,
+    notes: `Transfer bank approved by ${adminEmail}`,
   });
 
   if (!result.ok) {
@@ -527,7 +534,61 @@ export async function rejectInvoice(
   return { ok: true, message: "Invoice ditolak" };
 }
 
-export async function getPendingInvoices(): Promise<Invoice[]> {
+export async function getPendingInvoices(
+  filters?: {
+    status?: string;
+    search?: string;
+    tanggal_dari?: string;
+    tanggal_sampai?: string;
+  }
+): Promise<Invoice[]> {
+  const supabase = await createClient();
+
+  await expireOldInvoices();
+
+  let query = supabase
+    .from("invoices")
+    .select("*")
+    .order("created_at", { ascending: false })
+    .limit(200);
+
+  if (filters?.status && filters.status !== "all") {
+    query = query.eq("status", filters.status);
+  } else {
+    query = query.in("status", ["pending", "approved", "rejected"]);
+  }
+
+  if (filters?.tanggal_dari) {
+    query = query.gte("created_at", filters.tanggal_dari);
+  }
+
+  if (filters?.tanggal_sampai) {
+    query = query.lte("created_at", filters.tanggal_sampai);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("getPendingInvoices error:", error);
+    return [];
+  }
+
+  let result = data || [];
+
+  if (filters?.search) {
+    const q = filters.search.toLowerCase().trim();
+    result = result.filter(
+      (inv) =>
+        inv.invoice_code.toLowerCase().includes(q) ||
+        inv.user_nama.toLowerCase().includes(q) ||
+        inv.user_email.toLowerCase().includes(q)
+    );
+  }
+
+  return result;
+}
+
+export async function getAllInvoices(): Promise<Invoice[]> {
   const supabase = await createClient();
 
   await expireOldInvoices();
@@ -535,12 +596,11 @@ export async function getPendingInvoices(): Promise<Invoice[]> {
   const { data, error } = await supabase
     .from("invoices")
     .select("*")
-    .in("status", ["pending", "approved", "rejected"])
     .order("created_at", { ascending: false })
-    .limit(100);
+    .limit(500);
 
   if (error) {
-    console.error("getPendingInvoices error:", error);
+    console.error("getAllInvoices error:", error);
     return [];
   }
 
@@ -565,9 +625,56 @@ export async function getUserInvoices(userId: string): Promise<Invoice[]> {
   return data || [];
 }
 
-// =================================================================
-// MAYAR PAYMENT (HIDDEN — disimpan untuk masa depan)
-// =================================================================
+export async function getInvoiceStats(): Promise<InvoiceStats> {
+  const supabase = await createClient();
+
+  await expireOldInvoices();
+
+  const { data: invoices } = await supabase
+    .from("invoices")
+    .select("status, nominal, approved_at, created_at");
+
+  const all = invoices || [];
+
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfYear = new Date(now.getFullYear(), 0, 1);
+
+  let revenue_total = 0;
+  let revenue_this_month = 0;
+  let revenue_this_year = 0;
+
+  all.forEach((inv) => {
+    if (inv.status !== "approved") return;
+    revenue_total += Number(inv.nominal);
+    const approvedDate = inv.approved_at ? new Date(inv.approved_at) : null;
+    if (approvedDate) {
+      if (approvedDate >= startOfMonth) {
+        revenue_this_month += Number(inv.nominal);
+      }
+      if (approvedDate >= startOfYear) {
+        revenue_this_year += Number(inv.nominal);
+      }
+    }
+  });
+
+  const { count: premium_users } = await supabase
+    .from("subscriptions")
+    .select("*", { count: "exact", head: true })
+    .eq("is_premium", true);
+
+  return {
+    total_invoices: all.length,
+    total_pending: all.filter((i) => i.status === "pending").length,
+    total_approved: all.filter((i) => i.status === "approved").length,
+    total_rejected: all.filter((i) => i.status === "rejected").length,
+    total_expired: all.filter((i) => i.status === "expired").length,
+    revenue_total,
+    revenue_this_month,
+    revenue_this_year,
+    premium_users: premium_users || 0,
+  };
+}
 
 export async function saveMayarOrder(input: {
   orderId: string;

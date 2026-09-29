@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import type {
   SubscriptionStatus,
   Invoice,
@@ -59,9 +60,40 @@ function formatTanggalJam(iso: string): string {
   }
 }
 
-function hitungSisaJam(expiresAt: string): number {
+function hitungCountdown(expiresAt: string): string {
   const diff = new Date(expiresAt).getTime() - Date.now();
-  return Math.max(0, Math.ceil(diff / (1000 * 60 * 60)));
+  if (diff <= 0) return "KADALUARSA";
+  const totalSec = Math.floor(diff / 1000);
+  const jam = Math.floor(totalSec / 3600);
+  const menit = Math.floor((totalSec % 3600) / 60);
+  const detik = totalSec % 60;
+  return `${String(jam).padStart(2, "0")}:${String(menit).padStart(
+    2,
+    "0"
+  )}:${String(detik).padStart(2, "0")}`;
+}
+
+function CountdownTimer({ expiresAt }: { expiresAt: string }) {
+  const [countdown, setCountdown] = useState(hitungCountdown(expiresAt));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCountdown(hitungCountdown(expiresAt));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt]);
+
+  const isExpired = countdown === "KADALUARSA";
+
+  return (
+    <span
+      className={`font-mono font-bold ${
+        isExpired ? "text-red-600" : "text-orange-600"
+      }`}
+    >
+      ⏰ {countdown}
+    </span>
+  );
 }
 
 export function PremiumKlien({
@@ -202,11 +234,9 @@ Saya sudah transfer, berikut bukti transfernya 👇
               </div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-gray-500">Berlaku sampai</div>
-              <div className="font-bold text-orange-600 text-sm">
-                ⏰ {hitungSisaJam(invoice.expires_at)} jam lagi
-              </div>
-              <div className="text-[10px] text-gray-400">
+              <div className="text-xs text-gray-500 mb-1">Berlaku</div>
+              <CountdownTimer expiresAt={invoice.expires_at} />
+              <div className="text-[10px] text-gray-400 mt-1">
                 {formatTanggalJam(invoice.expires_at)}
               </div>
             </div>
@@ -298,6 +328,13 @@ Saya sudah transfer, berikut bukti transfernya 👇
           <p className="text-xs text-gray-500 mt-3">
             Setelah transfer, kirim bukti via WhatsApp ke admin
           </p>
+
+          <Link
+            href="/premium/riwayat"
+            className="inline-block mt-4 text-xs text-blue-700 hover:text-blue-900 underline font-medium"
+          >
+            📜 Lihat Riwayat Invoice
+          </Link>
         </div>
       )}
 
@@ -383,11 +420,19 @@ Saya sudah transfer, berikut bukti transfernya 👇
 
       {riwayatInvoice.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-6">
-          <h3 className="font-bold text-gray-900 text-sm mb-4">
-            📜 Riwayat Invoice ({riwayatInvoice.length})
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-bold text-gray-900 text-sm">
+              📜 Riwayat Invoice ({riwayatInvoice.length})
+            </h3>
+            <Link
+              href="/premium/riwayat"
+              className="text-xs text-blue-700 hover:text-blue-900 underline font-medium"
+            >
+              Lihat Semua →
+            </Link>
+          </div>
           <div className="space-y-2">
-            {riwayatInvoice.map((inv) => (
+            {riwayatInvoice.slice(0, 3).map((inv) => (
               <div
                 key={inv.id}
                 className={`border rounded-xl p-3 text-xs ${
@@ -443,11 +488,6 @@ Saya sudah transfer, berikut bukti transfernya 👇
                       : "Menunggu"}
                   </span>
                 </div>
-                {inv.status === "rejected" && inv.catatan && (
-                  <div className="mt-2 p-2 bg-white rounded text-red-700 border border-red-200">
-                    <strong>Alasan:</strong> {inv.catatan}
-                  </div>
-                )}
               </div>
             ))}
           </div>

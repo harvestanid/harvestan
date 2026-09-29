@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import type { Invoice } from "@/lib/supabase/queries/subscription-server";
 
@@ -28,13 +28,50 @@ function formatTanggalJam(iso: string): string {
 
 export function InvoiceKlien({ invoices }: Props) {
   const router = useRouter();
-  const [tab, setTab] = useState<"pending" | "approved" | "rejected" | "expired">("pending");
+  const [tab, setTab] = useState<
+    "pending" | "approved" | "rejected" | "expired"
+  >("pending");
   const [loading, setLoading] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [tanggalDari, setTanggalDari] = useState("");
+  const [tanggalSampai, setTanggalSampai] = useState("");
 
-  const filtered = invoices.filter((i) => i.status === tab);
+  const filtered = useMemo(() => {
+    let result = invoices.filter((i) => i.status === tab);
+
+    if (search.trim()) {
+      const q = search.toLowerCase().trim();
+      result = result.filter(
+        (i) =>
+          i.invoice_code.toLowerCase().includes(q) ||
+          i.user_nama.toLowerCase().includes(q) ||
+          i.user_email.toLowerCase().includes(q)
+      );
+    }
+
+    if (tanggalDari) {
+      const dari = new Date(tanggalDari).getTime();
+      result = result.filter(
+        (i) => new Date(i.created_at).getTime() >= dari
+      );
+    }
+
+    if (tanggalSampai) {
+      const sampai = new Date(tanggalSampai).getTime() + 24 * 60 * 60 * 1000;
+      result = result.filter(
+        (i) => new Date(i.created_at).getTime() <= sampai
+      );
+    }
+
+    return result;
+  }, [invoices, tab, search, tanggalDari, tanggalSampai]);
 
   async function handleApprove(invoiceCode: string) {
-    if (!confirm(`Approve invoice ${invoiceCode}?\n\nIni akan langsung mengaktifkan Premium user.`)) {
+    if (
+      !confirm(
+        `Approve invoice ${invoiceCode}?\n\nIni akan langsung mengaktifkan Premium user.`
+      )
+    ) {
       return;
     }
     setLoading(invoiceCode);
@@ -50,6 +87,32 @@ export function InvoiceKlien({ invoices }: Props) {
         return;
       }
       alert("✅ " + json.message);
+
+      // Auto-open WhatsApp user setelah approve
+      if (json.invoice?.whatsapp || json.invoice?.email) {
+        const nomor = json.invoice.whatsapp || "";
+        if (nomor) {
+          setTimeout(() => {
+            if (confirm("Buka WhatsApp user untuk kirim notif?")) {
+              const pesan = `Halo ${json.invoice.nama}! 🎉
+
+✅ Pembayaran kamu sudah kami terima
+🧾 Invoice: ${invoiceCode}
+💎 Status: PREMIUM AKTIF
+
+Semua fitur Harvestan udah kebuka. Login ulang di harvestan.vercel.app untuk akses fitur premium.
+
+Terima kasih sudah upgrade! 🌾`;
+              const clean = nomor.replace(/[^0-9]/g, "").replace(/^0/, "62");
+              window.open(
+                `https://wa.me/${clean}?text=${encodeURIComponent(pesan)}`,
+                "_blank"
+              );
+            }
+          }, 500);
+        }
+      }
+
       router.refresh();
     } catch (err: any) {
       alert("❌ " + (err.message || "Unknown"));
@@ -103,6 +166,14 @@ Dibuat: ${formatTanggalJam(invoice.created_at)}`;
     }
   }
 
+  function resetFilter() {
+    setSearch("");
+    setTanggalDari("");
+    setTanggalSampai("");
+  }
+
+  const adaFilter = search || tanggalDari || tanggalSampai;
+
   return (
     <>
       {/* Tabs */}
@@ -132,11 +203,67 @@ Dibuat: ${formatTanggalJam(invoice.created_at)}`;
         })}
       </div>
 
+      {/* Filter & Search */}
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+          <div>
+            <label className="text-[10px] font-bold text-gray-600 uppercase block mb-1">
+              🔍 Cari
+            </label>
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Kode / nama / email..."
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-gray-600 uppercase block mb-1">
+              📅 Dari
+            </label>
+            <input
+              type="date"
+              value={tanggalDari}
+              onChange={(e) => setTanggalDari(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+          <div>
+            <label className="text-[10px] font-bold text-gray-600 uppercase block mb-1">
+              📅 Sampai
+            </label>
+            <input
+              type="date"
+              value={tanggalSampai}
+              onChange={(e) => setTanggalSampai(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
+            />
+          </div>
+        </div>
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <span className="text-xs text-gray-500 italic">
+            {filtered.length} invoice ditampilkan
+            {adaFilter && " (terfilter)"}
+          </span>
+          {adaFilter && (
+            <button
+              onClick={resetFilter}
+              className="text-xs text-red-600 hover:text-red-800 font-bold"
+            >
+              ✕ Reset Filter
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* List */}
       {filtered.length === 0 ? (
         <div className="bg-white border border-gray-200 rounded-2xl p-12 text-center">
           <div className="text-5xl mb-3">
-            {tab === "pending"
+            {adaFilter
+              ? "🔍"
+              : tab === "pending"
               ? "📭"
               : tab === "approved"
               ? "✅"
@@ -145,7 +272,9 @@ Dibuat: ${formatTanggalJam(invoice.created_at)}`;
               : "⏰"}
           </div>
           <p className="text-gray-500 italic text-sm">
-            Belum ada invoice {tab}
+            {adaFilter
+              ? "Tidak ada invoice yang cocok dengan filter"
+              : `Belum ada invoice ${tab}`}
           </p>
         </div>
       ) : (
@@ -229,16 +358,6 @@ Dibuat: ${formatTanggalJam(invoice.created_at)}`;
                 >
                   📋 Copy Info
                 </button>
-                <a
-                  href={`https://wa.me/62${inv.user_email
-                    .split("@")[0]
-                    .replace(/[^0-9]/g, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-green-100 hover:bg-green-200 text-green-800 text-xs font-medium px-3 py-2 rounded-lg transition"
-                >
-                  📱 Chat WA
-                </a>
                 {inv.status === "pending" && (
                   <>
                     <button
@@ -246,9 +365,7 @@ Dibuat: ${formatTanggalJam(invoice.created_at)}`;
                       disabled={loading === inv.invoice_code}
                       className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition disabled:opacity-50"
                     >
-                      {loading === inv.invoice_code
-                        ? "⏳..."
-                        : "✅ Approve"}
+                      {loading === inv.invoice_code ? "⏳..." : "✅ Approve"}
                     </button>
                     <button
                       onClick={() => handleReject(inv.invoice_code)}

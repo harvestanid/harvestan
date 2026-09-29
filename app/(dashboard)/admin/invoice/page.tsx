@@ -1,7 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getPendingInvoices } from "@/lib/supabase/queries/subscription-server";
+import {
+  getPendingInvoices,
+  getInvoiceStats,
+} from "@/lib/supabase/queries/subscription-server";
 import { InvoiceKlien } from "./klien";
 
 export const metadata = {
@@ -9,6 +12,10 @@ export const metadata = {
 };
 
 const ADMIN_EMAIL = "harvestan.id@gmail.com";
+
+function formatRp(n: number) {
+  return "Rp " + Math.round(n).toLocaleString("id-ID");
+}
 
 export default async function AdminInvoicePage() {
   const supabase = await createClient();
@@ -23,11 +30,7 @@ export default async function AdminInvoicePage() {
   }
 
   const invoices = await getPendingInvoices();
-
-  const pending = invoices.filter((i) => i.status === "pending");
-  const approved = invoices.filter((i) => i.status === "approved");
-  const rejected = invoices.filter((i) => i.status === "rejected");
-  const expired = invoices.filter((i) => i.status === "expired");
+  const stats = await getInvoiceStats();
 
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto">
@@ -46,13 +49,49 @@ export default async function AdminInvoicePage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      {/* STATISTIK REVENUE */}
+      <div className="bg-gradient-to-br from-green-600 to-emerald-700 rounded-2xl p-5 mb-6 text-white shadow-lg">
+        <div className="text-xs font-bold uppercase opacity-80 mb-2">
+          💰 Revenue
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <div className="text-xs opacity-80">Bulan Ini</div>
+            <div className="text-2xl font-bold mt-1">
+              {formatRp(stats.revenue_this_month)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs opacity-80">Tahun Ini</div>
+            <div className="text-2xl font-bold mt-1">
+              {formatRp(stats.revenue_this_year)}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs opacity-80">Total Semua</div>
+            <div className="text-2xl font-bold mt-1">
+              {formatRp(stats.revenue_total)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* STATISTIK INVOICE */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+        <div className="bg-white border border-gray-200 rounded-xl p-4">
+          <div className="text-[10px] text-gray-600 font-bold uppercase">
+            Total Invoice
+          </div>
+          <div className="text-2xl font-bold text-gray-900 mt-1">
+            {stats.total_invoices}
+          </div>
+        </div>
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
           <div className="text-[10px] text-amber-700 font-bold uppercase">
             Pending
           </div>
           <div className="text-2xl font-bold text-amber-900 mt-1">
-            {pending.length}
+            {stats.total_pending}
           </div>
         </div>
         <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
@@ -60,7 +99,7 @@ export default async function AdminInvoicePage() {
             Approved
           </div>
           <div className="text-2xl font-bold text-emerald-900 mt-1">
-            {approved.length}
+            {stats.total_approved}
           </div>
         </div>
         <div className="bg-red-50 border border-red-200 rounded-xl p-4">
@@ -68,15 +107,15 @@ export default async function AdminInvoicePage() {
             Rejected
           </div>
           <div className="text-2xl font-bold text-red-900 mt-1">
-            {rejected.length}
+            {stats.total_rejected}
           </div>
         </div>
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
-          <div className="text-[10px] text-gray-700 font-bold uppercase">
-            Expired
+        <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+          <div className="text-[10px] text-purple-700 font-bold uppercase">
+            Premium Users
           </div>
-          <div className="text-2xl font-bold text-gray-900 mt-1">
-            {expired.length}
+          <div className="text-2xl font-bold text-purple-900 mt-1">
+            {stats.premium_users}
           </div>
         </div>
       </div>
