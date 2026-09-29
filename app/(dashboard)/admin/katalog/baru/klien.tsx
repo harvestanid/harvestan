@@ -1,11 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { KATEGORI_PRODUK } from "@/lib/katalog/kategori";
+import type { Product } from "@/lib/supabase/queries/product-server";
 
-export function FormProduk({ productId }: { productId?: string }) {
+type Props = {
+  productId?: string;
+  initialData?: Product;
+};
+
+export function FormProduk({ productId, initialData }: Props) {
   const router = useRouter();
+  const isEditMode = !!productId && !!initialData;
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
@@ -23,6 +31,25 @@ export function FormProduk({ productId }: { productId?: string }) {
     status: "aktif" as "aktif" | "nonaktif" | "sold_out",
     unggulan: false,
   });
+
+  // Load initial data waktu edit mode
+  useEffect(() => {
+    if (isEditMode && initialData) {
+      setForm({
+        nama: initialData.nama || "",
+        kategori: initialData.kategori || "input_pertanian",
+        sub_kategori: initialData.sub_kategori || "",
+        harga: String(initialData.harga || ""),
+        satuan: initialData.satuan || "pcs",
+        stok: String(initialData.stok || ""),
+        berat_gram: String(initialData.berat_gram || 1000),
+        deskripsi: initialData.deskripsi || "",
+        foto_urls: initialData.foto_urls || [],
+        status: initialData.status || "aktif",
+        unggulan: initialData.unggulan || false,
+      });
+    }
+  }, [isEditMode, initialData]);
 
   async function handleUploadFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
@@ -94,23 +121,37 @@ export function FormProduk({ productId }: { productId?: string }) {
     setLoading(true);
 
     try {
-      const res = await fetch("/api/products/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nama: form.nama.trim(),
-          kategori: form.kategori,
-          sub_kategori: form.sub_kategori.trim() || null,
-          harga: Number(form.harga),
-          satuan: form.satuan.trim() || "pcs",
-          stok: Number(form.stok) || 0,
-          berat_gram: Number(form.berat_gram) || 1000,
-          deskripsi: form.deskripsi.trim() || null,
-          foto_urls: form.foto_urls,
-          status: form.status,
-          unggulan: form.unggulan,
-        }),
-      });
+      const payload = {
+        nama: form.nama.trim(),
+        kategori: form.kategori,
+        sub_kategori: form.sub_kategori.trim() || null,
+        harga: Number(form.harga),
+        satuan: form.satuan.trim() || "pcs",
+        stok: Number(form.stok) || 0,
+        berat_gram: Number(form.berat_gram) || 1000,
+        deskripsi: form.deskripsi.trim() || null,
+        foto_urls: form.foto_urls,
+        status: form.status,
+        unggulan: form.unggulan,
+      };
+
+      let res: Response;
+
+      if (isEditMode) {
+        // EDIT MODE
+        res = await fetch("/api/products/update", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: productId, ...payload }),
+        });
+      } else {
+        // CREATE MODE
+        res = await fetch("/api/products/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      }
 
       const json = await res.json();
 
@@ -119,7 +160,11 @@ export function FormProduk({ productId }: { productId?: string }) {
         return;
       }
 
-      alert("✅ Produk berhasil ditambahkan!");
+      alert(
+        isEditMode
+          ? "✅ Produk berhasil diupdate!"
+          : "✅ Produk berhasil ditambahkan!"
+      );
       router.push("/admin/katalog");
       router.refresh();
     } catch (err: any) {
@@ -356,7 +401,11 @@ export function FormProduk({ productId }: { productId?: string }) {
           disabled={loading || uploading}
           className="flex-[2] bg-green-700 hover:bg-green-800 text-white font-bold py-3 rounded-xl transition disabled:opacity-50"
         >
-          {loading ? "⏳ Menyimpan..." : "💾 Simpan Produk"}
+          {loading
+            ? "⏳ Menyimpan..."
+            : isEditMode
+            ? "💾 Update Produk"
+            : "💾 Simpan Produk"}
         </button>
       </div>
     </form>

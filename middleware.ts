@@ -32,8 +32,6 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // ===== STATIC FILES — SELALU IZINKAN =====
-  // File statis (manifest, service worker, icons, dll) harus SELALU bisa diakses
-  // tanpa login, karena browser fetch file ini tanpa session
   if (
     pathname === "/manifest.json" ||
     pathname === "/sw.js" ||
@@ -55,7 +53,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/auth") ||
     pathname === "/login" ||
     pathname === "/register" ||
-    pathname.startsWith("/reset-password");
+    pathname.startsWith("/reset-password") ||
+    pathname === "/toko" ||
+    pathname.startsWith("/toko/");
 
   if (isPublicRoute) {
     if (user && (pathname === "/login" || pathname === "/register")) {

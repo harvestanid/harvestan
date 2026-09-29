@@ -49,7 +49,11 @@ export function KatalogKlien({ products }: Props) {
   }, [products, kategoriFilter, statusFilter, search]);
 
   async function handleDelete(id: string, nama: string) {
-    if (!confirm(`Hapus produk "${nama}"?\n\nTindakan ini tidak bisa dibatalkan.`)) {
+    if (
+      !confirm(
+        `Hapus produk "${nama}"?\n\nTindakan ini tidak bisa dibatalkan.`
+      )
+    ) {
       return;
     }
 
@@ -273,6 +277,13 @@ export function KatalogKlien({ products }: Props) {
                   className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition text-center"
                 >
                   ✏️ Edit
+                </Link>
+                <Link
+                  href={`/toko/${p.id}`}
+                  target="_blank"
+                  className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-2 rounded-lg transition text-center"
+                >
+                  👁️ Preview
                 </Link>
                 <button
                   onClick={() => handleToggleStatus(p.id, p.status)}

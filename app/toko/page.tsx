@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 import { getProductsList } from "@/lib/supabase/queries/product-server";
 import { TokoKlien } from "./klien";
 
@@ -9,6 +10,11 @@ export const metadata = {
 };
 
 export default async function TokoPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   const products = await getProductsList({ status: "aktif" });
 
   return (
@@ -31,12 +37,29 @@ export default async function TokoPage() {
             >
               Katalog
             </Link>
-            <Link
-              href="/login"
-              className="bg-green-700 hover:bg-green-800 text-white text-xs md:text-sm font-bold px-4 py-2 rounded-full transition"
-            >
-              Masuk
-            </Link>
+            {user ? (
+              <Link
+                href="/dashboard"
+                className="bg-green-700 hover:bg-green-800 text-white text-xs md:text-sm font-bold px-4 py-2 rounded-full transition"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-sm text-gray-700 hover:text-green-700 font-medium px-3 py-2 transition"
+                >
+                  Masuk
+                </Link>
+                <Link
+                  href="/register"
+                  className="bg-green-700 hover:bg-green-800 text-white text-xs md:text-sm font-bold px-4 py-2 rounded-full transition"
+                >
+                  Daftar
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
