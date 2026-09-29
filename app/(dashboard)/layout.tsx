@@ -165,6 +165,12 @@ export default async function DashboardLayout({
                     label="Premium Requests"
                     variant="admin"
                   />
+                  <NavLink
+                    href="/admin/invoice"
+                    icon="🧾"
+                    label="Invoice"
+                    variant="admin"
+                  />
                 </div>
               )}
             </nav>
@@ -252,6 +258,12 @@ export default async function DashboardLayout({
                 href="/admin/premium"
                 icon="🎁"
                 label="Premium"
+                variant="mobile"
+              />
+              <NavLink
+                href="/admin/invoice"
+                icon="🧾"
+                label="Invoice"
                 variant="mobile"
               />
             </>

@@ -26,6 +26,30 @@ export type SubscriptionStatus = {
   daysRemaining: number | null;
 };
 
+export type Invoice = {
+  id: string;
+  invoice_code: string;
+  user_id: string;
+  user_email: string;
+  user_nama: string;
+  nominal: number;
+  status: "pending" | "approved" | "expired" | "rejected";
+  expires_at: string;
+  approved_at: string | null;
+  approved_by: string | null;
+  catatan: string | null;
+  created_at: string;
+};
+
+export const PAYMENT_INFO = {
+  bank: "BCA",
+  nomor_rekening: "8691873790",
+  nama_pemilik: "Irsyaadul Ibaad",
+  whatsapp: "6285162661397",
+  whatsapp_display: "085162661397",
+  harga: 59000,
+};
+
 export async function getUserSubscription(
   userId: string
 ): Promise<Subscription | null> {
@@ -38,7 +62,6 @@ export async function getUserSubscription(
     .single();
 
   if (error) {
-    console.error("getUserSubscription error:", error);
     return null;
   }
 
@@ -231,7 +254,7 @@ export async function canUserInput(
 }
 
 // =================================================================
-// AKTIVASI PREMIUM (dipakai webhook Mayar)
+// AKTIVASI PREMIUM
 // =================================================================
 
 export type ActivatePremiumInput = {
@@ -255,7 +278,7 @@ export async function activatePremium(
     amount,
     paymentMethod = null,
     premiumType = "lifetime",
-    source = "mayar",
+    source = "manual",
     notes = null,
   } = input;
 
@@ -304,7 +327,246 @@ export async function activatePremium(
 }
 
 // =================================================================
-// MAYAR ORDERS — tracking order
+// INVOICE (TRANSFER MANUAL)
+// =================================================================
+
+function generateInvoiceCode(): string {
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let rand = "";
+  for (let i = 0; i < 4; i++) {
+    rand += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `INV-${yyyy}${mm}${dd}-${rand}`;
+}
+
+export async function expireOldInvoices(): Promise<void> {
+  const supabase = await createClient();
+  await supabase
+    .from("invoices")
+    .update({ status: "expired" })
+    .eq("status", "pending")
+    .lt("expires_at", new Date().toISOString());
+}
+
+export async function getActiveInvoice(
+  userId: string
+): Promise<Invoice | null> {
+  const supabase = await createClient();
+
+  const now = new Date().toISOString();
+
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("*")
+    .eq("user_id", userId)
+    .eq("status", "pending")
+    .gt("expires_at", now)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("getActiveInvoice error:", error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function createInvoice(
+  userId: string,
+  userEmail: string,
+  userNama: string
+): Promise<{ ok: boolean; invoice?: Invoice; message: string }> {
+  const supabase = await createClient();
+
+  await expireOldInvoices();
+
+  const existing = await getActiveInvoice(userId);
+  if (existing) {
+    return {
+      ok: true,
+      invoice: existing,
+      message: "Pakai invoice yang sudah ada",
+    };
+  }
+
+  let code = generateInvoiceCode();
+  let attempts = 0;
+  while (attempts < 5) {
+    const { data: check } = await supabase
+      .from("invoices")
+      .select("id")
+      .eq("invoice_code", code)
+      .maybeSingle();
+    if (!check) break;
+    code = generateInvoiceCode();
+    attempts++;
+  }
+
+  const expiresAt = new Date(
+    Date.now() + 24 * 60 * 60 * 1000
+  ).toISOString();
+
+  const { data, error } = await supabase
+    .from("invoices")
+    .insert({
+      invoice_code: code,
+      user_id: userId,
+      user_email: userEmail,
+      user_nama: userNama,
+      nominal: PAYMENT_INFO.harga,
+      status: "pending",
+      expires_at: expiresAt,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("createInvoice error:", error);
+    return { ok: false, message: error.message };
+  }
+
+  return { ok: true, invoice: data, message: "Invoice berhasil dibuat" };
+}
+
+export async function getInvoiceByCode(
+  code: string
+): Promise<Invoice | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("*")
+    .eq("invoice_code", code)
+    .maybeSingle();
+
+  if (error) {
+    console.error("getInvoiceByCode error:", error);
+    return null;
+  }
+
+  return data;
+}
+
+export async function approveInvoice(
+  invoiceCode: string,
+  adminEmail: string
+): Promise<{ ok: boolean; message: string }> {
+  const supabase = await createClient();
+
+  const invoice = await getInvoiceByCode(invoiceCode);
+  if (!invoice) {
+    return { ok: false, message: "Invoice tidak ditemukan" };
+  }
+
+  if (invoice.status === "approved") {
+    return { ok: true, message: "Invoice sudah di-approve sebelumnya" };
+  }
+
+  if (invoice.status === "expired") {
+    return { ok: false, message: "Invoice sudah kadaluarsa" };
+  }
+
+  const now = new Date().toISOString();
+
+  const { error: errUpdate } = await supabase
+    .from("invoices")
+    .update({
+      status: "approved",
+      approved_at: now,
+      approved_by: adminEmail,
+    })
+    .eq("invoice_code", invoiceCode);
+
+  if (errUpdate) {
+    console.error("approveInvoice update error:", errUpdate);
+    return { ok: false, message: errUpdate.message };
+  }
+
+  const result = await activatePremium({
+    userId: invoice.user_id,
+    orderId: invoice.invoice_code,
+    amount: invoice.nominal,
+    paymentMethod: "transfer_bca",
+    premiumType: "lifetime",
+    source: "manual_transfer",
+    notes: `Transfer manual approved by ${adminEmail}`,
+  });
+
+  if (!result.ok) {
+    return { ok: false, message: result.message };
+  }
+
+  return { ok: true, message: "Premium berhasil diaktifkan" };
+}
+
+export async function rejectInvoice(
+  invoiceCode: string,
+  catatan: string
+): Promise<{ ok: boolean; message: string }> {
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({
+      status: "rejected",
+      catatan: catatan || "Ditolak oleh admin",
+    })
+    .eq("invoice_code", invoiceCode);
+
+  if (error) {
+    console.error("rejectInvoice error:", error);
+    return { ok: false, message: error.message };
+  }
+
+  return { ok: true, message: "Invoice ditolak" };
+}
+
+export async function getPendingInvoices(): Promise<Invoice[]> {
+  const supabase = await createClient();
+
+  await expireOldInvoices();
+
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("*")
+    .in("status", ["pending", "approved", "rejected"])
+    .order("created_at", { ascending: false })
+    .limit(100);
+
+  if (error) {
+    console.error("getPendingInvoices error:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+export async function getUserInvoices(userId: string): Promise<Invoice[]> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (error) {
+    console.error("getUserInvoices error:", error);
+    return [];
+  }
+
+  return data || [];
+}
+
+// =================================================================
+// MAYAR PAYMENT (HIDDEN — disimpan untuk masa depan)
 // =================================================================
 
 export async function saveMayarOrder(input: {
@@ -360,22 +622,4 @@ export async function updateMayarOrderStatus(
   if (error) {
     console.error("updateMayarOrderStatus error:", error);
   }
-}
-
-export async function findByMayarTransactionId(
-  mayarTransactionId: string
-): Promise<{ userId: string; orderId: string; amount: number } | null> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("premium_orders")
-    .select("user_id, order_id, amount")
-    .ilike("notes", `%${mayarTransactionId}%`)
-    .single();
-
-  if (error || !data) return null;
-  return {
-    userId: data.user_id,
-    orderId: data.order_id,
-    amount: Number(data.amount),
-  };
 }

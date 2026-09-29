@@ -1,7 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { checkPremiumStatus } from "@/lib/supabase/queries/subscription-server";
+import {
+  checkPremiumStatus,
+  getActiveInvoice,
+  getUserInvoices,
+  PAYMENT_INFO,
+} from "@/lib/supabase/queries/subscription-server";
 import { PremiumKlien } from "./klien";
 
 export const metadata = {
@@ -18,6 +23,8 @@ export default async function PremiumPage() {
   if (!user) redirect("/login");
 
   const status = await checkPremiumStatus(user.id);
+  const activeInvoice = await getActiveInvoice(user.id);
+  const riwayatInvoice = await getUserInvoices(user.id);
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
@@ -36,7 +43,12 @@ export default async function PremiumPage() {
         </p>
       </div>
 
-      <PremiumKlien status={status} />
+      <PremiumKlien
+        status={status}
+        activeInvoice={activeInvoice}
+        riwayatInvoice={riwayatInvoice}
+        paymentInfo={PAYMENT_INFO}
+      />
     </div>
   );
 }
