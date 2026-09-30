@@ -10,9 +10,11 @@ import {
   keGeoJSONPolygon,
   koordinatKeString,
 } from "@/lib/utils/hitung-luas";
+import PetaPilih from "./peta-pilih";
 
 type Point = { lat: number; lng: number; acc: number };
 type Penggarap = { id: string; nama: string };
+type Mode = "gps" | "peta";
 
 // ===================== KONFIGURASI =====================
 const JARAK_MIN_METER = 10;      // titik ungu baru tiap 10 m jalan
@@ -28,12 +30,6 @@ function mPerDegLng(lat: number): number {
   return M_PER_DEG_LAT * Math.cos((lat * Math.PI) / 180);
 }
 
-/**
- * Kalman filter 1D: state [posisi, kecepatan]
- * R (measurement noise) diambil dari akurasi GPS HP:
- * akurasi jelek -> sedikit percaya GPS, akurasi bagus -> penuh.
- * Ini yang bikin marker DIAM pas user diam, tanpa dead-zone lag.
- */
 class KalmanAxis {
   p = 0;
   v = 0;
@@ -49,7 +45,7 @@ class KalmanAxis {
     this.P00 = acc * acc;
     this.P01 = 0;
     this.P10 = 0;
-    this.P11 = 100; // velocity boleh adaptif
+    this.P11 = 100;
     this.initialized = true;
   }
 
@@ -112,6 +108,7 @@ class KalmanGPS {
 export default function UkurContent() {
   const router = useRouter();
 
+  const [mode, setMode] = useState<Mode>("gps");
   const [penggarapId, setPenggarapId] = useState("");
   const [penggaraps, setPenggaraps] = useState<Penggarap[]>([]);
   const [loadingPenggaraps, setLoadingPenggaraps] = useState(false);
@@ -130,7 +127,6 @@ export default function UkurContent() {
   const [pesanSukses, setPesanSukses] = useState<string | null>(null);
   const [pesanErrorSimpan, setPesanErrorSimpan] = useState<string | null>(null);
 
-  // --- Refs (semua update GPS lewat ref, BUKAN state re-render tiap detik) ---
   const mapRef = useRef<any>(null);
   const leafletRef = useRef<any>(null);
   const polylineRef = useRef<any>(null);
@@ -203,7 +199,9 @@ export default function UkurContent() {
   // ===================== INIT MAP (sekali) =====================
   useEffect(() => {
     if (typeof window === "undefined") return;
+    if (mode !== "gps") return;
     if (mapRef.current) return;
+    if (!containerRef.current) return;
 
     let cancelled = false;
 
@@ -235,7 +233,6 @@ export default function UkurContent() {
         { maxZoom: 22, maxNativeZoom: 19, opacity: 0.9 }
       ).addTo(map);
 
-      // Polyline dibuat SEKALI, nanti cuma setLatLngs (tidak dihapus-buat ulang)
       polylineRef.current = L.polyline([], {
         color: "#f0b429",
         weight: 5,
@@ -249,7 +246,6 @@ export default function UkurContent() {
         opacity: 0.7,
       }).addTo(map);
 
-      // Kalau user drag peta: matikan auto-follow (seperti app GPS asli)
       map.on("dragstart", () => {
         followRef.current = false;
       });
@@ -257,7 +253,6 @@ export default function UkurContent() {
       mapRef.current = map;
       leafletRef.current = L;
 
-      // Fix ukuran map di HP
       setTimeout(() => {
         if (mapRef.current) mapRef.current.invalidateSize();
       }, 300);
@@ -276,10 +271,11 @@ export default function UkurContent() {
         accCircleRef.current = null;
       }
     };
-  }, []);
+  }, [mode]);
 
-  // ===================== SYNC VISUAL TITIK UNGU (cuma kalau `points` berubah) =====================
+  // ===================== SYNC VISUAL TITIK UNGU =====================
   useEffect(() => {
+    if (mode !== "gps") return;
     const map = mapRef.current;
     const L = leafletRef.current;
     if (!map || !L) return;
@@ -296,9 +292,7 @@ export default function UkurContent() {
       closingRef.current?.setLatLngs([]);
     }
 
-    // Tambah marker hanya untuk titik BARU (incremental, tanpa rebuild semua)
     if (points.length < markerPtsRef.current.length) {
-      // undo / reset -> bangun ulang
       markerPtsRef.current.forEach((m) => map.removeLayer(m));
       markerPtsRef.current = [];
     }
@@ -312,7 +306,7 @@ export default function UkurContent() {
       }).addTo(map);
       markerPtsRef.current.push(m);
     }
-  }, [points]);
+  }, [points, mode]);
 
   // ===================== GPS: START =====================
   function startTracking() {
@@ -345,7 +339,6 @@ export default function UkurContent() {
         const acc = pos.coords.accuracy;
         setAkurasiNow(acc);
 
-        // Terlalu jelek -> ditahan total, posisi tetap di estimate terakhir
         if (acc > AKURASI_MAKS_METER) {
           setInfoGPS(
             `⚠️ Akurasi ${acc.toFixed(0)}m > ${AKURASI_MAKS_METER}m — ditahan. Cari langit terbuka.`
@@ -355,7 +348,6 @@ export default function UkurContent() {
 
         const k = kalmanRef.current;
 
-        // Origin meter-space (konversi lat/lng -> meter lokal)
         if (!k.originSet) {
           k.setOrigin(pos.coords.latitude, pos.coords.longitude);
         }
@@ -368,7 +360,6 @@ export default function UkurContent() {
           : 1;
         lastTsRef.current = now;
 
-        // Kalman predict + update
         if (!k.ready) {
           k.kx.init(mx, acc);
           k.ky.init(my, acc);
@@ -380,7 +371,6 @@ export default function UkurContent() {
         }
         fixCountRef.current += 1;
 
-        // Posisi hasil filter (bukan raw GPS)
         const lat = k.originLat + k.ky.p / k.mLat;
         const lng = k.originLng + k.kx.p / k.mLng;
         const filtered: Point = { lat, lng, acc };
@@ -388,7 +378,6 @@ export default function UkurContent() {
 
         const speed = Math.hypot(k.kx.v, k.ky.v);
 
-        // ---- Update marker TANPA hapus-buat ulang layer ----
         const map = mapRef.current;
         const L = leafletRef.current;
         if (map && L) {
@@ -415,7 +404,6 @@ export default function UkurContent() {
             accCircleRef.current.setRadius(acc);
           }
 
-          // Kamera: setView sekali di awal, lalu panTo halus TANPA animasi
           if (!firstViewDoneRef.current) {
             firstViewDoneRef.current = true;
             map.setView([lat, lng], 18, { animate: true });
@@ -424,7 +412,6 @@ export default function UkurContent() {
           }
         }
 
-        // ---- Rekam titik ungu tiap 10m (pakai posisi hasil Kalman) ----
         const prev = pointsRef.current;
         const last = prev[prev.length - 1];
 
@@ -481,7 +468,6 @@ export default function UkurContent() {
     watchIdRef.current = id;
   }
 
-  // ===================== GPS: STOP / RESET / UNDO =====================
   function stopTracking() {
     if (watchIdRef.current !== null) {
       navigator.geolocation.clearWatch(watchIdRef.current);
@@ -552,7 +538,7 @@ export default function UkurContent() {
     }
   }
 
-  // ===================== SIMPAN LAHAN =====================
+  // ===================== SIMPAN LAHAN (GPS MODE) =====================
   async function handleSimpan() {
     setPesanErrorSimpan(null);
     setPesanSukses(null);
@@ -574,7 +560,6 @@ export default function UkurContent() {
       return;
     }
 
-    // Validasi UUID penggarap (cegah FK error gak jelas)
     const uuidRe =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRe.test(penggarapId)) {
@@ -648,263 +633,303 @@ export default function UkurContent() {
           </div>
           <div className="min-w-0">
             <h1 className="text-lg md:text-xl font-bold text-white tracking-tight leading-tight">
-              Ukur Lahan GPS
+              Ukur Lahan
             </h1>
             <p className="text-[10px] md:text-xs text-[#f0b429] font-bold uppercase tracking-widest mt-0.5">
-              Jalan Keliling Batas Lahan
+              {mode === "gps" ? "Jalan Keliling Batas Lahan" : "Pilih Titik di Peta"}
             </p>
           </div>
         </div>
 
-        <p className="relative text-[11px] md:text-sm text-white/80 leading-relaxed mb-4">
-          Tekan <strong className="text-[#f0b429]">Mulai Ukur</strong>, lalu
-          jalan keliling batas lahan Anda. Titik otomatis tercatat tiap{" "}
-          {JARAK_MIN_METER} meter.
-        </p>
-
-        <div className="relative grid grid-cols-3 gap-2 md:gap-3">
-          <div className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-2.5 md:p-3 text-center">
-            <div className="text-[9px] md:text-[10px] text-[#f0b429] font-bold uppercase tracking-widest mb-1">
-              Luas
-            </div>
-            <div className="text-base md:text-xl font-bold text-white tracking-tight leading-none">
-              {luasM2.toFixed(0)}
-            </div>
-            <div className="text-[9px] md:text-[10px] text-white/60 mt-0.5">
-              m² · {luasHa.toFixed(4)} Ha
-            </div>
-          </div>
-          <div className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-2.5 md:p-3 text-center">
-            <div className="text-[9px] md:text-[10px] text-[#f0b429] font-bold uppercase tracking-widest mb-1">
-              Keliling
-            </div>
-            <div className="text-base md:text-xl font-bold text-white tracking-tight leading-none">
-              {kelilingM.toFixed(0)}
-            </div>
-            <div className="text-[9px] md:text-[10px] text-white/60 mt-0.5">
-              meter
-            </div>
-          </div>
-          <div className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-2.5 md:p-3 text-center">
-            <div className="text-[9px] md:text-[10px] text-[#f0b429] font-bold uppercase tracking-widest mb-1">
-              Titik
-            </div>
-            <div className="text-base md:text-xl font-bold text-white tracking-tight leading-none">
-              {points.length}
-            </div>
-            <div className="text-[9px] md:text-[10px] text-white/60 mt-0.5">
-              {akurasiNow !== null ? `±${akurasiNow.toFixed(0)}m` : "—"}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* PILIH PENGGARAP */}
-      <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-4 shadow-sm">
-        <label className="block text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
-          👨‍🌾 Pilih Penggarap <span className="text-red-500">*</span>
-        </label>
-        {loadingPenggaraps ? (
-          <div className="text-xs text-[#2c5e2e]/60 italic">Memuat...</div>
-        ) : penggaraps.length === 0 ? (
-          <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-3 text-xs text-[#2c5e2e]">
-            Belum ada penggarap.{" "}
-            <Link href="/penggarap/baru" className="font-bold underline">
-              Tambah penggarap dulu
-            </Link>
-          </div>
-        ) : (
-          <select
-            value={penggarapId}
-            onChange={(e) => setPenggarapId(e.target.value)}
-            disabled={isTracking}
-            className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium disabled:opacity-60"
+        {/* TAB SWITCHER */}
+        <div className="relative grid grid-cols-2 gap-2 bg-black/20 backdrop-blur rounded-full p-1 mb-4">
+          <button
+            onClick={() => setMode("gps")}
+            className={`py-2.5 rounded-full text-xs md:text-sm font-bold transition-all ${
+              mode === "gps"
+                ? "bg-[#f0b429] text-[#2c5e2e] shadow-md"
+                : "text-white/70 hover:text-white"
+            }`}
           >
-            <option value="">-- Pilih Penggarap --</option>
-            {penggaraps.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.nama}
-              </option>
-            ))}
-          </select>
+            🚶 Jalan Keliling
+          </button>
+          <button
+            onClick={() => setMode("peta")}
+            className={`py-2.5 rounded-full text-xs md:text-sm font-bold transition-all ${
+              mode === "peta"
+                ? "bg-[#f0b429] text-[#2c5e2e] shadow-md"
+                : "text-white/70 hover:text-white"
+            }`}
+          >
+            🖱️ Pilih di Peta
+          </button>
+        </div>
+
+        {mode === "gps" && (
+          <p className="relative text-[11px] md:text-sm text-white/80 leading-relaxed mb-4">
+            Tekan <strong className="text-[#f0b429]">Mulai Ukur</strong>, lalu
+            jalan keliling batas lahan Anda. Titik otomatis tercatat tiap{" "}
+            {JARAK_MIN_METER} meter.
+          </p>
+        )}
+
+        {mode === "gps" && (
+          <div className="relative grid grid-cols-3 gap-2 md:gap-3">
+            <div className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-2.5 md:p-3 text-center">
+              <div className="text-[9px] md:text-[10px] text-[#f0b429] font-bold uppercase tracking-widest mb-1">
+                Luas
+              </div>
+              <div className="text-base md:text-xl font-bold text-white tracking-tight leading-none">
+                {luasM2.toFixed(0)}
+              </div>
+              <div className="text-[9px] md:text-[10px] text-white/60 mt-0.5">
+                m² · {luasHa.toFixed(4)} Ha
+              </div>
+            </div>
+            <div className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-2.5 md:p-3 text-center">
+              <div className="text-[9px] md:text-[10px] text-[#f0b429] font-bold uppercase tracking-widest mb-1">
+                Keliling
+              </div>
+              <div className="text-base md:text-xl font-bold text-white tracking-tight leading-none">
+                {kelilingM.toFixed(0)}
+              </div>
+              <div className="text-[9px] md:text-[10px] text-white/60 mt-0.5">
+                meter
+              </div>
+            </div>
+            <div className="bg-white/10 backdrop-blur border border-white/20 rounded-2xl p-2.5 md:p-3 text-center">
+              <div className="text-[9px] md:text-[10px] text-[#f0b429] font-bold uppercase tracking-widest mb-1">
+                Titik
+              </div>
+              <div className="text-base md:text-xl font-bold text-white tracking-tight leading-none">
+                {points.length}
+              </div>
+              <div className="text-[9px] md:text-[10px] text-white/60 mt-0.5">
+                {akurasiNow !== null ? `±${akurasiNow.toFixed(0)}m` : "—"}
+              </div>
+            </div>
+          </div>
         )}
       </div>
 
-      {/* ERROR GPS */}
-      {error && (
-        <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-3.5">
-          <p className="text-xs text-red-700 font-semibold leading-relaxed">
-            ⚠️ {error}
-          </p>
-        </div>
-      )}
-
-      {/* INFO GPS */}
-      {infoGPS && (
-        <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-3">
-          <p className="text-[11px] text-[#2c5e2e] font-semibold leading-relaxed">
-            {infoGPS}
-          </p>
-        </div>
-      )}
-
-      {/* MAP + tombol ikuti */}
-      <div className="relative bg-white border-2 border-[#2c5e2e]/10 rounded-3xl overflow-hidden shadow-sm">
-        <div
-          ref={containerRef}
-          className="w-full h-[320px] md:h-[420px] bg-[#f5f7f3]"
-          style={{ zIndex: 0 }}
-        />
-        <button
-          onClick={centerMap}
-          title="Kembali ke posisi saya"
-          className="absolute bottom-3 right-3 z-[1100] w-11 h-11 rounded-full bg-white shadow-lg border-2 border-[#2c5e2e]/20 flex items-center justify-center text-xl active:scale-95 transition-transform"
-        >
-          🎯
-        </button>
-      </div>
-
-      {/* TOMBOL AKSI */}
-      <div className="flex flex-wrap gap-2">
-        {!isTracking ? (
-          <button
-            onClick={startTracking}
-            disabled={!penggarapId}
-            className="flex-1 min-w-[140px] bg-[#2c5e2e] hover:bg-[#1f4521] text-white font-bold text-sm px-5 py-3.5 rounded-full transition-all hover:scale-[1.02] shadow-md disabled:opacity-50 disabled:hover:scale-100"
-          >
-            ▶️ Mulai Ukur
-          </button>
-        ) : (
-          <button
-            onClick={stopTracking}
-            className="flex-1 min-w-[140px] bg-red-500 hover:bg-red-600 text-white font-bold text-sm px-5 py-3.5 rounded-full transition-all hover:scale-[1.02] shadow-md animate-pulse"
-          >
-            ⏸️ Stop Ukur
-          </button>
-        )}
-        <button
-          onClick={undoLast}
-          disabled={points.length === 0}
-          className="bg-white hover:bg-[#f0b429]/10 text-[#2c5e2e] font-bold text-sm px-5 py-3.5 rounded-full border-2 border-[#f0b429]/40 transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100"
-        >
-          ↩️ Hapus Titik
-        </button>
-        <button
-          onClick={reset}
-          disabled={points.length === 0}
-          className="bg-white hover:bg-red-50 text-red-600 font-bold text-sm px-5 py-3.5 rounded-full border-2 border-red-200 transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100"
-        >
-          🔄 Reset
-        </button>
-      </div>
-
-      {/* TITIK TERAKHIR */}
-      {points.length > 0 && (
-        <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-4">
-          <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
-            Titik Terakhir
-          </div>
-          <div className="grid grid-cols-3 gap-2 text-xs text-[#2c5e2e]">
-            <div>
-              <div className="text-[10px] text-[#2c5e2e]/60 mb-0.5">Lat</div>
-              <div className="font-mono font-semibold truncate">
-                {points[points.length - 1].lat.toFixed(6)}
-              </div>
-            </div>
-            <div>
-              <div className="text-[10px] text-[#2c5e2e]/60 mb-0.5">Lng</div>
-              <div className="font-mono font-semibold truncate">
-                {points[points.length - 1].lng.toFixed(6)}
-              </div>
-            </div>
-            <div>
-              <div className="text-[10px] text-[#2c5e2e]/60 mb-0.5">
-                Akurasi
-              </div>
-              <div className="font-mono font-semibold">
-                ±{points[points.length - 1].acc.toFixed(0)}m
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* FORM SIMPAN */}
-      {bisaSimpan && (
-        <div className="bg-white border-4 border-[#f0b429] rounded-3xl p-4 shadow-lg">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-9 h-9 rounded-full bg-[#f0b429] flex items-center justify-center text-lg flex-shrink-0">
-              💾
-            </div>
-            <div className="min-w-0">
-              <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest">
-                Simpan Lahan
-              </div>
-              <div className="text-[10px] text-[#2c5e2e]/60">
-                {luasHa.toFixed(3)} Ha · {points.length} titik · siap disimpan
-              </div>
-            </div>
-          </div>
-
-          <label className="block text-xs font-medium text-[#2c5e2e] mb-1">
-            Nama Lahan <span className="text-red-500">*</span>
+      {/* ============ MODE GPS ============ */}
+      <div hidden={mode !== "gps"} className="space-y-4">
+        {/* PILIH PENGGARAP */}
+        <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-4 shadow-sm">
+          <label className="block text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
+            👨‍🌾 Pilih Penggarap <span className="text-red-500">*</span>
           </label>
-          <input
-            type="text"
-            value={namaLahan}
-            onChange={(e) => setNamaLahan(e.target.value)}
-            placeholder="Contoh: Sawah Utama"
-            className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium"
+          {loadingPenggaraps ? (
+            <div className="text-xs text-[#2c5e2e]/60 italic">Memuat...</div>
+          ) : penggaraps.length === 0 ? (
+            <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-3 text-xs text-[#2c5e2e]">
+              Belum ada penggarap.{" "}
+              <Link href="/penggarap/baru" className="font-bold underline">
+                Tambah penggarap dulu
+              </Link>
+            </div>
+          ) : (
+            <select
+              value={penggarapId}
+              onChange={(e) => setPenggarapId(e.target.value)}
+              disabled={isTracking}
+              className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium disabled:opacity-60"
+            >
+              <option value="">-- Pilih Penggarap --</option>
+              {penggaraps.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nama}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {/* ERROR GPS */}
+        {error && (
+          <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-3.5">
+            <p className="text-xs text-red-700 font-semibold leading-relaxed">
+              ⚠️ {error}
+            </p>
+          </div>
+        )}
+
+        {/* INFO GPS */}
+        {infoGPS && (
+          <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-3">
+            <p className="text-[11px] text-[#2c5e2e] font-semibold leading-relaxed">
+              {infoGPS}
+            </p>
+          </div>
+        )}
+
+        {/* MAP + tombol ikuti */}
+        <div className="relative bg-white border-2 border-[#2c5e2e]/10 rounded-3xl overflow-hidden shadow-sm">
+          <div
+            ref={containerRef}
+            className="w-full h-[320px] md:h-[420px] bg-[#f5f7f3]"
+            style={{ zIndex: 0 }}
           />
-
-          {pesanErrorSimpan && (
-            <div className="mt-2 bg-red-50 border-2 border-red-200 rounded-xl p-2.5">
-              <p className="text-[11px] text-red-700 font-semibold break-words">
-                {pesanErrorSimpan}
-              </p>
-            </div>
-          )}
-
-          {pesanSukses && (
-            <div className="mt-2 bg-green-50 border-2 border-green-300 rounded-xl p-2.5">
-              <p className="text-[11px] text-green-800 font-semibold">
-                {pesanSukses}
-              </p>
-            </div>
-          )}
-
           <button
-            onClick={handleSimpan}
-            disabled={sedangSimpan || !namaLahan.trim()}
-            className="w-full mt-3 bg-[#2c5e2e] hover:bg-[#1f4521] text-white font-bold py-3.5 rounded-full transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 shadow-md"
+            onClick={centerMap}
+            title="Kembali ke posisi saya"
+            className="absolute bottom-3 right-3 z-[1100] w-11 h-11 rounded-full bg-white shadow-lg border-2 border-[#2c5e2e]/20 flex items-center justify-center text-xl active:scale-95 transition-transform"
           >
-            {sedangSimpan ? "⏳ Menyimpan..." : "💾 Simpan ke Penggarap"}
+            🎯
           </button>
         </div>
-      )}
 
-      {/* BELUM BISA SIMPAN */}
-      {!isTracking && points.length > 0 && points.length < 3 && (
-        <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-3">
-          <p className="text-[11px] text-[#2c5e2e] font-semibold">
-            ⏳ Minimal 3 titik untuk simpan. Sekarang {points.length} titik.
-          </p>
+        {/* TOMBOL AKSI */}
+        <div className="flex flex-wrap gap-2">
+          {!isTracking ? (
+            <button
+              onClick={startTracking}
+              disabled={!penggarapId}
+              className="flex-1 min-w-[140px] bg-[#2c5e2e] hover:bg-[#1f4521] text-white font-bold text-sm px-5 py-3.5 rounded-full transition-all hover:scale-[1.02] shadow-md disabled:opacity-50 disabled:hover:scale-100"
+            >
+              ▶️ Mulai Ukur
+            </button>
+          ) : (
+            <button
+              onClick={stopTracking}
+              className="flex-1 min-w-[140px] bg-red-500 hover:bg-red-600 text-white font-bold text-sm px-5 py-3.5 rounded-full transition-all hover:scale-[1.02] shadow-md animate-pulse"
+            >
+              ⏸️ Stop Ukur
+            </button>
+          )}
+          <button
+            onClick={undoLast}
+            disabled={points.length === 0}
+            className="bg-white hover:bg-[#f0b429]/10 text-[#2c5e2e] font-bold text-sm px-5 py-3.5 rounded-full border-2 border-[#f0b429]/40 transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100"
+          >
+            ↩️ Hapus Titik
+          </button>
+          <button
+            onClick={reset}
+            disabled={points.length === 0}
+            className="bg-white hover:bg-red-50 text-red-600 font-bold text-sm px-5 py-3.5 rounded-full border-2 border-red-200 transition-all hover:scale-[1.02] disabled:opacity-40 disabled:hover:scale-100"
+          >
+            🔄 Reset
+          </button>
         </div>
-      )}
 
-      {/* TIPS */}
-      <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-3xl p-4">
-        <div className="text-xs font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
-          💡 Tips Ukur Akurat
+        {/* TITIK TERAKHIR */}
+        {points.length > 0 && (
+          <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-4">
+            <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
+              Titik Terakhir
+            </div>
+            <div className="grid grid-cols-3 gap-2 text-xs text-[#2c5e2e]">
+              <div>
+                <div className="text-[10px] text-[#2c5e2e]/60 mb-0.5">Lat</div>
+                <div className="font-mono font-semibold truncate">
+                  {points[points.length - 1].lat.toFixed(6)}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-[#2c5e2e]/60 mb-0.5">Lng</div>
+                <div className="font-mono font-semibold truncate">
+                  {points[points.length - 1].lng.toFixed(6)}
+                </div>
+              </div>
+              <div>
+                <div className="text-[10px] text-[#2c5e2e]/60 mb-0.5">
+                  Akurasi
+                </div>
+                <div className="font-mono font-semibold">
+                  ±{points[points.length - 1].acc.toFixed(0)}m
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* FORM SIMPAN */}
+        {bisaSimpan && (
+          <div className="bg-white border-4 border-[#f0b429] rounded-3xl p-4 shadow-lg">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-9 h-9 rounded-full bg-[#f0b429] flex items-center justify-center text-lg flex-shrink-0">
+                💾
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest">
+                  Simpan Lahan
+                </div>
+                <div className="text-[10px] text-[#2c5e2e]/60">
+                  {luasHa.toFixed(3)} Ha · {points.length} titik · siap disimpan
+                </div>
+              </div>
+            </div>
+
+            <label className="block text-xs font-medium text-[#2c5e2e] mb-1">
+              Nama Lahan <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={namaLahan}
+              onChange={(e) => setNamaLahan(e.target.value)}
+              placeholder="Contoh: Sawah Utama"
+              className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium"
+            />
+
+            {pesanErrorSimpan && (
+              <div className="mt-2 bg-red-50 border-2 border-red-200 rounded-xl p-2.5">
+                <p className="text-[11px] text-red-700 font-semibold break-words">
+                  {pesanErrorSimpan}
+                </p>
+              </div>
+            )}
+
+            {pesanSukses && (
+              <div className="mt-2 bg-green-50 border-2 border-green-300 rounded-xl p-2.5">
+                <p className="text-[11px] text-green-800 font-semibold">
+                  {pesanSukses}
+                </p>
+              </div>
+            )}
+
+            <button
+              onClick={handleSimpan}
+              disabled={sedangSimpan || !namaLahan.trim()}
+              className="w-full mt-3 bg-[#2c5e2e] hover:bg-[#1f4521] text-white font-bold py-3.5 rounded-full transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 shadow-md"
+            >
+              {sedangSimpan ? "⏳ Menyimpan..." : "💾 Simpan ke Penggarap"}
+            </button>
+          </div>
+        )}
+
+        {/* BELUM BISA SIMPAN */}
+        {!isTracking && points.length > 0 && points.length < 3 && (
+          <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-3">
+            <p className="text-[11px] text-[#2c5e2e] font-semibold">
+              ⏳ Minimal 3 titik untuk simpan. Sekarang {points.length} titik.
+            </p>
+          </div>
+        )}
+
+        {/* TIPS */}
+        <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-3xl p-4">
+          <div className="text-xs font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
+            💡 Tips Ukur Akurat
+          </div>
+          <ul className="text-[11px] md:text-xs text-[#2c5e2e]/80 space-y-1.5 leading-relaxed">
+            <li>• Keluar ruangan, langit terbuka (jangan di bawah pohon/atap)</li>
+            <li>• Tunggu akurasi GPS turun (di bawah 10m lebih bagus)</li>
+            <li>• Jalan pelan-pelan di batas lahan, jangan lari</li>
+            <li>• Kembali ke titik awal supaya area tertutup sempurna</li>
+            <li>• Titik baru dibuat tiap {JARAK_MIN_METER} meter perpindahan</li>
+          </ul>
         </div>
-        <ul className="text-[11px] md:text-xs text-[#2c5e2e]/80 space-y-1.5 leading-relaxed">
-          <li>• Keluar ruangan, langit terbuka (jangan di bawah pohon/atap)</li>
-          <li>• Tunggu akurasi GPS turun (di bawah 10m lebih bagus)</li>
-          <li>• Jalan pelan-pelan di batas lahan, jangan lari</li>
-          <li>• Kembali ke titik awal supaya area tertutup sempurna</li>
-          <li>• Titik baru dibuat tiap {JARAK_MIN_METER} meter perpindahan</li>
-        </ul>
       </div>
+
+      {/* ============ MODE PETA ============ */}
+      {mode === "peta" && (
+        <PetaPilih
+          penggaraps={penggaraps}
+          penggarapId={penggarapId}
+          setPenggarapId={setPenggarapId}
+        />
+      )}
 
       <div className="text-center pt-2">
         <Link
