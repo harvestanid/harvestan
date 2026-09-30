@@ -100,9 +100,9 @@ export default async function DashboardLayout({
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo.png"
+              src="/logo-horizontal.png"
               alt="Harvestan"
-              className="h-14 md:h-16 w-auto transition-transform group-hover:scale-105"
+              className="h-10 md:h-14 w-auto transition-transform group-hover:scale-105"
             />
           </Link>
 
@@ -144,7 +144,6 @@ export default async function DashboardLayout({
               </Link>
             )}
 
-            {/* 🌐 TOMBOL LANDING */}
             <Link
               href="/"
               className="inline-flex items-center gap-1 text-[10px] md:text-xs font-bold text-[#2c5e2e]/70 hover:text-[#2c5e2e] px-2.5 md:px-3 py-1.5 rounded-full hover:bg-[#2c5e2e]/5 transition-all border border-[#2c5e2e]/15 hover:border-[#2c5e2e]/30"
@@ -217,6 +216,12 @@ export default async function DashboardLayout({
                     href="/admin/pesanan"
                     icon="🚚"
                     label="Pesanan"
+                    variant="admin"
+                  />
+                  <NavLink
+                    href="/admin/blog"
+                    icon="📝"
+                    label="Blog"
                     variant="admin"
                   />
                 </div>
@@ -324,6 +329,12 @@ export default async function DashboardLayout({
                 href="/admin/pesanan"
                 icon="🚚"
                 label="Pesanan"
+                variant="mobile"
+              />
+              <NavLink
+                href="/admin/blog"
+                icon="📝"
+                label="Blog"
                 variant="mobile"
               />
             </>

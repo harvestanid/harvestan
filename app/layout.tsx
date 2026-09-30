@@ -29,6 +29,10 @@ export const metadata: Metadata = {
     "kebun",
     "harvestan",
     "pertanian digital",
+    "aplikasi catat panen",
+    "manajemen lahan pertanian",
+    "GPS lahan",
+    "blog pertanian",
   ],
   authors: [{ name: "Harvestan" }],
   creator: "Harvestan",
@@ -36,13 +40,17 @@ export const metadata: Metadata = {
   applicationName: "Harvestan",
   metadataBase: new URL("https://harvestan.vercel.app"),
 
+  // ===== GOOGLE SEARCH CONSOLE VERIFICATION =====
+  // Ganti "GANTI_DENGAN_KODE_VERIFIKASI_KAMU" dengan kode dari
+  // https://search.google.com/search-console
+  // Kalau belum punya, biarkan saja — nanti tinggal ganti.
+  verification: {
+    google: "GANTI_DENGAN_KODE_VERIFIKASI_KAMU",
+  },
+
   icons: {
-    icon: [
-      { url: "/icon.png", type: "image/png", sizes: "any" },
-    ],
-    apple: [
-      { url: "/icon.png", sizes: "180x180", type: "image/png" },
-    ],
+    icon: [{ url: "/icon.png", type: "image/png", sizes: "any" }],
+    apple: [{ url: "/icon.png", sizes: "180x180", type: "image/png" }],
     shortcut: "/icon.png",
   },
 
@@ -83,6 +91,16 @@ export const metadata: Metadata = {
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+      "max-video-preview": -1,
+    },
+  },
+  alternates: {
+    canonical: "https://harvestan.vercel.app",
   },
 };
 

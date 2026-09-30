@@ -25,9 +25,9 @@ export default async function TokoPage() {
           <Link href="/" className="flex items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo.png"
+              src="/logo-horizontal.png"
               alt="Harvestan"
-              className="h-14 md:h-16 w-auto"
+              className="h-12 md:h-16 w-auto"
             />
           </Link>
           <div className="flex items-center gap-2">

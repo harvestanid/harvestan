@@ -122,7 +122,7 @@ class StyleBoundary extends Component<
   }
 }
 
-const LOGO_URL = "/logo.png";
+const LOGO_URL = "/logo-horizontal.png";
 const LANDING_URL = "https://harvestan.vercel.app";
 
 const FONT_SERIF = "Georgia, 'Times New Roman', serif";
@@ -194,7 +194,7 @@ function StyleHarvestanPro({ data }: { data: PostcardData }) {
           zIndex: 2,
         }}
       >
-        <img src={LOGO_URL} alt="Harvestan" style={{ height: "80px", width: "auto" }} />
+        <img src={LOGO_URL} alt="Harvestan" style={{ height: "60px", width: "auto" }} />
         <div
           style={{
             background: "#f0b429",
@@ -399,23 +399,16 @@ function StyleBoldPop({ data }: { data: PostcardData }) {
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative", background: "#f5e6d3", fontFamily: FONT_SANS }}>
-      {/* blok merah kiri atas */}
       <div style={{ position: "absolute", top: 0, left: 0, width: "480px", height: "480px", background: "#e63946" }} />
-      {/* blok biru kanan atas */}
       <div style={{ position: "absolute", top: 0, right: 0, width: "600px", height: "320px", background: "#1d3557" }} />
-      {/* blok kuning tengah */}
       <div style={{ position: "absolute", top: "320px", right: "120px", width: "320px", height: "320px", background: "#f4a261" }} />
-      {/* garis hitam horizontal */}
       <div style={{ position: "absolute", top: "800px", left: 0, right: 0, height: "20px", background: "#1a1a1a" }} />
-      {/* lingkaran hijau bawah kiri */}
       <div style={{ position: "absolute", bottom: "180px", left: "-100px", width: "500px", height: "500px", borderRadius: "50%", background: "#2a9d8f" }} />
 
-      {/* logo tengah atas */}
       <div style={{ position: "absolute", top: "80px", left: "80px", zIndex: 3 }}>
-        <img src={LOGO_URL} alt="Harvestan" style={{ height: "70px", width: "auto" }} />
+        <img src={LOGO_URL} alt="Harvestan" style={{ height: "55px", width: "auto" }} />
       </div>
 
-      {/* tag komoditas kanan atas */}
       <div style={{ position: "absolute", top: "120px", right: "80px", zIndex: 3, textAlign: "right" }}>
         <div style={{ fontFamily: FONT_DISPLAY, fontSize: "44px", color: "#ffffff", letterSpacing: "4px", lineHeight: 1 }}>
           {safeLabel(data.komoditasLabel).toUpperCase()}
@@ -425,7 +418,6 @@ function StyleBoldPop({ data }: { data: PostcardData }) {
         </div>
       </div>
 
-      {/* kotak putih besar tengah dengan angka */}
       <div style={{ position: "absolute", top: "380px", left: "80px", right: "80px", background: "#ffffff", border: "8px solid #1a1a1a", padding: "60px 40px", zIndex: 3, textAlign: "center" }}>
         <div style={{ fontSize: "24px", color: "#e63946", fontWeight: 900, letterSpacing: "6px", marginBottom: "10px" }}>
           {emoji} HASIL PANEN
@@ -438,7 +430,6 @@ function StyleBoldPop({ data }: { data: PostcardData }) {
         </div>
       </div>
 
-      {/* stats blok bawah */}
       <div style={{ position: "absolute", top: "950px", left: "80px", right: "80px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", zIndex: 3 }}>
         <BauhausBox label="LUAS" value={`${luas.toFixed(2)} Ha`} bg="#1d3557" fg="#ffffff" />
         <BauhausBox label="PRODUKTIVITAS" value={`${Math.round(prod).toLocaleString("id-ID")} Kg/Ha`} bg="#f4a261" fg="#1a1a1a" />
@@ -469,7 +460,6 @@ function StylePolaroid({ data }: { data: PostcardData }) {
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative", background: "#e8e2d5", fontFamily: FONT_SANS }}>
-      {/* subtle texture */}
       <div
         style={{
           position: "absolute",
@@ -479,7 +469,6 @@ function StylePolaroid({ data }: { data: PostcardData }) {
         }}
       />
 
-      {/* instant photo frame */}
       <div
         style={{
           position: "absolute",
@@ -492,7 +481,6 @@ function StylePolaroid({ data }: { data: PostcardData }) {
           transform: "rotate(-1.5deg)",
         }}
       >
-        {/* foto area */}
         <div
           style={{
             width: "100%",
@@ -514,7 +502,6 @@ function StylePolaroid({ data }: { data: PostcardData }) {
             </div>
           )}
 
-          {/* corner date overlay (Fuji style) */}
           <div
             style={{
               position: "absolute",
@@ -533,7 +520,6 @@ function StylePolaroid({ data }: { data: PostcardData }) {
           </div>
         </div>
 
-        {/* bottom caption area (thick, Fuji style) */}
         <div style={{ marginTop: "30px", padding: "20px 10px", borderTop: "2px solid #e5e5e5" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: "10px" }}>
             <div style={{ fontFamily: FONT_SERIF, fontStyle: "italic", fontSize: "32px", color: "#333" }}>
@@ -551,7 +537,6 @@ function StylePolaroid({ data }: { data: PostcardData }) {
         </div>
       </div>
 
-      {/* stats bawah */}
       <div style={{ position: "absolute", bottom: "260px", left: "80px", right: "80px", display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "16px" }}>
         <FujiStat label="LUAS" value={`${luas.toFixed(2)} Ha`} />
         <FujiStat label="PROD." value={`${Math.round(prod).toLocaleString("id-ID")} Kg/Ha`} />
@@ -600,7 +585,7 @@ function StyleFullPhoto({ data }: { data: PostcardData }) {
       />
 
       <div style={{ position: "absolute", top: "80px", left: "80px", right: "80px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 2 }}>
-        <img src={LOGO_URL} alt="Harvestan" style={{ height: "80px", width: "auto" }} />
+        <img src={LOGO_URL} alt="Harvestan" style={{ height: "60px", width: "auto" }} />
         <div style={{ color: "#ffffff", fontSize: "22px", letterSpacing: "4px", textTransform: "uppercase", background: "rgba(0,0,0,0.4)", padding: "12px 24px", borderRadius: "999px" }}>
           {safeTanggal(data.tanggal, true)}
         </div>
@@ -686,7 +671,7 @@ function StyleSatelitCard({ data }: { data: PostcardData }) {
       />
 
       <div style={{ position: "absolute", top: "80px", left: "80px", right: "80px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 2 }}>
-        <img src={LOGO_URL} alt="Harvestan" style={{ height: "80px", width: "auto" }} />
+        <img src={LOGO_URL} alt="Harvestan" style={{ height: "60px", width: "auto" }} />
         <div style={{ background: "rgba(240,180,41,0.95)", color: "#1a3a1c", padding: "12px 24px", borderRadius: "999px", fontSize: "22px", fontWeight: 900, letterSpacing: "3px" }}>
           🛰️ SATELIT
         </div>
@@ -775,7 +760,6 @@ function StyleNeonModern({ data }: { data: PostcardData }) {
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden", background: "#0a0014", fontFamily: FONT_MONO }}>
-      {/* scanlines */}
       <div
         style={{
           position: "absolute",
@@ -785,7 +769,6 @@ function StyleNeonModern({ data }: { data: PostcardData }) {
         }}
       />
 
-      {/* grid horizon */}
       <div
         style={{
           position: "absolute",
@@ -801,7 +784,6 @@ function StyleNeonModern({ data }: { data: PostcardData }) {
         }}
       />
 
-      {/* glow top */}
       <div
         style={{
           position: "absolute",
@@ -815,12 +797,10 @@ function StyleNeonModern({ data }: { data: PostcardData }) {
         }}
       />
 
-      {/* logo */}
       <div style={{ position: "absolute", top: "80px", left: "80px", zIndex: 3 }}>
-        <img src={LOGO_URL} alt="Harvestan" style={{ height: "70px", width: "auto", filter: "brightness(0) invert(1)" }} />
+        <img src={LOGO_URL} alt="Harvestan" style={{ height: "55px", width: "auto", filter: "brightness(0) invert(1)" }} />
       </div>
 
-      {/* date top right */}
       <div style={{ position: "absolute", top: "90px", right: "80px", zIndex: 3 }}>
         <div
           style={{
@@ -838,7 +818,6 @@ function StyleNeonModern({ data }: { data: PostcardData }) {
         </div>
       </div>
 
-      {/* player 1 header */}
       <div style={{ position: "absolute", top: "260px", left: 0, right: 0, textAlign: "center", zIndex: 3 }}>
         <div style={{ fontFamily: FONT_MONO, fontSize: "24px", color: "#00ffe1", letterSpacing: "8px", marginBottom: "10px" }}>
           ★ PLAYER 1 ★
@@ -857,12 +836,10 @@ function StyleNeonModern({ data }: { data: PostcardData }) {
         </div>
       </div>
 
-      {/* emoji */}
       <div style={{ position: "absolute", top: "500px", left: 0, right: 0, textAlign: "center", zIndex: 3, fontSize: "140px" }}>
         {emoji}
       </div>
 
-      {/* skor besar */}
       <div style={{ position: "absolute", top: "720px", left: 0, right: 0, textAlign: "center", zIndex: 3 }}>
         <div style={{ fontFamily: FONT_MONO, fontSize: "22px", color: "#00ffe1", letterSpacing: "6px", marginBottom: "10px" }}>
           HIGH SCORE
@@ -884,7 +861,6 @@ function StyleNeonModern({ data }: { data: PostcardData }) {
         </div>
       </div>
 
-      {/* arcade stats */}
       <div style={{ position: "absolute", bottom: "380px", left: "80px", right: "80px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", zIndex: 3 }}>
         <ArcadeBox label="LUAS" value={`${luas.toFixed(2)} Ha`} color="#00ffe1" />
         <ArcadeBox label="PRODUKTIVITAS" value={`${Math.round(prod).toLocaleString("id-ID")} Kg/Ha`} color="#ff00c8" />
@@ -934,7 +910,6 @@ function StyleEarthTone({ data }: { data: PostcardData }) {
 
   return (
     <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden", background: "linear-gradient(180deg, #ff8c42 0%, #ffb84d 25%, #e8d5a8 55%, #8b6f47 100%)", fontFamily: FONT_SERIF }}>
-      {/* matahari */}
       <div
         style={{
           position: "absolute",
@@ -949,7 +924,6 @@ function StyleEarthTone({ data }: { data: PostcardData }) {
         }}
       />
 
-      {/* awan silhouette */}
       <div
         style={{
           position: "absolute",
@@ -975,26 +949,22 @@ function StyleEarthTone({ data }: { data: PostcardData }) {
         }}
       />
 
-      {/* silhouette sawah (batang padi) */}
       <div style={{ position: "absolute", bottom: "500px", left: 0, right: 0, height: "300px", display: "flex", justifyContent: "space-around", alignItems: "flex-end", opacity: 0.5 }}>
         {Array.from({ length: 20 }).map((_, i) => (
           <div key={i} style={{ width: "6px", height: `${180 + (i % 5) * 20}px`, background: "#5a3e1b", transform: `rotate(${(i % 3 - 1) * 8}deg)`, transformOrigin: "bottom" }} />
         ))}
       </div>
 
-      {/* logo atas */}
       <div style={{ position: "absolute", top: "80px", left: "80px", zIndex: 3 }}>
-        <img src={LOGO_URL} alt="Harvestan" style={{ height: "70px", width: "auto" }} />
+        <img src={LOGO_URL} alt="Harvestan" style={{ height: "55px", width: "auto" }} />
       </div>
 
-      {/* tag kanan atas */}
       <div style={{ position: "absolute", top: "100px", right: "80px", zIndex: 3, textAlign: "right" }}>
         <div style={{ fontFamily: FONT_SERIF, fontSize: "20px", color: "#5a3e1b", fontStyle: "italic", letterSpacing: "3px" }}>
           {safeTanggal(data.tanggal, true)}
         </div>
       </div>
 
-      {/* komoditas atas matahari */}
       <div style={{ position: "absolute", top: "620px", left: 0, right: 0, textAlign: "center", zIndex: 3 }}>
         <div style={{ fontSize: "100px", marginBottom: "10px" }}>{emoji}</div>
         <div style={{ fontFamily: FONT_DISPLAY, fontSize: "60px", color: "#3d2a14", letterSpacing: "8px", textTransform: "uppercase" }}>
@@ -1002,7 +972,6 @@ function StyleEarthTone({ data }: { data: PostcardData }) {
         </div>
       </div>
 
-      {/* angka gede */}
       <div style={{ position: "absolute", top: "1000px", left: 0, right: 0, textAlign: "center", zIndex: 3 }}>
         <div style={{ fontFamily: FONT_SERIF, fontSize: "28px", color: "#3d2a14", fontStyle: "italic", letterSpacing: "6px", marginBottom: "10px" }}>
           — Hasil Panen —
@@ -1024,7 +993,6 @@ function StyleEarthTone({ data }: { data: PostcardData }) {
         </div>
       </div>
 
-      {/* stats */}
       <div style={{ position: "absolute", bottom: "340px", left: "80px", right: "80px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px 40px", zIndex: 3 }}>
         <SunsetRow label="Luas Lahan" value={`${luas.toFixed(2)} Ha`} />
         <SunsetRow label="Produktivitas" value={`${Math.round(prod).toLocaleString("id-ID")} Kg/Ha`} />
@@ -1113,6 +1081,15 @@ function SatelitRow({ label, value }: { label: string; value: string }) {
     <div>
       <div style={{ fontSize: "16px", color: "#8b6f47", fontWeight: 700, letterSpacing: "2px", marginBottom: "6px" }}>{label}</div>
       <div style={{ fontSize: "26px", color: "#2c5e2e", fontWeight: 900 }}>{value}</div>
+    </div>
+  );
+}
+
+function NeonBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ background: "rgba(0, 255, 200, 0.05)", border: "2px solid #00ffc8", borderRadius: "16px", padding: "20px", boxShadow: "0 0 20px rgba(0, 255, 200, 0.3)" }}>
+      <div style={{ fontFamily: FONT_MONO, fontSize: "16px", color: "#00ffc8", letterSpacing: "3px", marginBottom: "8px" }}>{label}</div>
+      <div style={{ fontFamily: FONT_DISPLAY, fontSize: "28px", color: "#ffffff", letterSpacing: "1px" }}>{value}</div>
     </div>
   );
 }
