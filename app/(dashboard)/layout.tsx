@@ -27,6 +27,7 @@ const MENU_ITEMS = [
     strictPremium: true,
   },
   { href: "/ukur-lahan", label: "Ukur", icon: "📍", premium: true },
+  { href: "/log-tanam", label: "Log Tanam", icon: "📋", premium: false },
   { href: "/keuangan", label: "Keuangan", icon: "💰", premium: false },
   { href: "/grafik", label: "Grafik", icon: "📈", premium: false },
   { href: "/laporan", label: "Laporan", icon: "📄", premium: true },
@@ -106,7 +107,6 @@ export default async function DashboardLayout({
           </Link>
 
           <div className="flex items-center gap-1.5 md:gap-3">
-            {/* Username chip */}
             {user && (
               <span className="hidden md:inline-flex items-center gap-1.5 bg-[#2c5e2e]/5 border border-[#2c5e2e]/15 text-[#2c5e2e] text-xs font-semibold px-3 py-1.5 rounded-full">
                 👤 @{username}
@@ -144,7 +144,7 @@ export default async function DashboardLayout({
               </Link>
             )}
 
-            {/* 🌐 TOMBOL LANDING — BARU */}
+            {/* 🌐 TOMBOL LANDING */}
             <Link
               href="/"
               className="inline-flex items-center gap-1 text-[10px] md:text-xs font-bold text-[#2c5e2e]/70 hover:text-[#2c5e2e] px-2.5 md:px-3 py-1.5 rounded-full hover:bg-[#2c5e2e]/5 transition-all border border-[#2c5e2e]/15 hover:border-[#2c5e2e]/30"
