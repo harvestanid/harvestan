@@ -46,7 +46,6 @@ function buatSakKosong(): SakInput[] {
     .map(() => ({ bobot: 0, jumlah: 0, pribadi: false }));
 }
 
-// Setting default jumlah sak per penimbangan (localStorage)
 const KEY_DEFAULT_SAK = "harvestan_default_jumlah_sak";
 
 export function GabahKlien() {
@@ -69,10 +68,8 @@ export function GabahKlien() {
   const [hargaVendor, setHargaVendor] = useState(400);
   const [persenOwner, setPersenOwner] = useState(50);
 
-  // Setting default jumlah sak per penimbangan
   const [defaultSak, setDefaultSak] = useState(2);
 
-  // Bawa pulang
   const [bawaPenggarap, setBawaPenggarap] = useState(0);
   const [bawaOwner, setBawaOwner] = useState(0);
   const [cekPenggarap, setCekPenggarap] = useState(false);
@@ -81,7 +78,6 @@ export function GabahKlien() {
   const [sesi, setSesi] = useState<Sesi[]>([{ id: 1, sak: buatSakKosong() }]);
   const [nextSesiId, setNextSesiId] = useState(2);
 
-  // Tombol "Jumlah Setiap Sesi"
   const [showSesiSummary, setShowSesiSummary] = useState(false);
 
   const [hasil, setHasil] = useState<{
@@ -94,7 +90,6 @@ export function GabahKlien() {
     profitBersih: number;
     produktivitas: number;
     sesiDetails: SesiDetail[];
-    // Hasil perhitungan bagi hasil versi HTML
     profitOwnerFinal: number;
     profitPenggarapFinal: number;
     nilaiBawaPenggarap: number;
@@ -103,7 +98,6 @@ export function GabahKlien() {
 
   const [sedangKirim, setSedangKirim] = useState(false);
 
-  // Load default jumlah sak dari localStorage
   useEffect(() => {
     try {
       const saved = localStorage.getItem(KEY_DEFAULT_SAK);
@@ -114,7 +108,6 @@ export function GabahKlien() {
     } catch (e) {}
   }, []);
 
-  // Simpan default jumlah sak ke localStorage
   useEffect(() => {
     try {
       localStorage.setItem(KEY_DEFAULT_SAK, String(defaultSak));
@@ -208,7 +201,6 @@ export function GabahKlien() {
         if (s.id !== sesiId) return s;
         const newSak = [...s.sak];
         newSak[sakIndex] = { ...newSak[sakIndex], [field]: value };
-        // Auto isi default jumlah sak ketika bobot > 0 dan jumlah masih 0
         if (
           field === "bobot" &&
           value > 0 &&
@@ -216,7 +208,6 @@ export function GabahKlien() {
         ) {
           newSak[sakIndex].jumlah = defaultSak;
         }
-        // Kalau bobot jadi 0, reset jumlah juga
         if (field === "bobot" && value <= 0) {
           newSak[sakIndex].jumlah = 0;
         }
@@ -225,9 +216,6 @@ export function GabahKlien() {
     );
   }
 
-  // ===================================================
-  // HITUNG TOTAL — dengan rumus bagi hasil versi HTML
-  // ===================================================
   function hitungTotal() {
     let totalBobot = 0;
     let totalJumlah = 0;
@@ -279,25 +267,17 @@ export function GabahKlien() {
       });
     });
 
-    // ===== HITUNG KEUANGAN =====
-    // Profit berdasarkan SEMUA bobot (yang dijual + pribadi)
-    // Karena "pribadi" hanya penanda tidak dijual, tapi tetap punya nilai
     const totalHarga = bobotDijual * hargaJual;
     const biayaVendor = totalBobot * hargaVendor;
     const profitBersih = totalHarga - biayaVendor;
     const produktivitas = luasLahan > 0 ? totalBobot / luasLahan : 0;
 
-    // ===== RUMUS BAGI HASIL VERSI HTML =====
     const persenPenggarap = 100 - persenOwner;
     const harga = hargaJual;
 
-    // Profit dasar (dari profit bersih)
     let po = profitBersih * (persenOwner / 100);
     let pp = profitBersih * (persenPenggarap / 100);
 
-    // Transfer nilai gabah bawa pulang (versi HTML)
-    // Bawa Penggarap: Owner dapat, Penggarap dipotong
-    // Bawa Owner: Penggarap dapat, Owner dipotong
     const nilaiBawaPenggarap = cekPenggarap ? bawaPenggarap * harga : 0;
     const nilaiBawaOwner = cekOwner ? bawaOwner * harga : 0;
 
@@ -331,9 +311,6 @@ export function GabahKlien() {
     }, 100);
   }
 
-  // ===================================================
-  // KIRIM KE DATABASE
-  // ===================================================
   async function kirimKeDatabase() {
     if (!penggarapId || !landId) {
       alert("❌ Pilih penggarap & lahan dulu");
@@ -378,21 +355,18 @@ export function GabahKlien() {
       const harga = hargaJual;
       const biayaPanen = hargaVendor;
 
-      // ===== PROFIT DASAR (sebelum transfer bawa pulang) =====
       const pendapatan = hasil.bobotDijual * harga;
       const totalBiaya = hasilKg * biayaPanen;
       const profitBersih = pendapatan - totalBiaya;
       let profitOwner = profitBersih * (persenOwner / 100);
       let profitPenggarap = profitBersih * (persenPenggarap / 100);
 
-      // ===== TRANSFER NILAI GABAH BAWA PULANG (versi HTML) =====
       const nilaiBawaPenggarap = cekPenggarap ? bawaPenggarap * harga : 0;
       const nilaiBawaOwner = cekOwner ? bawaOwner * harga : 0;
 
       profitOwner += nilaiBawaPenggarap - nilaiBawaOwner;
       profitPenggarap += nilaiBawaOwner - nilaiBawaPenggarap;
 
-      // ===== POTONG HUTANG OTOMATIS =====
       const { data: hutangList } = await supabase
         .from("debts")
         .select("*")
@@ -467,7 +441,6 @@ export function GabahKlien() {
         totalHutangSebelum - potonganHutang
       );
 
-      // ===== KETERANGAN BIAYA OTOMATIS =====
       let keteranganBiaya = "";
       if (nilaiBawaPenggarap > 0 && nilaiBawaOwner > 0) {
         keteranganBiaya = `Penggarap bawa pulang ${bawaPenggarap} Kg gabah, Owner bawa pulang ${bawaOwner} Kg gabah`;
@@ -541,7 +514,6 @@ export function GabahKlien() {
 
       alert(pesanSukses);
 
-      // Reset form
       setHasil(null);
       setSesi([{ id: 1, sak: buatSakKosong() }]);
       setNextSesiId(2);
@@ -592,7 +564,6 @@ export function GabahKlien() {
 
   const persenPenggarap = 100 - persenOwner;
 
-  // ===== Ringkasan sesi untuk tombol "Jumlah Setiap Sesi" =====
   const ringkasanSesi = sesi.map((s, idx) => {
     let subBobot = 0;
     let subSak = 0;
@@ -728,7 +699,6 @@ export function GabahKlien() {
               </div>
             </div>
 
-            {/* ===== SETTING DEFAULT JUMLAH SAK ===== */}
             <div className="pt-2 border-t">
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 ⚙️ Default jumlah sak per penimbangan
@@ -752,7 +722,6 @@ export function GabahKlien() {
               </div>
             </div>
 
-            {/* ===== SKEMA BAGI HASIL ===== */}
             <div className="pt-2 border-t">
               <SkemaBagiHasilV2 onChange={setPersenOwner} />
             </div>
@@ -863,7 +832,6 @@ export function GabahKlien() {
                   ))}
                 </div>
 
-                {/* ===== RINGKASAN PER SESI ===== */}
                 <div className="mt-3 pt-3 border-t border-gray-200 bg-gray-50 -mx-5 -mb-5 px-5 py-3 rounded-b-xl">
                   <div className="text-xs text-gray-600 flex flex-wrap gap-x-4 gap-y-1">
                     <span>
@@ -893,7 +861,6 @@ export function GabahKlien() {
             </button>
           </div>
 
-          {/* ===== TOMBOL JUMLAH SETIAP SESI ===== */}
           <div className="text-center mb-4">
             <button
               onClick={() => setShowSesiSummary(!showSesiSummary)}
@@ -944,7 +911,6 @@ export function GabahKlien() {
             </div>
           )}
 
-          {/* ===== CHECKBOX GABAH BAWA PULANG ===== */}
           <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 mb-6">
             <h3 className="text-sm font-bold text-orange-900 mb-3">
               🏠 Gabah Dibawa Pulang (Tidak Dijual)
@@ -1227,13 +1193,11 @@ export function GabahKlien() {
                     </span>
                   </div>
 
-                  {/* ===== BAGI HASIL DENGAN PENYESUAIAN BAWA PULANG ===== */}
                   <div className="pt-2 border-t border-gray-200">
                     <div className="text-xs text-gray-600 mb-2 font-medium">
                       Pembagian ({persenOwner}:{persenPenggarap})
                     </div>
 
-                    {/* Profit dasar */}
                     <div className="grid grid-cols-2 gap-2 mb-2">
                       <div className="bg-green-50 border border-green-200 rounded p-2 text-center">
                         <div className="text-[10px] text-green-700 font-medium">
@@ -1255,7 +1219,6 @@ export function GabahKlien() {
                       </div>
                     </div>
 
-                    {/* Penyesuaian bawa pulang */}
                     {(hasil.nilaiBawaPenggarap > 0 ||
                       hasil.nilaiBawaOwner > 0) && (
                       <div className="bg-orange-50 border border-orange-200 rounded p-2 mb-2 text-xs space-y-1">
@@ -1295,7 +1258,6 @@ export function GabahKlien() {
                       </div>
                     )}
 
-                    {/* Total final */}
                     <div className="grid grid-cols-2 gap-2">
                       <div className="bg-green-100 border-2 border-green-400 rounded p-2 text-center">
                         <div className="text-[10px] text-green-800 font-bold">

@@ -42,7 +42,6 @@ export function FeedbackKlien({
   const [error, setError] = useState("");
   const [sukses, setSukses] = useState(false);
 
-  // Kalau sudah kirim < 7 hari, tampilkan info
   if (sudahKirim && tanggalKirim && !sukses) {
     const sisaHari = hitungSisaHari(tanggalKirim);
     return (
@@ -81,7 +80,6 @@ export function FeedbackKlien({
     );
   }
 
-  // Halaman sukses
   if (sukses) {
     return (
       <div className="bg-green-50 border-2 border-green-400 rounded-2xl p-8 text-center">
@@ -154,7 +152,6 @@ export function FeedbackKlien({
         </div>
       )}
 
-      {/* ===== RATING ===== */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
         <label className="block text-sm font-bold text-gray-900 mb-3">
           ⭐ Rating Layanan <span className="text-red-500">*</span>
@@ -189,7 +186,6 @@ export function FeedbackKlien({
         </p>
       </div>
 
-      {/* ===== SARAN FITUR ===== */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
         <label className="block text-sm font-bold text-gray-900 mb-2">
           💡 Saran Fitur
@@ -210,7 +206,6 @@ export function FeedbackKlien({
         </p>
       </div>
 
-      {/* ===== MASUKAN ===== */}
       <div className="bg-white border border-gray-200 rounded-2xl p-6">
         <label className="block text-sm font-bold text-gray-900 mb-2">
           💬 Masukan / Kritik
@@ -231,7 +226,6 @@ export function FeedbackKlien({
         </p>
       </div>
 
-      {/* ===== INFO ANONYMOUS ===== */}
       <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
         <div className="flex items-start gap-3">
           <span className="text-2xl flex-shrink-0">🔒</span>
@@ -243,7 +237,6 @@ export function FeedbackKlien({
         </div>
       </div>
 
-      {/* ===== TOMBOL KIRIM ===== */}
       <button
         type="submit"
         disabled={loading || rating === 0}

@@ -11,10 +11,8 @@ export default async function GrafikPage() {
 
   if (!user) redirect("/login");
 
-  // Ambil filter: user_id + is_demo
   const filter = await getDataFilter(user.id);
 
-  // Ambil semua data (filtered by is_demo)
   const { data: penggaraps } = await supabase
     .from("penggaraps")
     .select("id, nama")

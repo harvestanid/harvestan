@@ -331,7 +331,6 @@ export function KeuanganClient({
         </p>
       </div>
 
-      {/* FILTER BAR */}
       <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1">
@@ -403,7 +402,6 @@ export function KeuanganClient({
         </div>
       </div>
 
-      {/* KARTU STATISTIK */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <div className="bg-white border border-gray-200 rounded-xl p-4 min-w-0">
           <div className="text-2xl mb-1">👤</div>
@@ -446,7 +444,6 @@ export function KeuanganClient({
         </div>
       </div>
 
-      {/* STATISTIK PER KOMODITAS */}
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div>
@@ -583,7 +580,6 @@ export function KeuanganClient({
         )}
       </div>
 
-      {/* INFO POTONGAN HUTANG */}
       {totalPotonganHutang > 0 && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6">
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -597,7 +593,6 @@ export function KeuanganClient({
         </div>
       )}
 
-      {/* CHART PROFIT BULANAN */}
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
         <h2 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
           📈 Profit Bulanan (12 Bulan Terakhir)
@@ -662,7 +657,6 @@ export function KeuanganClient({
         )}
       </div>
 
-      {/* TOP 5 PENGGARAP */}
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
         <h2 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
           🏆 Top 5 Penggarap by Profit Owner
@@ -697,7 +691,6 @@ export function KeuanganClient({
         )}
       </div>
 
-      {/* PROFIT PER LAHAN */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
         <h2 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
           🗺️ Profit per Lahan

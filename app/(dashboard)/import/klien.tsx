@@ -38,7 +38,6 @@ export function ImportKlien() {
       const buf = await f.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
 
-      // Cek sheet Info
       const wsInfo = wb.Sheets["Info"];
       if (!wsInfo) {
         setError(
@@ -70,7 +69,6 @@ export function ImportKlien() {
         if (!ws) return 0;
         const rows: any[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
         return rows.filter((r) => {
-          // Minimal ada field id/nama/komoditas
           return (
             r.id ||
             r.nama ||

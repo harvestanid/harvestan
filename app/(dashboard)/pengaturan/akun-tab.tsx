@@ -4,393 +4,314 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-type UserInfo = {
-  id: string;
-  email: string;
-  nama: string;
-  createdAt: string;
-};
-
-type Stats = {
-  penggarapCount: number;
-  lahanCount: number;
-  panenCount: number;
-  totalHutangAktif: number;
-};
-
 type Props = {
-  user: UserInfo;
-  stats: Stats;
+  user: {
+    email: string;
+    nama: string;
+    username: string;
+  };
 };
 
-function formatRp(n: number) {
-  return "Rp " + Math.round(n).toLocaleString("id-ID");
-}
-
-export function AkunTab({ user, stats }: Props) {
+export function AkunTab({ user }: Props) {
   const router = useRouter();
   const supabase = createClient();
 
-  // ===== STATE PROFIL =====
   const [nama, setNama] = useState(user.nama);
-  const [savingProfil, setSavingProfil] = useState(false);
-  const [msgProfil, setMsgProfil] = useState("");
+  const [username, setUsername] = useState(user.username);
+  const [loadingProfil, setLoadingProfil] = useState(false);
+  const [loadingPassword, setLoadingPassword] = useState(false);
+  const [loadingHapus, setLoadingHapus] = useState(false);
+  const [error, setError] = useState("");
+  const [sukses, setSukses] = useState("");
 
-  // ===== STATE PASSWORD =====
-  const [pwLama, setPwLama] = useState("");
-  const [pwBaru, setPwBaru] = useState("");
-  const [pwKonfirmasi, setPwKonfirmasi] = useState("");
-  const [savingPassword, setSavingPassword] = useState(false);
-  const [msgPassword, setMsgPassword] = useState("");
+  const [passwordBaru, setPasswordBaru] = useState("");
+  const [konfirmasiBaru, setKonfirmasiBaru] = useState("");
 
-  // ===== STATE HAPUS AKUN =====
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
-  const [deletingAkun, setDeletingAkun] = useState(false);
+  const usernameRegex = /^[a-z0-9_]{3,20}$/;
+  const usernameValid = usernameRegex.test(username);
 
-  // ===== HANDLE UPDATE PROFIL =====
-  async function handleUpdateProfil(e: React.FormEvent) {
+  async function simpanProfil(e: React.FormEvent) {
     e.preventDefault();
-    setSavingProfil(true);
-    setMsgProfil("");
+    setError("");
+    setSukses("");
 
-    const { error } = await supabase.auth.updateUser({
-      data: { nama },
-    });
-
-    setSavingProfil(false);
-
-    if (error) {
-      setMsgProfil("❌ Gagal: " + error.message);
+    if (!nama.trim()) {
+      setError("Nama tidak boleh kosong");
+      return;
+    }
+    if (!usernameValid) {
+      setError(
+        "Username: huruf kecil, angka, underscore (_), 3-20 karakter"
+      );
       return;
     }
 
-    setMsgProfil("✅ Profil berhasil disimpan!");
-    setTimeout(() => setMsgProfil(""), 3000);
-    router.refresh();
+    setLoadingProfil(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        data: {
+          nama: nama.trim(),
+          username: username.trim().toLowerCase(),
+        },
+      });
+
+      if (error) {
+        setError(error.message);
+        return;
+      }
+
+      setSukses("✅ Profil berhasil diperbarui");
+      router.refresh();
+    } catch (err: any) {
+      setError(err.message || "Error");
+    } finally {
+      setLoadingProfil(false);
+    }
   }
 
-  // ===== HANDLE GANTI PASSWORD =====
-  async function handleGantiPassword(e: React.FormEvent) {
+  async function gantiPassword(e: React.FormEvent) {
     e.preventDefault();
+    setError("");
+    setSukses("");
 
-    if (pwBaru.length < 8) {
-      setMsgPassword("❌ Password baru minimal 8 karakter");
+    if (passwordBaru.length < 8) {
+      setError("Password minimal 8 karakter");
+      return;
+    }
+    if (passwordBaru !== konfirmasiBaru) {
+      setError("Password tidak sama");
       return;
     }
 
-    if (pwBaru !== pwKonfirmasi) {
-      setMsgPassword("❌ Konfirmasi password tidak cocok");
-      return;
+    setLoadingPassword(true);
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: passwordBaru,
+      });
+
+      if (error) {
+        setError(error.message);
+        return;
+      }
+
+      setSukses("✅ Password berhasil diubah");
+      setPasswordBaru("");
+      setKonfirmasiBaru("");
+    } catch (err: any) {
+      setError(err.message || "Error");
+    } finally {
+      setLoadingPassword(false);
     }
-
-    if (pwBaru === pwLama) {
-      setMsgPassword("❌ Password baru harus berbeda dari yang lama");
-      return;
-    }
-
-    setSavingPassword(true);
-    setMsgPassword("");
-
-    // Verifikasi password lama dengan login ulang
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: user.email,
-      password: pwLama,
-    });
-
-    if (signInError) {
-      setSavingPassword(false);
-      setMsgPassword("❌ Password lama salah");
-      return;
-    }
-
-    // Update password baru
-    const { error } = await supabase.auth.updateUser({
-      password: pwBaru,
-    });
-
-    setSavingPassword(false);
-
-    if (error) {
-      setMsgPassword("❌ Gagal: " + error.message);
-      return;
-    }
-
-    setMsgPassword("✅ Password berhasil diubah!");
-    setPwLama("");
-    setPwBaru("");
-    setPwKonfirmasi("");
-    setTimeout(() => setMsgPassword(""), 5000);
   }
 
-  // ===== HANDLE HAPUS AKUN =====
-  async function handleHapusAkun(e: React.FormEvent) {
-    e.preventDefault();
+  async function hapusAkun() {
+    const konfirmasi = prompt(
+      "Ketik HAPUS untuk konfirmasi hapus akun. Semua data akan hilang permanen!"
+    );
+    if (konfirmasi !== "HAPUS") return;
 
-    if (deleteConfirmText !== "HAPUS AKUN") {
-      alert('Ketik "HAPUS AKUN" untuk konfirmasi');
-      return;
+    setLoadingHapus(true);
+    setError("");
+    try {
+      const res = await fetch("/api/akun", { method: "DELETE" });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json.error || "Gagal hapus akun");
+        return;
+      }
+      alert("Akun Anda telah dihapus.");
+      window.location.href = "/";
+    } catch (err: any) {
+      setError(err.message || "Error");
+    } finally {
+      setLoadingHapus(false);
     }
-
-    setDeletingAkun(true);
-
-    const res = await fetch("/api/akun/delete", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ confirm: deleteConfirmText }),
-    });
-
-    const json = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      setDeletingAkun(false);
-      alert("❌ Gagal hapus akun: " + (json.error || "Unknown error"));
-      return;
-    }
-
-    // Sign out & redirect
-    await supabase.auth.signOut();
-    alert("Akun berhasil dihapus. Terima kasih sudah menggunakan Harvestan.");
-    router.push("/");
   }
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="p-4 bg-red-50 border-2 border-red-200 rounded-2xl text-sm text-red-700">
+          ❌ {error}
+        </div>
+      )}
+      {sukses && (
+        <div className="p-4 bg-[#2c5e2e]/5 border-2 border-[#2c5e2e]/20 rounded-2xl text-sm text-[#2c5e2e] font-bold">
+          {sukses}
+        </div>
+      )}
+
       {/* ===== PROFIL ===== */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <h2 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
-          👤 Profil
-        </h2>
-        <form onSubmit={handleUpdateProfil} className="space-y-4">
+      <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-5 md:p-6 shadow-lg shadow-[#2c5e2e]/5">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-12 h-12 rounded-2xl bg-[#f0b429]/15 flex items-center justify-center text-2xl">
+            👤
+          </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <h2 className="font-bold text-[#2c5e2e] tracking-tight">
+              Profil Anda
+            </h2>
+            <p className="text-[10px] text-[#2c5e2e]/60 uppercase tracking-widest">
+              Informasi akun
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={simpanProfil} className="space-y-4">
+          <div>
+            <label className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest block mb-2">
+              Email (tidak bisa diubah)
+            </label>
+            <input
+              type="email"
+              value={user.email}
+              readOnly
+              className="w-full border-2 border-[#2c5e2e]/10 rounded-2xl px-4 py-3 text-sm bg-[#faf9f5]/50 text-[#2c5e2e]/50 cursor-not-allowed"
+            />
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest block mb-2">
               Nama Lengkap
             </label>
             <input
               type="text"
               value={nama}
               onChange={(e) => setNama(e.target.value)}
+              placeholder="Nama lengkap"
+              className="w-full border-2 border-[#2c5e2e]/15 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5e2e] focus:border-transparent bg-[#faf9f5]/50 text-[#2c5e2e]"
               required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
+            <label className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest block mb-2">
+              Username
             </label>
-            <input
-              type="email"
-              value={user.email}
-              disabled
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 bg-gray-100 text-gray-600 cursor-not-allowed"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              📧 Email tidak bisa diubah. Hubungi support kalau perlu ganti.
+            <div className="relative">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-[#2c5e2e]/40 font-bold">
+                @
+              </span>
+              <input
+                type="text"
+                value={username}
+                onChange={(e) =>
+                  setUsername(
+                    e.target.value
+                      .toLowerCase()
+                      .replace(/\s+/g, "_")
+                      .replace(/[^a-z0-9_]/g, "")
+                  )
+                }
+                placeholder="username"
+                maxLength={20}
+                className={`w-full pl-9 pr-4 py-3 border-2 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:border-transparent transition bg-[#faf9f5]/50 text-[#2c5e2e] ${
+                  usernameValid || username.length === 0
+                    ? "border-[#2c5e2e]/15 focus:ring-[#2c5e2e]"
+                    : "border-red-300 focus:ring-red-500"
+                }`}
+                required
+              />
+            </div>
+            <p className="text-[10px] text-[#2c5e2e]/50 mt-1.5">
+              Huruf kecil, angka, underscore (_). 3-20 karakter.
             </p>
           </div>
 
-          {msgProfil && (
-            <div className="text-sm text-green-700">{msgProfil}</div>
-          )}
-
           <button
             type="submit"
-            disabled={savingProfil}
-            className="bg-green-700 hover:bg-green-800 text-white font-medium px-5 py-2 rounded-lg transition disabled:opacity-50"
+            disabled={loadingProfil}
+            className="w-full bg-[#2c5e2e] hover:bg-[#1f4521] text-white font-bold py-3.5 rounded-full transition-all shadow-lg shadow-[#2c5e2e]/20 hover:scale-[1.02] disabled:opacity-50 text-sm uppercase tracking-widest"
           >
-            {savingProfil ? "⏳ Menyimpan..." : "💾 Simpan Profil"}
+            {loadingProfil ? "⏳ Menyimpan..." : "💾 Simpan Profil"}
           </button>
         </form>
       </div>
 
       {/* ===== GANTI PASSWORD ===== */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <h2 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
-          🔒 Ganti Password
-        </h2>
-        <form onSubmit={handleGantiPassword} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password Lama
-            </label>
-            <input
-              type="password"
-              value={pwLama}
-              onChange={(e) => setPwLama(e.target.value)}
-              required
-              placeholder="••••••••"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-            />
+      <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-5 md:p-6 shadow-lg shadow-[#2c5e2e]/5">
+        <div className="flex items-center gap-3 mb-5">
+          <div className="w-12 h-12 rounded-2xl bg-[#2c5e2e]/10 flex items-center justify-center text-2xl">
+            🔒
           </div>
-
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password Baru (min 8 karakter)
+            <h2 className="font-bold text-[#2c5e2e] tracking-tight">
+              Ganti Password
+            </h2>
+            <p className="text-[10px] text-[#2c5e2e]/60 uppercase tracking-widest">
+              Keamanan akun
+            </p>
+          </div>
+        </div>
+
+        <form onSubmit={gantiPassword} className="space-y-4">
+          <div>
+            <label className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest block mb-2">
+              Password Baru
             </label>
             <input
               type="password"
-              value={pwBaru}
-              onChange={(e) => setPwBaru(e.target.value)}
-              required
+              value={passwordBaru}
+              onChange={(e) => setPasswordBaru(e.target.value)}
+              placeholder="Minimal 8 karakter"
               minLength={8}
-              placeholder="••••••••"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full border-2 border-[#2c5e2e]/15 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5e2e] focus:border-transparent bg-[#faf9f5]/50 text-[#2c5e2e]"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest block mb-2">
               Konfirmasi Password Baru
             </label>
             <input
               type="password"
-              value={pwKonfirmasi}
-              onChange={(e) => setPwKonfirmasi(e.target.value)}
-              required
-              minLength={8}
-              placeholder="••••••••"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+              value={konfirmasiBaru}
+              onChange={(e) => setKonfirmasiBaru(e.target.value)}
+              placeholder="Ulangi password"
+              className="w-full border-2 border-[#2c5e2e]/15 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#2c5e2e] focus:border-transparent bg-[#faf9f5]/50 text-[#2c5e2e]"
             />
           </div>
 
-          {msgPassword && (
-            <div
-              className={`text-sm ${
-                msgPassword.startsWith("✅")
-                  ? "text-green-700"
-                  : "text-red-700"
-              }`}
-            >
-              {msgPassword}
-            </div>
-          )}
-
           <button
             type="submit"
-            disabled={savingPassword}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-5 py-2 rounded-lg transition disabled:opacity-50"
+            disabled={loadingPassword}
+            className="w-full bg-[#f0b429] hover:bg-[#e6a617] text-[#2c5e2e] font-bold py-3.5 rounded-full transition-all shadow-lg shadow-[#f0b429]/20 hover:scale-[1.02] disabled:opacity-50 text-sm uppercase tracking-widest"
           >
-            {savingPassword ? "⏳ Mengganti..." : "🔒 Ganti Password"}
+            {loadingPassword ? "⏳ Menyimpan..." : "🔐 Ganti Password"}
           </button>
         </form>
       </div>
 
-      {/* ===== INFO AKUN ===== */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6">
-        <h2 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide">
-          📊 Info Akun
-        </h2>
-        <div className="space-y-3">
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Email:</span>
-            <span className="font-medium text-gray-900">{user.email}</span>
+      {/* ===== ZONA BAHAYA ===== */}
+      <div className="bg-red-50 border-2 border-red-300 rounded-3xl p-5 md:p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center text-2xl">
+            ⚠️
           </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">User ID:</span>
-            <span className="font-mono text-xs text-gray-700">
-              {user.id.substring(0, 8)}...
-            </span>
-          </div>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Terdaftar sejak:</span>
-            <span className="font-medium text-gray-900">
-              {new Date(user.createdAt).toLocaleDateString("id-ID", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </span>
-          </div>
-
-          <div className="pt-3 mt-3 border-t border-gray-100 grid grid-cols-2 gap-3">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
-              <div className="text-xs text-green-700 font-medium">
-                PENGGARAP
-              </div>
-              <div className="text-xl font-bold text-green-900 mt-1">
-                {stats.penggarapCount}
-              </div>
-            </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
-              <div className="text-xs text-blue-700 font-medium">LAHAN</div>
-              <div className="text-xl font-bold text-blue-900 mt-1">
-                {stats.lahanCount}
-              </div>
-            </div>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-center">
-              <div className="text-xs text-yellow-700 font-medium">PANEN</div>
-              <div className="text-xl font-bold text-yellow-900 mt-1">
-                {stats.panenCount}
-              </div>
-            </div>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
-              <div className="text-xs text-red-700 font-medium">
-                HUTANG AKTIF
-              </div>
-              <div className="text-sm font-bold text-red-900 mt-1">
-                {formatRp(stats.totalHutangAktif)}
-              </div>
-            </div>
+          <div>
+            <h2 className="font-bold text-red-900 tracking-tight">
+              Zona Bahaya
+            </h2>
+            <p className="text-[10px] text-red-700/70 uppercase tracking-widest">
+              Tidak bisa di-undo
+            </p>
           </div>
         </div>
-      </div>
 
-      {/* ===== ZONA BERBAHAYA ===== */}
-      <div className="bg-red-50 border-2 border-red-200 rounded-xl p-6">
-        <h2 className="font-bold text-red-900 mb-2 text-sm uppercase tracking-wide">
-          ⚠️ Zona Berbahaya
-        </h2>
-        <p className="text-sm text-red-800 mb-4">
-          Hapus akun Anda beserta SEMUA data (penggarap, lahan, panen, hutang).
-          Tindakan ini <strong>tidak bisa dibatalkan</strong>.
+        <p className="text-xs text-red-700 mb-4 leading-relaxed">
+          Hapus akun akan <strong>menghapus semua data</strong> Anda:
+          penggarap, lahan, panen, hutang, dan seterusnya. Tindakan ini
+          permanen dan tidak bisa dibatalkan.
         </p>
 
-        {!showDeleteConfirm ? (
-          <button
-            onClick={() => setShowDeleteConfirm(true)}
-            className="bg-red-600 hover:bg-red-700 text-white font-medium px-5 py-2 rounded-lg transition"
-          >
-            🗑️ Hapus Akun Saya
-          </button>
-        ) : (
-          <form onSubmit={handleHapusAkun} className="space-y-3">
-            <div className="bg-white border border-red-300 rounded-lg p-3">
-              <label className="block text-xs font-medium text-red-800 mb-1">
-                Ketik <strong>"HAPUS AKUN"</strong> untuk konfirmasi:
-              </label>
-              <input
-                type="text"
-                value={deleteConfirmText}
-                onChange={(e) => setDeleteConfirmText(e.target.value)}
-                placeholder="HAPUS AKUN"
-                className="w-full border border-red-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500 font-mono text-sm"
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                type="submit"
-                disabled={
-                  deletingAkun || deleteConfirmText !== "HAPUS AKUN"
-                }
-                className="bg-red-600 hover:bg-red-700 text-white font-medium px-5 py-2 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {deletingAkun ? "⏳ Menghapus..." : "🗑️ Hapus Permanen"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                  setDeleteConfirmText("");
-                }}
-                className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-5 py-2 rounded-lg transition"
-              >
-                Batal
-              </button>
-            </div>
-          </form>
-        )}
+        <button
+          type="button"
+          onClick={hapusAkun}
+          disabled={loadingHapus}
+          className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-full transition-all shadow-lg shadow-red-600/20 hover:scale-[1.02] disabled:opacity-50 text-sm uppercase tracking-widest"
+        >
+          {loadingHapus ? "⏳ Menghapus..." : "🗑️ Hapus Akun Saya"}
+        </button>
       </div>
     </div>
   );

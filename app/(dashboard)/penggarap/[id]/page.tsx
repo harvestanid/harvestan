@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { getDataFilter } from "@/lib/demo/demo-mode";
-import { TombolAksi } from "./tombol-aksi";
+import TombolAksiPenggarap from "./tombol-aksi";
 
 export const metadata = {
   title: "Detail Penggarap",
@@ -253,7 +253,17 @@ export default async function DetailPenggarapPage({ params }: Props) {
       </div>
 
       {/* Tombol Aksi Hapus/Edit */}
-      <TombolAksi id={id} nama={penggarap.nama} />
+      <TombolAksiPenggarap
+        penggarap={{
+          id: penggarap.id,
+          nama: penggarap.nama,
+          alamat: penggarap.alamat,
+          usia: penggarap.usia,
+          kontak: penggarap.kontak,
+        }}
+        totalLuas={totalLuas}
+        landsCount={lands?.length || 0}
+      />
     </div>
   );
 }

@@ -120,7 +120,6 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
     [harvests, lands, penggarapDetail, komoditasDetail]
   );
 
-  // ✅ Multi-komoditas: baris per baris
   const dataMultiProduksi = useMemo(
     () =>
       penggarapDetail && !komoditasDetail
@@ -147,7 +146,6 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
     return getKomoditasDenganData(harvests, penggarapDetail, lands);
   }, [harvests, lands, penggarapDetail]);
 
-  // Daftar komoditas unik dari data multi
   const komoditasMultiList = useMemo(() => {
     const set = new Set<string>();
     dataMultiProduksi.forEach((d) => set.add(d.komoditas));
@@ -512,7 +510,6 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
             </div>
           ) : (
             <div className="space-y-6">
-              {/* Chart Produksi — Multi Line */}
               <div>
                 <div className="text-sm font-medium text-gray-800 mb-2">
                   📈 Produksi (Kg) — per Komoditas
@@ -577,7 +574,6 @@ export function GrafikClient({ penggaraps, lands, harvests }: Props) {
                 </div>
               </div>
 
-              {/* Chart Produktivitas — Multi Line */}
               <div>
                 <div className="text-sm font-medium text-gray-800 mb-2">
                   ⚡ Produktivitas (Kg/Ha) — per Komoditas

@@ -127,6 +127,15 @@ export default async function DetailLahanPage({
     0
   );
 
+  // Cek apakah ada data lokasi (polygon ATAU koordinat manual)
+  const adaPolygon =
+    lahan.polygon &&
+    typeof lahan.polygon === "object" &&
+    Array.isArray((lahan.polygon as any).coordinates) &&
+    (lahan.polygon as any).coordinates[0]?.length >= 3;
+  const adaKoordinat = !!lahan.lokasi_koordinat;
+  const tampilkanPeta = adaPolygon || adaKoordinat;
+
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
       {/* Header */}
@@ -159,10 +168,14 @@ export default async function DetailLahanPage({
         </p>
       </div>
 
-      {/* Mini-map */}
-      {lahan.polygon && (
+      {/* Mini-map — tampil kalau ada polygon ATAU koordinat */}
+      {tampilkanPeta && (
         <div className="mb-6 relative z-0">
-          <PetaMiniWrapper polygon={lahan.polygon} />
+          <PetaMiniWrapper
+            polygon={adaPolygon ? lahan.polygon : null}
+            koordinat={lahan.lokasi_koordinat}
+            luas={Number(lahan.luas)}
+          />
         </div>
       )}
 

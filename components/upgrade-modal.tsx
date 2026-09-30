@@ -1,118 +1,160 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useEffect, ReactNode } from "react";
 
 type Props = {
-  isOpen: boolean;
+  open: boolean;
   onClose: () => void;
-  feature: string; // Nama fitur yang dicoba diakses
+  feature?: string;
+  children?: ReactNode;
 };
 
-export function UpgradeModal({ isOpen, onClose, feature }: Props) {
-  if (!isOpen) return null;
+const BENEFITS = [
+  { icon: "📊", text: "Export Excel & PDF tanpa batas" },
+  { icon: "🌾", text: "Multi-komoditas (padi, cabai, jagung, dll)" },
+  { icon: "📈", text: "Grafik & laporan lengkap" },
+  { icon: "💾", text: "Backup data otomatis" },
+  { icon: "🎯", text: "Standar KPI kustom per komoditas" },
+  { icon: "🚀", text: "Akses fitur baru lebih dulu" },
+];
+
+export function UpgradeModal({ open, onClose, feature, children }: Props) {
+  const [visible, setVisible] = useState(false);
+  const [closing, setClosing] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setVisible(true);
+      setClosing(false);
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
+  function handleClose() {
+    setClosing(true);
+    setTimeout(() => {
+      setVisible(false);
+      onClose();
+    }, 200);
+  }
+
+  if (!visible) return null;
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
-      onClick={onClose}
+      className={`fixed inset-0 z-[100] flex items-end md:items-center justify-center p-0 md:p-4 transition-opacity duration-200 ${
+        closing ? "opacity-0" : "opacity-100"
+      }`}
+      onClick={handleClose}
     >
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+
+      {/* Modal */}
       <div
-        className="bg-white rounded-3xl max-w-md w-full shadow-2xl border-4 border-orange-300 overflow-hidden"
+        className={`relative w-full md:max-w-md max-h-[90vh] overflow-y-auto bg-white rounded-t-3xl md:rounded-3xl shadow-2xl transition-transform duration-300 ${
+          closing ? "translate-y-4" : "translate-y-0"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="bg-gradient-to-br from-orange-400 to-red-500 text-white p-6 text-center relative">
+        {/* Header gradient */}
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#2c5e2e] via-[#1f4521] to-[#2c5e2e] px-6 pt-6 pb-8 text-white">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#f0b429]/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-[#f0b429]/15 rounded-full blur-3xl pointer-events-none" />
+
+          {/* Close button */}
           <button
-            onClick={onClose}
-            className="absolute top-3 right-3 text-white/80 hover:text-white text-2xl leading-none"
+            onClick={handleClose}
             aria-label="Tutup"
+            className="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-sm transition-colors"
           >
-            ×
+            ✕
           </button>
-          <div className="text-5xl mb-3">🔒</div>
-          <h2 className="text-2xl font-bold mb-1">Fitur Premium</h2>
-          <p className="text-sm text-white/90">
-            <strong>{feature}</strong> hanya untuk pengguna Premium
-          </p>
+
+          <div className="relative text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#f0b429] mb-3 shadow-lg">
+              <span className="text-3xl">💎</span>
+            </div>
+            <h2 className="text-xl font-bold tracking-tight mb-1">
+              Upgrade ke Premium
+            </h2>
+            <p className="text-xs text-white/80 leading-relaxed">
+              {feature
+                ? `${feature} tersedia untuk pengguna Premium`
+                : "Buka semua fitur tanpa batas"}
+            </p>
+          </div>
         </div>
 
-        {/* Body */}
-        <div className="p-6 space-y-4">
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-            <div className="text-xs font-bold text-green-800 mb-2">
-              ✨ YANG ANDA DAPATKAN
-            </div>
-            <ul className="text-sm text-green-900 space-y-1.5">
-              <li className="flex items-start gap-2">
-                <span>✅</span>
-                <span>Semua fitur unlocked</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>✅</span>
-                <span>Unlimited penggarap & lahan</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>✅</span>
-                <span>Export PDF & Excel data sendiri</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>✅</span>
-                <span>GPS walking & penimbangan gabah</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>✅</span>
-                <span>Backup & import unlimited</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span>✅</span>
-                <span>Update fitur baru selamanya</span>
-              </li>
-            </ul>
-          </div>
+        {/* Content */}
+        <div className="px-6 py-5">
+          {children ? (
+            children
+          ) : (
+            <>
+              {/* Price card */}
+              <div className="bg-gradient-to-br from-[#f0b429]/10 to-orange-50 border-2 border-[#f0b429]/40 rounded-2xl p-4 mb-5 text-center">
+                <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-1">
+                  Harga Spesial
+                </div>
+                <div className="flex items-baseline justify-center gap-1.5">
+                  <span className="text-3xl font-bold text-[#2c5e2e] tracking-tight">
+                    Rp 59.000
+                  </span>
+                  <span className="text-xs text-[#2c5e2e]/60 font-semibold">
+                    / bulan
+                  </span>
+                </div>
+                <div className="text-[10px] text-[#2c5e2e]/60 mt-1">
+                  Bayar via transfer bank · Aktivasi manual maks. 1×24 jam
+                </div>
+              </div>
 
-          <div className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-orange-300 rounded-xl p-4 text-center">
-            <div className="text-xs text-orange-800 font-medium mb-1">
-              HARGA SEKALI BAYAR
-            </div>
-            <div className="text-4xl font-bold text-orange-700 mb-1">
-              Rp 59.000
-            </div>
-            <div className="text-xs text-orange-600">
-              Akses selamanya · Tanpa langganan bulanan
-            </div>
-          </div>
+              {/* Benefits */}
+              <div className="space-y-2.5 mb-5">
+                {BENEFITS.map((b, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-[#2c5e2e]/10 flex items-center justify-center text-sm flex-shrink-0">
+                      {b.icon}
+                    </div>
+                    <div className="text-xs text-[#2c5e2e] font-medium leading-relaxed pt-1">
+                      {b.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-          {/* Buttons */}
-          <div className="space-y-2">
-            <Link
-              href="/premium"
-              className="block w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold text-center py-3 rounded-xl transition shadow-lg hover:shadow-xl"
-              onClick={onClose}
-            >
-              💎 Upgrade Sekarang
-            </Link>
-
-            <Link
-              href="/demo"
-              className="block w-full bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium text-center py-2.5 rounded-xl transition border border-blue-200"
-              onClick={onClose}
-            >
-              🎬 Lihat Demo Dulu
-            </Link>
-
-            <button
-              onClick={onClose}
-              className="block w-full text-gray-500 hover:text-gray-700 text-sm py-2 transition"
-            >
-              Nanti saja
-            </button>
-          </div>
-
-          {/* Info tambahan */}
-          <p className="text-[10px] text-center text-gray-500 italic">
-            💡 Tips: Coba lihat demo 10 tahun dulu untuk merasakan manfaat
-            lengkap
-          </p>
+              {/* Actions */}
+              <div className="space-y-2">
+                <Link
+                  href="/premium"
+                  onClick={handleClose}
+                  className="block w-full text-center bg-[#2c5e2e] hover:bg-[#1f4521] text-white font-bold text-sm px-4 py-3 rounded-full transition-all hover:scale-[1.02] shadow-md"
+                >
+                  💎 Lihat Paket & Bayar
+                </Link>
+                <Link
+                  href="/demo"
+                  onClick={handleClose}
+                  className="block w-full text-center bg-white hover:bg-[#f0b429]/10 text-[#2c5e2e] font-bold text-sm px-4 py-3 rounded-full border-2 border-[#f0b429]/40 transition-all hover:scale-[1.02]"
+                >
+                  🎬 Coba Demo Dulu
+                </Link>
+                <button
+                  onClick={handleClose}
+                  className="block w-full text-center text-[11px] text-[#2c5e2e]/60 hover:text-[#2c5e2e] font-semibold px-4 py-2 transition-colors"
+                >
+                  Nanti saja
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

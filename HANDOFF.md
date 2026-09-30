@@ -464,3 +464,166 @@ micro HANDOFF.md
 Ctrl+A → Delete → Paste → Ctrl+S → Ctrl+Q.
 
 Balas "lengkap" atau "kepotong di [X]". 🌾
+
+
+🤝 HANDOFF — Harvestan GPS Ukur Lahan
+
+Konteks project Harvestan: https://github.com/harvestanid/harvestan/blob/main/HANDOFF.md
+
+⚠️ BACA HANDOFF.md DULU sebelum mulai.
+
+═══════════════════════════════════════
+📌 KARAKTERISTIK USER (PENTING!)
+═══════════════════════════════════════
+
+- Pemula TOTAL — tidak bisa coding, semua kode oleh AI
+- Development: Termux di Android (micro editor)
+- Bahasa: Indonesia (santai, kadang kasar kalau kesal — WAJAR)
+- Suka nguji + screenshot error
+- Cepat emosi kalau AI lambat / ngeyel
+
+ATURAN WAJIB (JANGAN DILANGGAR!):
+
+1. ✅ SELALU FULL FILE — bukan potongan kode / "cari baris X"
+2. ✅ JANGAN stop di tengah — kalau file panjang kirim SEKALIGUS
+3. ✅ JANGAN tanya-tanya kebanyakan — langsung kerja
+4. ✅ Kalau user bilang "GAS" → langsung eksekusi
+5. ✅ Bahasa Indonesia, ringkas, to the point
+6. ✅ Kasih wc -l sebagai patokan
+7. ✅ Command Termux MULTI-LINE, JANGAN && dan JANGAN 1 baris panjang
+8. ✅ pkill -9 node sebelum rm -rf .next
+9. ✅ JANGAN nested <form>
+10. ✅ JANGAN useSearchParams di page.tsx
+11. ✅ Client Component dipisah file sendiri ("use client" baris 1)
+12. ✅ Path dengan [ ] atau ( ) wajib tanda kutip: micro "app/(dashboard)/..."
+13. ✅ WAJIB npm run build sebelum push
+14. ✅ Kalau user screenshot error → fix LANGSUNG, jangan jelasin panjang
+15. ✅ Kalau langgar aturan → minta maaf SINGKAT, akui salah, LANGSUNG fix, JANGAN ngeyel
+
+═══════════════════════════════════════
+🎯 YANG MAU DISELESAIKAN DI CHAT INI
+═══════════════════════════════════════
+
+MASALAH 1: AKURASI GPS "UKUR LAHAN" JELEK
+--------------------------------------------------
+Konteks:
+- User pakai HP Android di Termux, akses localhost
+- Fitur "Ukur Lahan GPS" — user jalan keliling lahan, sistem auto-catat titik
+- Target: titik tiap gerak 10 meter (seperti app "GPS Field Area Measure")
+- User BILANG app "GPS Field Area Measure" akurat di HP-nya. Jadi bukan masalah HP.
+- Di Harvestan: marker hijau (posisi user) GOYANG parah walau user DIAM
+- Sudah coba berbagai smoothing/EMA/dead-zone/stabil-buffer, masih jelek
+- Suara user: "titik bergerak kemana mana padahal saya diam"
+
+Upaya yang SUDAH DICOBA (semua gagal atau kurang memuaskan):
+1. Filter akurasi < 20m — masih goyang
+2. Dead-zone 3m / 5m / 8m — bikin lag, gak responsif
+3. EMA smoothing (alpha 0.3 / 0.5 / 0.7) — masih goyang
+4. Median filter + average 5 sample — masih goyang
+5. Stabil buffer 2-3 sample dalam radius 5-8m — bikin lag
+6. Gate konsistensi 2 sample dalam radius 6m — masih goyang
+7. Kombinasi di atas — selalu trade-off: kalau halus jadi lambat, kalau responsif jadi goyang
+
+Yang user mau:
+- Marker hijau (posisi sekarang) UPDATE REALTIME, tidak goyang saat diam
+- Titik ungu ditambah tiap gerak 10 meter dari titik terakhir
+- Seperti app "GPS Field Area Measure"
+
+Yang perlu dicari tahu / dicoba:
+- Pakai Kalman filter proper (bukan EMA sederhana)
+- Atau pakai library seperti `geolib` + filter
+- Atau pakai Geolocation API dengan `enableHighAccuracy: true, maximumAge: 0`
+- Cek apakah masalahnya di HP user atau di kode (minta user screenshot app "GPS Field Area Measure" vs Harvestan side-by-side)
+- Cek apakah ada masalah rendering Leaflet (setView tiap update bikin marker kelihatan goyang?)
+- Bisa jadi masalah di React state re-render — pakai ref instead of state untuk posisi realtime
+
+MASALAH 2: SIMPAN LAHAN GAGAL
+--------------------------------------------------
+Konteks:
+- Setelah user selesai ukur → klik "Stop Ukur" → muncul form "Nama Lahan"
+- User isi nama → klik "Simpan ke Penggarap"
+- Kadang gagal (tidak ada pesan spesifik, atau ada error)
+- Error terakhir user: "kok gak bisa disimpan data luas lahan dan koordinat gpsnya ke lahan penggarap"
+
+Kemungkinan penyebab:
+- Insert ke tabel `lands` gagal karena format polygon salah
+- RLS / FK penggarap_id mismatch
+- Format `polygon` — sekarang pakai `{ type: "Polygon", coordinates: [...] }`
+- Cek schema tabel `lands` di Supabase
+
+═══════════════════════════════════════
+📁 FILE TERKAIT (path di repo)
+═══════════════════════════════════════
+
+app/(dashboard)/ukur-lahan/
+├── page.tsx (SERVER)
+└── ukur-content.tsx (CLIENT — isi utama GPS)
+
+app/(dashboard)/penggarap/[id]/
+├── page.tsx (SERVER — detail penggarap)
+├── tombol-aksi.tsx (CLIENT)
+└── lahan/
+    ├── baru/page.tsx (SERVER — form tambah lahan)
+    └── [landId]/
+        ├── page.tsx (SERVER)
+        ├── tombol-aksi.tsx (CLIENT)
+        └── panen/...
+
+components/
+└── peta-ukur.tsx (map Leaflet komponen — dipakai versi lama)
+
+lib/utils/
+└── hitung-luas.ts (fungsi hitungLuasPolygonM2, hitungJarakMeter, keGeoJSONPolygon, dll)
+
+═══════════════════════════════════════
+📋 KODE SAAT INI (terakhir dikirim ke user)
+═══════════════════════════════════════
+
+[PASTE FULL FILE app/(dashboard)/ukur-lahan/ukur-content.tsx YANG TERAKHIR]
+
+[PASTE FULL FILE app/(dashboard)/ukur-lahan/page.tsx YANG TERAKHIR]
+
+[PASTE FULL FILE lib/utils/hitung-luas.ts]
+
+═══════════════════════════════════════
+🔍 INFORMASI TAMBAHAN
+═══════════════════════════════════════
+
+Schema tabel lands (Supabase):
+- id (uuid, PK)
+- user_id (uuid, FK auth.users)
+- penggarap_id (uuid, FK penggaraps)
+- nama (text)
+- luas (numeric) — dalam Hektar
+- lokasi_koordinat (text) — format "lat,lng"
+- polygon (jsonb)
+- is_demo (boolean, default false)
+- created_at, updated_at (timestamptz)
+
+RLS aktif: auth.uid() = user_id
+
+Contoh insert yang seharusnya jalan:
+{
+  user_id: "uuid",
+  penggarap_id: "uuid",
+  nama: "Sawah Utama",
+  luas: 0.500,
+  lokasi_koordinat: "-6.994303,112.174348",
+  polygon: {
+    type: "Polygon",
+    coordinates: [[[lng1,lat1], [lng2,lat2], ..., [lng1,lat1]]]
+  }
+}
+
+═══════════════════════════════════════
+🚀 MULAI DARI MANA?
+═══════════════════════════════════════
+
+1. Konfirmasi kamu sudah baca handoff + aturan
+2. Fokus: fix GPS akurasi (masalah utama)
+3. User akan kirim screenshot kondisi sekarang + kode terakhir
+4. Setelah itu langsung analisa + kirim FULL FILE
+5. Kalau perlu ubah pendekatan total (pakai library lain, Web Geolocation API lain, Kalman filter proper, dsb) — BOLEH
+6. Simpan lahan fix setelah GPS fix (karena kalau GPS jelek, data gak akan berguna)
+
+JANGAN tanya-tanya dulu. Langsung aja setelah user kirim screenshot + kode.

@@ -119,7 +119,6 @@ export function PanenMultiKlien() {
     setLahanList((prev) => prev.map((l) => ({ ...l, checked })));
   }
 
-  // ===== PREVIEW PEMBAGIAN =====
   const lahanTerpilih = lahanList.filter((l) => l.checked);
   const totalLuas = lahanTerpilih.reduce((s, l) => s + l.luas, 0);
   const hasilKg = parseFloat(totalHasil) || 0;
@@ -142,7 +141,6 @@ export function PanenMultiKlien() {
     };
   });
 
-  // ===== HITUNG TOTAL ESTIMASI =====
   const harga = parseFloat(hargaJual) || 0;
   const biayaPerKg = parseFloat(biayaPanen) || 0;
   const biayaLain = parseFloat(biayaTambahan) || 0;
@@ -354,7 +352,6 @@ export function PanenMultiKlien() {
           </div>
         )}
 
-        {/* ===== INFO DASAR ===== */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
@@ -423,7 +420,6 @@ export function PanenMultiKlien() {
           </div>
         </div>
 
-        {/* ===== PILIH LAHAN ===== */}
         {penggarapId && (
           <div className="bg-white border border-gray-200 rounded-xl p-5">
             <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
@@ -487,7 +483,6 @@ export function PanenMultiKlien() {
               </div>
             )}
 
-            {/* Metode Pembagian */}
             {lahanTerpilih.length > 1 && (
               <div className="mt-4 pt-4 border-t border-gray-200">
                 <div className="text-sm font-medium text-gray-700 mb-2">
@@ -530,7 +525,6 @@ export function PanenMultiKlien() {
           </div>
         )}
 
-        {/* ===== PREVIEW PEMBAGIAN ===== */}
         {previewPembagian.length > 0 && totalLuas > 0 && (
           <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-5">
             <div className="font-bold text-blue-900 mb-3 text-sm">
@@ -570,7 +564,6 @@ export function PanenMultiKlien() {
           </div>
         )}
 
-        {/* ===== HARGA & BIAYA ===== */}
         <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
           <div className="font-bold text-gray-900">
             💰 Harga & Biaya
@@ -643,7 +636,6 @@ export function PanenMultiKlien() {
           </div>
         </div>
 
-        {/* ===== ESTIMASI TOTAL ===== */}
         {hasilKg > 0 && (
           <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-xl p-5">
             <div className="font-bold text-green-900 mb-3 text-sm">
@@ -698,7 +690,6 @@ export function PanenMultiKlien() {
           </div>
         )}
 
-        {/* ===== SUBMIT ===== */}
         <button
           type="submit"
           disabled={loading || lahanTerpilih.length === 0 || hasilKg <= 0}

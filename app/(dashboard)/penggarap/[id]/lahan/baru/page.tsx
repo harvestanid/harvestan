@@ -26,7 +26,6 @@ async function tambahLahan(formData: FormData) {
     redirect(`/penggarap/${penggarap_id}/lahan/baru?error=Data+tidak+lengkap`);
   }
 
-  // ⚠️ VALIDASI PREMIUM — server-side double check
   const check = await canUserInput(user.id, "lahan");
   if (!check.allowed) {
     redirect(
@@ -98,10 +97,9 @@ export default async function TambahLahanPage({
 
   if (!penggarap) redirect("/penggarap");
 
-  // Cek limit lahan
   const check = await canUserInput(user.id, "lahan");
   const premium = await checkPremiumStatus(user.id);
-  const isPremiumActive = premium.isPremium && premium.isActive;
+  const isPremiumActive = premium.effectivePremium;
 
   // Kalau tidak boleh → halaman locked
   if (!check.allowed) {
@@ -173,7 +171,6 @@ export default async function TambahLahanPage({
         </p>
       </div>
 
-      {/* Info limit untuk free tier */}
       {!isPremiumActive &&
         check.maxCount !== undefined &&
         check.currentCount !== undefined && (
@@ -199,7 +196,6 @@ export default async function TambahLahanPage({
         </div>
       )}
 
-      {/* Link ke GPS Walking — hanya untuk premium */}
       {isPremiumActive ? (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-4">
           <div className="flex items-start gap-3">
@@ -216,7 +212,7 @@ export default async function TambahLahanPage({
                 ⚠️ Cocok untuk lahan &gt;0.5 Ha &middot; Tidak cocok &lt;0.1 Ha
               </p>
               <Link
-                href={`/ukur-lahan?penggarap_id=${id}&return=lahan-baru`}
+                href={`/ukur-lahan?penggarapId=${id}&mode=new`}
                 className="inline-block bg-yellow-500 hover:bg-yellow-600 text-white font-bold px-4 py-2 rounded-lg text-sm transition"
               >
                 📍 Buka GPS Walking

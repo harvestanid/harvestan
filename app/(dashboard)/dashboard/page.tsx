@@ -13,8 +13,8 @@ const KOMODITAS_LABEL: Record<string, string> = {
 };
 
 const KOMODITAS_COLOR: Record<string, string> = {
-  padi: "bg-green-100 text-green-800 border-green-300",
-  jagung: "bg-yellow-100 text-yellow-800 border-yellow-300",
+  padi: "bg-[#2c5e2e]/10 text-[#2c5e2e] border-[#2c5e2e]/30",
+  jagung: "bg-[#f0b429]/15 text-[#2c5e2e] border-[#f0b429]/40",
   kacang_tanah: "bg-purple-100 text-purple-800 border-purple-300",
   bawang_merah: "bg-red-100 text-red-800 border-red-300",
   cabai_rawit: "bg-orange-100 text-orange-800 border-orange-300",
@@ -30,6 +30,16 @@ function formatRingkas(n: number): string {
   if (n >= 1_000_000) return "Rp " + (n / 1_000_000).toFixed(1) + " jt";
   if (n >= 1_000) return "Rp " + (n / 1_000).toFixed(0) + " rb";
   return "Rp " + n.toLocaleString("id-ID");
+}
+
+function getUsername(user: any): string {
+  if (!user) return "User";
+  const meta = user.user_metadata || {};
+  if (meta.username) return meta.username;
+  if (meta.nama) return meta.nama;
+  if (meta.full_name) return meta.full_name;
+  if (user.email) return user.email.split("@")[0];
+  return "User";
 }
 
 export default async function DashboardPage() {
@@ -68,7 +78,6 @@ export default async function DashboardPage() {
     .eq("user_id", filter.user_id)
     .eq("is_demo", filter.is_demo);
 
-  // ===== HITUNG STATISTIK =====
   const totalPenggarap = penggaraps?.length || 0;
   const totalLahan = lands?.length || 0;
   const totalLuas = (lands || []).reduce((s, l) => s + Number(l.luas), 0);
@@ -99,7 +108,6 @@ export default async function DashboardPage() {
     0
   );
 
-  // ===== TOP 5 PENGGARAP =====
   type StatPenggarap = {
     id: string;
     nama: string;
@@ -141,7 +149,6 @@ export default async function DashboardPage() {
   statsPenggarap.sort((a, b) => b.totalProfit - a.totalProfit);
   const top5 = statsPenggarap.slice(0, 5);
 
-  // ===== KOMPOSISI KOMODITAS =====
   const komoditasData: Record<string, { hasil: number; jml: number }> = {};
   (harvests || []).forEach((h) => {
     const kom = h.komoditas || "padi";
@@ -154,7 +161,6 @@ export default async function DashboardPage() {
     .map(([kom, val]) => ({ komoditas: kom, ...val }))
     .sort((a, b) => b.hasil - a.hasil);
 
-  // ===== PANEN TERBARU =====
   const panenTerbaru = (harvests || []).slice(0, 5).map((h) => {
     const land = (lands || []).find((l) => l.id === h.land_id);
     const penggarap = (penggaraps || []).find(
@@ -168,159 +174,189 @@ export default async function DashboardPage() {
     };
   });
 
+  const username = getUsername(user);
+
   return (
-    <div>
+    <div className="space-y-6">
       {/* ===== HEADER ===== */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900">
-          Selamat datang, {user.email?.split("@")[0]}! 👋
-        </h1>
-        <p className="text-gray-600 text-sm mt-1">
-          Ringkasan kebun & keuangan Anda
-        </p>
+      <div className="relative overflow-hidden bg-white rounded-3xl border border-[#2c5e2e]/8 p-6 md:p-8 shadow-lg shadow-[#2c5e2e]/5">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#f0b429]/15 to-transparent rounded-full blur-3xl pointer-events-none" />
+        <div className="relative">
+          <div className="inline-block text-[10px] uppercase tracking-[0.25em] text-[#2c5e2e] font-bold mb-3 px-3 py-1.5 bg-[#f0b429]/15 rounded-full">
+            Dashboard
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold text-[#2c5e2e] tracking-tighter">
+            Selamat datang, {username}! 👋
+          </h1>
+          <p className="text-[#2c5e2e]/60 text-sm mt-2">
+            Ringkasan kebun & keuangan Anda
+          </p>
+        </div>
       </div>
 
-      {/* ===== STATISTIK UTAMA ===== */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <div className="bg-white border border-gray-200 rounded-2xl p-4">
-          <div className="text-2xl mb-1">👨‍🌾</div>
-          <div className="text-[10px] text-gray-500 font-medium uppercase">
-            Penggarap
-          </div>
-          <div className="text-2xl font-bold text-gray-900 mt-1">
-            {totalPenggarap}
-          </div>
-          <div className="text-[10px] text-gray-500 mt-1">orang</div>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-2xl p-4">
-          <div className="text-2xl mb-1">🗺️</div>
-          <div className="text-[10px] text-gray-500 font-medium uppercase">
-            Lahan
-          </div>
-          <div className="text-2xl font-bold text-gray-900 mt-1">
-            {totalLahan}
-          </div>
-          <div className="text-[10px] text-gray-500 mt-1">
-            {totalLuas.toFixed(2)} Ha total
-          </div>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-2xl p-4">
-          <div className="text-2xl mb-1">🌾</div>
-          <div className="text-[10px] text-gray-500 font-medium uppercase">
-            Panen
-          </div>
-          <div className="text-2xl font-bold text-gray-900 mt-1">
-            {totalPanen}
-          </div>
-          <div className="text-[10px] text-gray-500 mt-1">
-            {totalHasil.toLocaleString("id-ID")} Kg
-          </div>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-2xl p-4">
-          <div className="text-2xl mb-1">💰</div>
-          <div className="text-[10px] text-gray-500 font-medium uppercase">
-            Hutang Aktif
-          </div>
+      {/* ===== STATISTIK ===== */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        {[
+          {
+            icon: "👨‍🌾",
+            label: "Penggarap",
+            value: totalPenggarap,
+            sub: "orang",
+            color: "from-[#2c5e2e]/10 to-[#4a8f3f]/5",
+            border: "border-[#2c5e2e]/15",
+            textColor: "text-[#2c5e2e]",
+          },
+          {
+            icon: "🗺️",
+            label: "Lahan",
+            value: totalLahan,
+            sub: `${totalLuas.toFixed(2)} Ha total`,
+            color: "from-blue-50 to-blue-50/30",
+            border: "border-blue-200/50",
+            textColor: "text-blue-900",
+          },
+          {
+            icon: "🌾",
+            label: "Panen",
+            value: totalPanen,
+            sub: `${totalHasil.toLocaleString("id-ID")} Kg`,
+            color: "from-[#f0b429]/15 to-[#f0b429]/5",
+            border: "border-[#f0b429]/30",
+            textColor: "text-[#2c5e2e]",
+          },
+          {
+            icon: "💰",
+            label: "Hutang Aktif",
+            value: formatRingkas(totalHutang),
+            sub: formatRp(totalHutang),
+            color:
+              totalHutang > 0
+                ? "from-red-50 to-red-50/30"
+                : "from-gray-50 to-gray-50/30",
+            border:
+              totalHutang > 0 ? "border-red-200/50" : "border-gray-200/50",
+            textColor: totalHutang > 0 ? "text-red-700" : "text-gray-800",
+          },
+        ].map((s, i) => (
           <div
-            className={`text-2xl font-bold mt-1 ${
-              totalHutang > 0 ? "text-red-600" : "text-gray-900"
-            }`}
+            key={i}
+            className={`bg-gradient-to-br ${s.color} border ${s.border} rounded-3xl p-4 md:p-5 transition-all hover:-translate-y-1 hover:shadow-lg`}
           >
-            {formatRingkas(totalHutang)}
+            <div className="text-2xl md:text-3xl mb-2">{s.icon}</div>
+            <div className="text-[10px] font-bold text-[#2c5e2e]/60 uppercase tracking-widest mb-1">
+              {s.label}
+            </div>
+            <div
+              className={`text-xl md:text-2xl font-bold ${s.textColor} tracking-tight`}
+            >
+              {s.value}
+            </div>
+            <div className="text-[10px] text-[#2c5e2e]/50 mt-1 font-medium">
+              {s.sub}
+            </div>
           </div>
-          <div className="text-[10px] text-gray-500 mt-1">
-            {formatRp(totalHutang)}
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* ===== PROFIT SUMMARY ===== */}
-      <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-200 rounded-2xl p-5 mb-6">
-        <div className="text-xs font-bold text-green-800 uppercase tracking-wider mb-4 flex items-center gap-2">
-          💵 Profit Summary
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-xl p-4 border-2 border-green-300">
-            <div className="text-[10px] text-green-700 font-bold uppercase mb-1">
-              👤 Owner
-            </div>
-            <div className="text-xl font-bold text-green-800">
-              {formatRingkas(totalProfitOwner)}
-            </div>
-            <div className="text-[10px] text-gray-500 mt-1">
-              {formatRp(totalProfitOwner)}
-            </div>
-          </div>
-          <div className="bg-white rounded-xl p-4 border-2 border-orange-300">
-            <div className="text-[10px] text-orange-700 font-bold uppercase mb-1">
-              👨‍🌾 Penggarap
-            </div>
-            <div className="text-xl font-bold text-orange-800">
-              {formatRingkas(totalProfitPenggarap)}
-            </div>
-            <div className="text-[10px] text-gray-500 mt-1">
-              {formatRp(totalProfitPenggarap)}
-            </div>
-          </div>
-        </div>
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#2c5e2e] via-[#1f4521] to-[#2c5e2e] rounded-3xl p-6 md:p-8 shadow-2xl shadow-[#2c5e2e]/20">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#f0b429]/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#4a8f3f]/30 rounded-full blur-3xl pointer-events-none" />
 
-        {(totalBawaPenggarap > 0 || totalBawaOwner > 0) && (
-          <div className="mt-4 pt-4 border-t border-green-200 text-xs text-green-800">
-            <div className="font-bold mb-1">🏠 Gabah Dibawa Pulang:</div>
-            {totalBawaPenggarap > 0 && (
-              <div className="flex justify-between">
-                <span>Penggarap</span>
-                <span className="font-bold">
-                  {totalBawaPenggarap.toLocaleString("id-ID")} Kg
-                </span>
-              </div>
-            )}
-            {totalBawaOwner > 0 && (
-              <div className="flex justify-between">
-                <span>Owner</span>
-                <span className="font-bold">
-                  {totalBawaOwner.toLocaleString("id-ID")} Kg
-                </span>
-              </div>
-            )}
+        <div className="relative">
+          <div className="text-[10px] font-bold text-[#f0b429] uppercase tracking-[0.25em] mb-4">
+            💵 Profit Summary
           </div>
-        )}
+          <div className="grid grid-cols-2 gap-3 md:gap-4">
+            <div className="bg-white/10 backdrop-blur rounded-2xl p-4 border border-white/20">
+              <div className="text-[10px] text-[#f0b429] font-bold uppercase tracking-widest mb-1">
+                👤 Owner
+              </div>
+              <div className="text-lg md:text-2xl font-bold text-white tracking-tight">
+                {formatRingkas(totalProfitOwner)}
+              </div>
+              <div className="text-[10px] text-white/60 mt-1 break-all">
+                {formatRp(totalProfitOwner)}
+              </div>
+            </div>
+            <div className="bg-white/10 backdrop-blur rounded-2xl p-4 border border-white/20">
+              <div className="text-[10px] text-[#f0b429] font-bold uppercase tracking-widest mb-1">
+                👨‍🌾 Penggarap
+              </div>
+              <div className="text-lg md:text-2xl font-bold text-white tracking-tight">
+                {formatRingkas(totalProfitPenggarap)}
+              </div>
+              <div className="text-[10px] text-white/60 mt-1 break-all">
+                {formatRp(totalProfitPenggarap)}
+              </div>
+            </div>
+          </div>
+
+          {(totalBawaPenggarap > 0 || totalBawaOwner > 0) && (
+            <div className="mt-4 pt-4 border-t border-white/15 text-xs text-white/80">
+              <div className="font-bold mb-2 text-[#f0b429] uppercase tracking-widest text-[10px]">
+                🏠 Gabah Dibawa Pulang
+              </div>
+              {totalBawaPenggarap > 0 && (
+                <div className="flex justify-between">
+                  <span>Penggarap</span>
+                  <span className="font-bold text-white">
+                    {totalBawaPenggarap.toLocaleString("id-ID")} Kg
+                  </span>
+                </div>
+              )}
+              {totalBawaOwner > 0 && (
+                <div className="flex justify-between mt-1">
+                  <span>Owner</span>
+                  <span className="font-bold text-white">
+                    {totalBawaOwner.toLocaleString("id-ID")} Kg
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* ===== KOMPOSISI KOMODITAS ===== */}
       {komoditasList.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-6">
-          <div className="font-bold text-gray-900 mb-4">
-            🏷️ Komposisi Komoditas
+        <div className="bg-white border border-[#2c5e2e]/8 rounded-3xl p-5 md:p-6 shadow-lg shadow-[#2c5e2e]/5">
+          <div className="flex items-center gap-2 mb-5">
+            <span className="text-xl">🏷️</span>
+            <span className="font-bold text-[#2c5e2e] tracking-tight">
+              Komposisi Komoditas
+            </span>
           </div>
-          <div className="space-y-3">
+          <div className="space-y-4">
             {komoditasList.map((k) => {
               const percent =
                 totalHasil > 0 ? (k.hasil / totalHasil) * 100 : 0;
+              const barColor =
+                k.komoditas === "padi"
+                  ? "bg-[#2c5e2e]"
+                  : k.komoditas === "jagung"
+                  ? "bg-[#f0b429]"
+                  : k.komoditas === "kacang_tanah"
+                  ? "bg-purple-500"
+                  : k.komoditas === "bawang_merah"
+                  ? "bg-red-500"
+                  : "bg-orange-500";
               return (
                 <div key={k.komoditas}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="font-medium text-gray-700">
+                  <div className="flex justify-between text-xs mb-1.5 flex-wrap gap-2">
+                    <span className="font-bold text-[#2c5e2e]">
                       {KOMODITAS_LABEL[k.komoditas] || k.komoditas}
                     </span>
-                    <span className="text-gray-600">
+                    <span className="text-[#2c5e2e]/60">
                       {k.hasil.toLocaleString("id-ID")} Kg ({k.jml} panen) ·{" "}
-                      {percent.toFixed(1)}%
+                      <span className="font-bold text-[#2c5e2e]">
+                        {percent.toFixed(1)}%
+                      </span>
                     </span>
                   </div>
-                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div className="h-2.5 bg-[#f0b429]/10 rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full ${
-                        k.komoditas === "padi"
-                          ? "bg-green-500"
-                          : k.komoditas === "jagung"
-                          ? "bg-yellow-500"
-                          : k.komoditas === "kacang_tanah"
-                          ? "bg-purple-500"
-                          : k.komoditas === "bawang_merah"
-                          ? "bg-red-500"
-                          : "bg-orange-500"
-                      }`}
+                      className={`h-full rounded-full ${barColor} transition-all duration-500`}
                       style={{ width: `${Math.max(percent, 2)}%` }}
                     />
                   </div>
@@ -333,12 +369,17 @@ export default async function DashboardPage() {
 
       {/* ===== TOP 5 PENGGARAP ===== */}
       {top5.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-6">
-          <div className="font-bold text-gray-900 mb-4 flex items-center justify-between flex-wrap gap-2">
-            <span>🏆 Top 5 Penggarap</span>
+        <div className="bg-white border border-[#2c5e2e]/8 rounded-3xl p-5 md:p-6 shadow-lg shadow-[#2c5e2e]/5">
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">🏆</span>
+              <span className="font-bold text-[#2c5e2e] tracking-tight">
+                Top 5 Penggarap
+              </span>
+            </div>
             <Link
               href="/penggarap"
-              className="text-xs text-green-700 hover:text-green-800 font-medium"
+              className="text-xs text-[#2c5e2e] hover:text-[#f0b429] font-bold transition-colors"
             >
               Lihat Semua →
             </Link>
@@ -348,7 +389,7 @@ export default async function DashboardPage() {
               <Link
                 key={p.id}
                 href={`/penggarap/${p.id}`}
-                className="flex items-center justify-between gap-3 p-3 bg-gray-50 hover:bg-green-50 rounded-xl transition border border-gray-100"
+                className="flex items-center justify-between gap-3 p-3 bg-[#faf9f5] hover:bg-[#f0b429]/10 rounded-2xl transition-all border border-[#2c5e2e]/8 hover:border-[#f0b429]/40 group"
               >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <span className="text-2xl flex-shrink-0">
@@ -361,20 +402,22 @@ export default async function DashboardPage() {
                       : `${idx + 1}.`}
                   </span>
                   <div className="min-w-0">
-                    <div className="font-bold text-gray-900 text-sm truncate">
+                    <div className="font-bold text-[#2c5e2e] text-sm truncate">
                       {p.nama}
                     </div>
-                    <div className="text-[10px] text-gray-500">
+                    <div className="text-[10px] text-[#2c5e2e]/60">
                       {p.jmlPanen}x panen ·{" "}
                       {p.totalHasil.toLocaleString("id-ID")} Kg
                     </div>
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  <div className="font-bold text-green-700 text-sm">
+                  <div className="font-bold text-[#2c5e2e] text-sm group-hover:text-[#f0b429] transition-colors">
                     {formatRingkas(p.totalProfit)}
                   </div>
-                  <div className="text-[10px] text-gray-500">Total Profit</div>
+                  <div className="text-[10px] text-[#2c5e2e]/50">
+                    Total Profit
+                  </div>
                 </div>
               </Link>
             ))}
@@ -382,14 +425,19 @@ export default async function DashboardPage() {
         </div>
       )}
 
-      {/* ===== PANEN TERBARU (#1 — updated) ===== */}
+      {/* ===== PANEN TERBARU ===== */}
       {panenTerbaru.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-6">
-          <div className="font-bold text-gray-900 mb-4 flex items-center justify-between flex-wrap gap-2">
-            <span>📅 Panen Terbaru</span>
+        <div className="bg-white border border-[#2c5e2e]/8 rounded-3xl p-5 md:p-6 shadow-lg shadow-[#2c5e2e]/5">
+          <div className="flex items-center justify-between mb-5 flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-xl">📅</span>
+              <span className="font-bold text-[#2c5e2e] tracking-tight">
+                Panen Terbaru
+              </span>
+            </div>
             <Link
               href="/keuangan"
-              className="text-xs text-green-700 hover:text-green-800 font-medium"
+              className="text-xs text-[#2c5e2e] hover:text-[#f0b429] font-bold transition-colors"
             >
               Lihat Keuangan →
             </Link>
@@ -406,21 +454,20 @@ export default async function DashboardPage() {
               return (
                 <div
                   key={h.id}
-                  className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-2"
+                  className="p-4 bg-[#faf9f5] rounded-2xl border border-[#2c5e2e]/8 space-y-3 hover:border-[#f0b429]/30 transition-colors"
                 >
-                  {/* Header: komoditas + hasil */}
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div className="flex items-center gap-2 flex-wrap min-w-0 flex-1">
                       <span
-                        className={`text-[11px] px-2 py-0.5 rounded-full font-bold border ${colorClass}`}
+                        className={`text-[10px] px-2.5 py-1 rounded-full font-bold border ${colorClass} uppercase tracking-widest`}
                       >
                         {KOMODITAS_LABEL[kom] || kom}
                       </span>
-                      <div className="text-xs text-gray-700 min-w-0">
-                        <div className="font-medium truncate">
+                      <div className="text-xs text-[#2c5e2e] min-w-0">
+                        <div className="font-bold truncate">
                           {h.namaPenggarap}
                         </div>
-                        <div className="text-[10px] text-gray-500 flex flex-wrap gap-x-2">
+                        <div className="text-[10px] text-[#2c5e2e]/60 flex flex-wrap gap-x-2">
                           <span>🗺️ {h.namaLahan}</span>
                           {h.luasLahan > 0 && (
                             <span>📏 {h.luasLahan.toFixed(2)} Ha</span>
@@ -429,10 +476,10 @@ export default async function DashboardPage() {
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0">
-                      <div className="font-bold text-gray-900 text-base">
+                      <div className="font-bold text-[#2c5e2e] text-base tracking-tight">
                         {Number(h.hasil_kg).toLocaleString("id-ID")} Kg
                       </div>
-                      <div className="text-[10px] text-gray-500">
+                      <div className="text-[10px] text-[#2c5e2e]/60">
                         {new Date(h.tanggal).toLocaleDateString("id-ID", {
                           day: "numeric",
                           month: "short",
@@ -442,21 +489,20 @@ export default async function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Rincian bagi profit */}
-                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200">
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-2 text-center min-w-0">
-                      <div className="text-[10px] text-green-800 font-medium">
+                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-[#2c5e2e]/10">
+                    <div className="bg-[#2c5e2e]/5 border border-[#2c5e2e]/15 rounded-xl p-2.5 text-center min-w-0">
+                      <div className="text-[10px] text-[#2c5e2e] font-bold uppercase tracking-widest">
                         👤 Owner ({persenOwner}%)
                       </div>
-                      <div className="font-bold text-green-900 text-xs mt-0.5 break-words leading-tight">
+                      <div className="font-bold text-[#2c5e2e] text-xs mt-1 break-words leading-tight">
                         {formatRp(Number(h.profit_owner || 0))}
                       </div>
                     </div>
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-center min-w-0">
-                      <div className="text-[10px] text-orange-800 font-medium">
+                    <div className="bg-[#f0b429]/10 border border-[#f0b429]/30 rounded-xl p-2.5 text-center min-w-0">
+                      <div className="text-[10px] text-[#2c5e2e] font-bold uppercase tracking-widest">
                         👨‍🌾 Penggarap ({persenPenggarap}%)
                       </div>
-                      <div className="font-bold text-orange-900 text-xs mt-0.5 break-words leading-tight">
+                      <div className="font-bold text-[#2c5e2e] text-xs mt-1 break-words leading-tight">
                         {formatRp(Number(h.profit_penggarap || 0))}
                       </div>
                     </div>
@@ -469,35 +515,49 @@ export default async function DashboardPage() {
       )}
 
       {/* ===== QUICK ACTIONS ===== */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <Link
-          href="/penggarap/baru"
-          className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl p-4 text-center hover:from-green-600 hover:to-green-700 transition shadow-md hover:shadow-lg"
-        >
-          <div className="text-3xl mb-1">+</div>
-          <div className="text-xs font-bold">Tambah Penggarap</div>
-        </Link>
-        <Link
-          href="/panen-multi"
-          className="bg-gradient-to-br from-yellow-500 to-yellow-600 text-white rounded-2xl p-4 text-center hover:from-yellow-600 hover:to-yellow-700 transition shadow-md hover:shadow-lg"
-        >
-          <div className="text-3xl mb-1">🌾</div>
-          <div className="text-xs font-bold">Input Panen</div>
-        </Link>
-        <Link
-          href="/keuangan"
-          className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl p-4 text-center hover:from-blue-600 hover:to-blue-700 transition shadow-md hover:shadow-lg"
-        >
-          <div className="text-3xl mb-1">💰</div>
-          <div className="text-xs font-bold">Keuangan</div>
-        </Link>
-        <Link
-          href="/grafik"
-          className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl p-4 text-center hover:from-purple-600 hover:to-purple-700 transition shadow-md hover:shadow-lg"
-        >
-          <div className="text-3xl mb-1">📊</div>
-          <div className="text-xs font-bold">Grafik</div>
-        </Link>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        {[
+          {
+            href: "/penggarap/baru",
+            icon: "➕",
+            label: "Tambah Penggarap",
+            bg: "bg-[#2c5e2e]",
+            hover: "hover:bg-[#1f4521]",
+          },
+          {
+            href: "/panen-multi",
+            icon: "🌾",
+            label: "Input Panen",
+            bg: "bg-[#f0b429]",
+            hover: "hover:bg-[#e6a617]",
+            text: "text-[#2c5e2e]",
+          },
+          {
+            href: "/keuangan",
+            icon: "💰",
+            label: "Keuangan",
+            bg: "bg-blue-600",
+            hover: "hover:bg-blue-700",
+          },
+          {
+            href: "/grafik",
+            icon: "📊",
+            label: "Grafik",
+            bg: "bg-purple-600",
+            hover: "hover:bg-purple-700",
+          },
+        ].map((a, i) => (
+          <Link
+            key={i}
+            href={a.href}
+            className={`${a.bg} ${a.hover} ${
+              a.text || "text-white"
+            } rounded-3xl p-5 text-center transition-all shadow-lg hover:shadow-xl hover:scale-105 hover:-translate-y-1`}
+          >
+            <div className="text-3xl mb-2">{a.icon}</div>
+            <div className="text-xs font-bold">{a.label}</div>
+          </Link>
+        ))}
       </div>
     </div>
   );

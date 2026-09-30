@@ -12,13 +12,14 @@ const PetaMini = dynamic(() => import("@/components/peta-mini"), {
 });
 
 type Props = {
-  polygon: {
+  polygon?: {
     type: "Polygon";
     coordinates: number[][][];
-  };
+  } | null;
+  koordinat?: string | null;
   luas?: number;
 };
 
-export default function PetaMiniWrapper({ polygon, luas }: Props) {
-  return <PetaMini polygon={polygon} luas={luas} />;
+export default function PetaMiniWrapper({ polygon, koordinat, luas }: Props) {
+  return <PetaMini polygon={polygon} koordinat={koordinat} luas={luas} />;
 }

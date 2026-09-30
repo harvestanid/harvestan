@@ -18,7 +18,6 @@ export default async function PanenMultiPage() {
 
   const premium = await checkPremiumStatus(user.id);
 
-  // Panen Multi-Lahan HANYA unlock kalau premium asli (demo TIDAK unlock)
   const isPremiumReal = premium.isPremium && premium.isActive;
 
   if (!isPremiumReal) {

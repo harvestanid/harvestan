@@ -88,7 +88,7 @@ function CountdownTimer({ expiresAt }: { expiresAt: string }) {
   return (
     <span
       className={`font-mono font-bold ${
-        isExpired ? "text-red-600" : "text-orange-600"
+        isExpired ? "text-red-600" : "text-[#2c5e2e]"
       }`}
     >
       ⏰ {countdown}
@@ -168,123 +168,144 @@ Saya sudah transfer, berikut bukti transfernya 👇
 
   if (isPremiumActive) {
     return (
-      <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl p-8 text-white text-center shadow-2xl">
-        <div className="text-6xl mb-4">💎</div>
-        <h2 className="text-2xl font-bold mb-2">Anda Sudah Premium!</h2>
-        <p className="text-emerald-50 text-sm mb-1">
-          Nikmati semua fitur Harvestan tanpa batasan.
-        </p>
-        {status.expiresAt ? (
-          <p className="text-emerald-100 text-xs mt-3">
-            Aktif sampai:{" "}
-            {new Date(status.expiresAt).toLocaleDateString("id-ID", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            })}
-            {status.daysRemaining !== null &&
-              ` (${status.daysRemaining} hari lagi)`}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#2c5e2e] via-[#1f4521] to-[#2c5e2e] rounded-3xl p-8 md:p-12 text-white text-center shadow-2xl shadow-[#2c5e2e]/30">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#f0b429]/20 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#4a8f3f]/30 rounded-full blur-3xl" />
+
+        <div className="relative">
+          <div className="text-6xl md:text-7xl mb-4">💎</div>
+          <h2 className="text-2xl md:text-3xl font-bold mb-3 tracking-tighter">
+            Anda Sudah Premium!
+          </h2>
+          <p className="text-white/80 text-sm mb-6">
+            Nikmati semua fitur Harvestan tanpa batasan.
           </p>
-        ) : (
-          <p className="text-emerald-100 text-xs mt-3">
-            ✨ Akses selamanya — tanpa batas waktu
-          </p>
-        )}
+          {status.expiresAt ? (
+            <div className="inline-block bg-white/10 backdrop-blur border border-white/20 rounded-full px-5 py-2 text-xs text-[#f0b429] font-medium">
+              Aktif sampai:{" "}
+              {new Date(status.expiresAt).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+              {status.daysRemaining !== null &&
+                ` (${status.daysRemaining} hari lagi)`}
+            </div>
+          ) : (
+            <div className="inline-block bg-white/10 backdrop-blur border border-white/20 rounded-full px-5 py-2 text-xs text-[#f0b429] font-medium">
+              ✨ Akses selamanya — tanpa batas waktu
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
   return (
-    <>
+    <div className="space-y-6">
       {error && (
-        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+        <div className="p-4 bg-red-50 border-2 border-red-200 rounded-2xl text-sm text-red-700">
           ❌ {error}
         </div>
       )}
 
-      <div className="bg-gradient-to-br from-orange-500 via-red-500 to-pink-500 rounded-3xl p-6 md:p-8 text-white shadow-2xl mb-6">
-        <div className="text-center">
-          <div className="inline-block bg-white/20 backdrop-blur rounded-full px-3 py-1 text-xs font-bold mb-3">
-            💥 SEKALI BAYAR · AKSES SELAMANYA
+      {/* ===== HERO PRICING ===== */}
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#2c5e2e] via-[#1f4521] to-[#2c5e2e] rounded-3xl p-8 md:p-12 text-white shadow-2xl shadow-[#2c5e2e]/30">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-[#f0b429]/20 rounded-full blur-3xl animate-float" />
+        <div
+          className="absolute bottom-0 left-0 w-96 h-96 bg-[#4a8f3f]/30 rounded-full blur-3xl animate-float"
+          style={{ animationDelay: "3s" }}
+        />
+
+        <div className="relative text-center">
+          <div className="inline-block bg-[#f0b429]/20 backdrop-blur border border-[#f0b429]/40 rounded-full px-4 py-1.5 text-[10px] font-bold mb-4 uppercase tracking-[0.25em] text-[#f0b429]">
+            💥 Sekali Bayar · Akses Selamanya
           </div>
-          <div className="text-5xl md:text-6xl font-bold mb-2">
+          <div className="text-5xl md:text-6xl font-bold mb-2 tracking-tighter">
             {formatRp(paymentInfo.harga)}
           </div>
-          <div className="text-sm text-white/90 line-through">
+          <div className="text-sm text-white/70 line-through mb-3">
             Rp 199.000
           </div>
-          <div className="text-xs text-white/95 mt-2">
-            Hemat 70% — harga promo terbatas
+          <div className="text-xs text-[#f0b429] font-bold uppercase tracking-widest">
+            Hemat 70% — promo terbatas
           </div>
         </div>
       </div>
 
+      {/* ===== INVOICE AKTIF atau GENERATE ===== */}
       {invoice && invoice.status === "pending" ? (
-        <div className="bg-white border-2 border-orange-400 rounded-3xl p-6 mb-6 shadow-lg">
-          <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🧾</span>
+        <div className="bg-white rounded-3xl border-2 border-[#f0b429] p-6 shadow-2xl shadow-[#f0b429]/20">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-[#f0b429]/15 flex items-center justify-center text-2xl">
+                🧾
+              </div>
               <div>
-                <div className="text-xs text-gray-500 font-medium">
-                  INVOICE AKTIF
+                <div className="text-[10px] text-[#2c5e2e]/60 font-bold uppercase tracking-widest">
+                  Invoice Aktif
                 </div>
-                <div className="font-bold text-gray-900 text-lg font-mono">
+                <div className="font-bold text-[#2c5e2e] text-base font-mono tracking-tight">
                   {invoice.invoice_code}
                 </div>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-gray-500 mb-1">Berlaku</div>
+              <div className="text-[10px] text-[#2c5e2e]/60 mb-1 uppercase tracking-widest font-bold">
+                Berlaku
+              </div>
               <CountdownTimer expiresAt={invoice.expires_at} />
-              <div className="text-[10px] text-gray-400 mt-1">
+              <div className="text-[10px] text-[#2c5e2e]/40 mt-1">
                 {formatTanggalJam(invoice.expires_at)}
               </div>
             </div>
           </div>
 
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4">
-            <div className="text-xs text-orange-700 font-bold uppercase mb-2">
-              💳 Transfer ke rekening berikut:
+          <div className="bg-gradient-to-br from-[#faf9f5] to-[#f0b429]/10 border border-[#f0b429]/30 rounded-2xl p-4 mb-5">
+            <div className="text-[10px] text-[#2c5e2e] font-bold uppercase tracking-widest mb-3">
+              💳 Transfer ke rekening berikut
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Bank</span>
-                <span className="font-bold text-gray-900">
+                <span className="text-sm text-[#2c5e2e]/70">Bank</span>
+                <span className="font-bold text-[#2c5e2e]">
                   {paymentInfo.bank}
                 </span>
               </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Nomor Rekening</span>
+              <div className="flex justify-between items-center flex-wrap gap-2">
+                <span className="text-sm text-[#2c5e2e]/70">
+                  Nomor Rekening
+                </span>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono font-bold text-gray-900 text-lg">
+                  <span className="font-mono font-bold text-[#2c5e2e] text-lg tracking-tight">
                     {paymentInfo.nomor_rekening}
                   </span>
                   <button
                     onClick={handleCopyRekening}
-                    className="bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold px-2 py-1 rounded transition"
+                    className="bg-[#2c5e2e] hover:bg-[#1f4521] text-white text-xs font-bold px-3 py-1.5 rounded-full transition-all hover:scale-105"
                   >
                     📋 Copy
                   </button>
                 </div>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-600">Atas Nama</span>
-                <span className="font-bold text-gray-900">
+                <span className="text-sm text-[#2c5e2e]/70">Atas Nama</span>
+                <span className="font-bold text-[#2c5e2e]">
                   {paymentInfo.nama_pemilik}
                 </span>
               </div>
-              <div className="flex justify-between items-center border-t border-orange-200 pt-2 mt-2">
-                <span className="text-sm text-gray-600 font-bold">
+              <div className="flex justify-between items-center border-t-2 border-[#f0b429]/30 pt-3 mt-3">
+                <span className="text-sm text-[#2c5e2e] font-bold uppercase tracking-widest">
                   Nominal Transfer
                 </span>
-                <span className="font-bold text-orange-700 text-xl">
+                <span className="font-bold text-[#f0b429] text-xl tracking-tight">
                   {formatRp(invoice.nominal)}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-800 leading-relaxed">
+          <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 mb-5 text-xs text-blue-800 leading-relaxed">
             <strong>📌 Cara Bayar:</strong>
             <br />
             1. Transfer tepat{" "}
@@ -299,58 +320,61 @@ Saya sudah transfer, berikut bukti transfernya 👇
 
           <button
             onClick={handleKirimWhatsApp}
-            className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-4 rounded-xl transition shadow-lg text-base flex items-center justify-center gap-2"
+            className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-4 rounded-full transition-all shadow-lg hover:shadow-xl hover:scale-[1.02] text-base flex items-center justify-center gap-2"
           >
             📱 Kirim Bukti Transfer via WhatsApp
           </button>
 
-          <div className="text-center text-[10px] text-gray-400 mt-3">
+          <div className="text-center text-[10px] text-[#2c5e2e]/40 mt-3 uppercase tracking-widest font-bold">
             Admin: {paymentInfo.whatsapp_display}
           </div>
         </div>
       ) : (
-        <div className="bg-white border-2 border-orange-400 rounded-3xl p-6 mb-6 shadow-lg text-center">
-          <div className="text-4xl mb-3">🏦</div>
-          <h3 className="font-bold text-gray-900 text-lg mb-2">
+        <div className="bg-white rounded-3xl border-2 border-[#f0b429] p-6 md:p-8 shadow-2xl shadow-[#f0b429]/20 text-center">
+          <div className="w-20 h-20 mx-auto mb-5 rounded-3xl bg-[#f0b429]/15 flex items-center justify-center text-4xl">
+            🏦
+          </div>
+          <h3 className="font-bold text-[#2c5e2e] text-lg mb-2 tracking-tight">
             Bayar via Transfer Bank
           </h3>
-          <p className="text-sm text-gray-600 mb-5 leading-relaxed max-w-md mx-auto">
+          <p className="text-sm text-[#2c5e2e]/70 mb-6 leading-relaxed max-w-md mx-auto">
             Klik tombol di bawah untuk generate invoice. Invoice berlaku{" "}
             <strong>24 jam</strong> sejak dibuat.
           </p>
           <button
             onClick={handleBuatInvoice}
             disabled={loading}
-            className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-4 rounded-xl transition shadow-lg disabled:opacity-50 text-base"
+            className="w-full bg-[#2c5e2e] hover:bg-[#1f4521] text-white font-bold py-4 rounded-full transition-all shadow-lg shadow-[#2c5e2e]/20 hover:shadow-[#2c5e2e]/40 hover:scale-[1.02] disabled:opacity-50 text-base"
           >
             {loading ? "⏳ Membuat Invoice..." : "🧾 Buat Invoice Sekarang"}
           </button>
-          <p className="text-xs text-gray-500 mt-3">
+          <p className="text-xs text-[#2c5e2e]/50 mt-4">
             Setelah transfer, kirim bukti via WhatsApp ke admin
           </p>
 
           <Link
             href="/premium/riwayat"
-            className="inline-block mt-4 text-xs text-blue-700 hover:text-blue-900 underline font-medium"
+            className="inline-block mt-5 text-xs text-[#2c5e2e] hover:text-[#f0b429] underline font-bold transition"
           >
             📜 Lihat Riwayat Invoice
           </Link>
         </div>
       )}
 
-      <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 mb-6">
+      {/* ===== MAYAR (HIDDEN) ===== */}
+      <div className="bg-[#faf9f5] border-2 border-[#2c5e2e]/10 rounded-3xl p-5">
         <button
           onClick={() => setShowMayar(!showMayar)}
-          className="w-full flex items-center justify-between text-sm text-gray-600 hover:text-gray-900"
+          className="w-full flex items-center justify-between text-sm text-[#2c5e2e]/70 hover:text-[#2c5e2e] transition"
         >
-          <span className="font-medium">
+          <span className="font-bold uppercase tracking-widest text-xs">
             💡 Metode pembayaran lain (QRIS)
           </span>
-          <span>{showMayar ? "▲" : "▼"}</span>
+          <span className="text-lg">{showMayar ? "▲" : "▼"}</span>
         </button>
         {showMayar && (
-          <div className="mt-3 pt-3 border-t border-gray-200">
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-xs text-amber-800 leading-relaxed">
+          <div className="mt-4 pt-4 border-t border-[#2c5e2e]/10">
+            <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/30 rounded-2xl p-4 text-xs text-[#2c5e2e] leading-relaxed">
               <strong>⚠️ Sedang dalam perbaikan</strong>
               <br />
               Metode pembayaran otomatis via QRIS sedang dalam proses
@@ -364,69 +388,77 @@ Saya sudah transfer, berikut bukti transfernya 👇
         )}
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white border-2 border-gray-200 rounded-2xl p-5">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-2xl">🆓</span>
-            <h3 className="font-bold text-lg text-gray-900">Gratis</h3>
+      {/* ===== PERBANDINGAN ===== */}
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="bg-white rounded-3xl border-2 border-[#2c5e2e]/10 p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-3xl">🆓</span>
+            <h3 className="font-bold text-lg text-[#2c5e2e] tracking-tight">
+              Gratis
+            </h3>
           </div>
-          <div className="text-2xl font-bold text-gray-900 mb-4">Rp 0</div>
-          <ul className="space-y-2">
+          <div className="text-3xl font-bold text-[#2c5e2e] mb-5 tracking-tighter">
+            Rp 0
+          </div>
+          <ul className="space-y-2.5">
             {FITUR_GRATIS.map((f, i) => (
               <li
                 key={i}
-                className="flex items-start gap-2 text-sm text-gray-700"
+                className="flex items-start gap-2 text-sm text-[#2c5e2e]/70"
               >
                 <span className="flex-shrink-0">{f.icon}</span>
                 <span>{f.label}</span>
               </li>
             ))}
           </ul>
-          <div className="mt-4 text-xs text-gray-500 italic">
+          <div className="mt-5 text-xs text-[#2c5e2e]/50 italic">
             Cukup untuk coba-coba
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-orange-400 rounded-2xl p-5 relative shadow-lg">
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-[10px] font-bold px-3 py-1 rounded-full whitespace-nowrap">
-            ⭐ PALING WORTH IT
+        <div className="relative bg-gradient-to-br from-[#f0b429]/15 to-[#f0b429]/5 border-2 border-[#f0b429] rounded-3xl p-6 shadow-2xl shadow-[#f0b429]/20">
+          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-[#f0b429] text-[#2c5e2e] text-[10px] font-bold px-3 py-1 rounded-full whitespace-nowrap uppercase tracking-widest">
+            ⭐ Paling Worth It
           </div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-2xl">💎</span>
-            <h3 className="font-bold text-lg text-orange-900">Premium</h3>
+          <div className="flex items-center gap-3 mb-2">
+            <span className="text-3xl">💎</span>
+            <h3 className="font-bold text-lg text-[#2c5e2e] tracking-tight">
+              Premium
+            </h3>
           </div>
-          <div className="text-2xl font-bold text-orange-900 mb-4">
+          <div className="text-3xl font-bold text-[#2c5e2e] mb-5 tracking-tighter">
             {formatRp(paymentInfo.harga)}
-            <span className="text-xs font-normal text-orange-700 ml-1">
+            <span className="text-xs font-normal text-[#2c5e2e]/70 ml-2">
               sekali bayar
             </span>
           </div>
-          <ul className="space-y-2">
+          <ul className="space-y-2.5">
             {FITUR_PREMIUM.map((f, i) => (
               <li
                 key={i}
-                className="flex items-start gap-2 text-sm text-orange-900 font-medium"
+                className="flex items-start gap-2 text-sm text-[#2c5e2e] font-medium"
               >
                 <span className="flex-shrink-0">{f.icon}</span>
                 <span>{f.label}</span>
               </li>
             ))}
           </ul>
-          <div className="mt-4 text-xs text-orange-700 italic">
+          <div className="mt-5 text-xs text-[#2c5e2e] italic font-bold">
             ✅ Semua fitur, tanpa batas, selamanya
           </div>
         </div>
       </div>
 
+      {/* ===== RIWAYAT ===== */}
       {riwayatInvoice.length > 0 && (
-        <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-bold text-gray-900 text-sm">
+        <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-5 md:p-6">
+          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+            <h3 className="font-bold text-[#2c5e2e] text-sm uppercase tracking-widest">
               📜 Riwayat Invoice ({riwayatInvoice.length})
             </h3>
             <Link
               href="/premium/riwayat"
-              className="text-xs text-blue-700 hover:text-blue-900 underline font-medium"
+              className="text-xs text-[#2c5e2e] hover:text-[#f0b429] underline font-bold transition"
             >
               Lihat Semua →
             </Link>
@@ -435,14 +467,14 @@ Saya sudah transfer, berikut bukti transfernya 👇
             {riwayatInvoice.slice(0, 3).map((inv) => (
               <div
                 key={inv.id}
-                className={`border rounded-xl p-3 text-xs ${
+                className={`border-2 rounded-2xl p-3.5 text-xs ${
                   inv.status === "approved"
-                    ? "border-emerald-300 bg-emerald-50"
+                    ? "border-[#2c5e2e]/30 bg-[#2c5e2e]/5"
                     : inv.status === "rejected"
                     ? "border-red-300 bg-red-50"
                     : inv.status === "expired"
                     ? "border-gray-300 bg-gray-50"
-                    : "border-amber-300 bg-amber-50"
+                    : "border-[#f0b429]/60 bg-[#f0b429]/10"
                 }`}
               >
                 <div className="flex items-center justify-between flex-wrap gap-2">
@@ -456,27 +488,27 @@ Saya sudah transfer, berikut bukti transfernya 👇
                         ? "⏰"
                         : "⏳"}
                     </span>
-                    <span className="font-mono font-bold">
+                    <span className="font-mono font-bold text-[#2c5e2e]">
                       {inv.invoice_code}
                     </span>
                   </div>
-                  <span className="text-[10px] text-gray-500">
+                  <span className="text-[10px] text-[#2c5e2e]/60">
                     {formatTanggalJam(inv.created_at)}
                   </span>
                 </div>
-                <div className="mt-1 flex items-center justify-between">
-                  <span className="text-gray-700">
+                <div className="mt-1.5 flex items-center justify-between">
+                  <span className="text-[#2c5e2e]/70 font-medium">
                     {formatRp(inv.nominal)}
                   </span>
                   <span
                     className={`font-bold ${
                       inv.status === "approved"
-                        ? "text-emerald-700"
+                        ? "text-[#2c5e2e]"
                         : inv.status === "rejected"
                         ? "text-red-700"
                         : inv.status === "expired"
                         ? "text-gray-500"
-                        : "text-amber-700"
+                        : "text-[#f0b429]"
                     }`}
                   >
                     {inv.status === "approved"
@@ -494,60 +526,62 @@ Saya sudah transfer, berikut bukti transfernya 👇
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-6">
-        <h3 className="font-bold text-gray-900 mb-3">❓ Pertanyaan Umum</h3>
-        <div className="space-y-3">
+      {/* ===== FAQ ===== */}
+      <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-6">
+        <h3 className="font-bold text-[#2c5e2e] mb-5 uppercase tracking-widest text-xs">
+          ❓ Pertanyaan Umum
+        </h3>
+        <div className="space-y-5">
           <div>
-            <div className="font-bold text-sm text-gray-900 mb-1">
+            <div className="font-bold text-sm text-[#2c5e2e] mb-1.5">
               Bayar sekali, beneran selamanya?
             </div>
-            <p className="text-xs text-gray-600 leading-relaxed">
+            <p className="text-xs text-[#2c5e2e]/70 leading-relaxed">
               Ya. Tidak ada langganan bulanan. Setelah bayar{" "}
               {formatRp(paymentInfo.harga)}, akun Anda jadi Premium permanen.
             </p>
           </div>
           <div>
-            <div className="font-bold text-sm text-gray-900 mb-1">
+            <div className="font-bold text-sm text-[#2c5e2e] mb-1.5">
               Kenapa harus generate invoice dulu?
             </div>
-            <p className="text-xs text-gray-600 leading-relaxed">
+            <p className="text-xs text-[#2c5e2e]/70 leading-relaxed">
               Supaya admin bisa lacak pembayaran dan cocokkan dengan transfer
               Anda. Invoice berlaku 24 jam — kalau kadaluarsa, generate ulang.
             </p>
           </div>
           <div>
-            <div className="font-bold text-sm text-gray-900 mb-1">
+            <div className="font-bold text-sm text-[#2c5e2e] mb-1.5">
               Berapa lama aktivasi setelah kirim bukti?
             </div>
-            <p className="text-xs text-gray-600 leading-relaxed">
-              Maksimal 1×24 jam. Biasanya lebih cepat, tergantung admin online.
+            <p className="text-xs text-[#2c5e2e]/70 leading-relaxed">
+              Maksimal 1×24 jam. Biasanya lebih cepat, tergantung admin
+              online.
             </p>
           </div>
           <div>
-            <div className="font-bold text-sm text-gray-900 mb-1">
+            <div className="font-bold text-sm text-[#2c5e2e] mb-1.5">
               Ada cara lain dapat Premium gratis?
             </div>
-            <p className="text-xs text-gray-600 leading-relaxed">
+            <p className="text-xs text-[#2c5e2e]/70 leading-relaxed">
               Ada! Lihat{" "}
-              <a
+              <Link
                 href="/premium-gratis"
-                className="text-emerald-700 underline font-medium"
+                className="text-[#f0b429] underline font-bold hover:text-[#e6a617]"
               >
                 Premium Gratis via barter
-              </a>{" "}
+              </Link>{" "}
               — bantu promosikan Harvestan, dapat Premium 1 tahun.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="text-center text-xs text-gray-500 leading-relaxed">
+      <div className="text-center text-xs text-[#2c5e2e]/50 leading-relaxed pb-4">
         Dengan melanjutkan, Anda menyetujui{" "}
-        <span className="text-emerald-700 font-medium">
-          Syarat & Ketentuan
-        </span>{" "}
+        <span className="text-[#2c5e2e] font-bold">Syarat & Ketentuan</span>{" "}
         Harvestan.
       </div>
-    </>
+    </div>
   );
 }
