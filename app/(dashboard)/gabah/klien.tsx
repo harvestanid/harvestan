@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { SkemaBagiHasilV2 } from "@/components/skema-bagi-hasil-v2";
+import { TombolSharePanen } from "@/components/tombol-share-panen";
 
 type Penggarap = {
   id: string;
@@ -1307,6 +1308,21 @@ export function GabahKlien() {
                     ? "⏳ Mengirim..."
                     : "📤 Kirim ke Database (Buat Panen)"}
                 </button>
+                <TombolSharePanen
+                  komoditas="padi"
+                  komoditasLabel="🌾 Padi"
+                  hasilKg={hasil.totalBobot}
+                  luasHa={luasLahan}
+                  produktivitas={hasil.produktivitas}
+                  hargaJual={hargaJual}
+                  tanggal={tanggal}
+                  namaPenggarap={namaPenggarap || null}
+                  namaLahan={namaLahan || null}
+                  profitOwner={hasil.profitOwnerFinal}
+                  profitPenggarap={hasil.profitPenggarapFinal}
+                  polygon={null}
+                  koordinat={null}
+                />
                 <button
                   onClick={saveAsImage}
                   className="bg-yellow-500 hover:bg-yellow-600 text-white font-medium px-6 py-3 rounded-lg transition"

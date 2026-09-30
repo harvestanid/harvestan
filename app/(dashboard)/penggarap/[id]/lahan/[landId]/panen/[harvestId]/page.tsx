@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getDataFilter } from "@/lib/demo/demo-mode";
 import { TombolAksiPanen } from "./tombol-aksi";
 import { TombolDownloadInvoice } from "./tombol-download-invoice";
+import { TombolSharePanen } from "@/components/tombol-share-panen";
 
 function formatRp(n: number) {
   return "Rp " + Math.round(n).toLocaleString("id-ID");
@@ -45,7 +46,7 @@ export default async function DetailPanenPage({
 
   const { data: lahan } = await supabase
     .from("lands")
-    .select("id, nama, luas")
+    .select("id, nama, luas, polygon, lokasi_koordinat")
     .eq("id", landId)
     .eq("user_id", filter.user_id)
     .eq("is_demo", filter.is_demo)
@@ -113,6 +114,10 @@ export default async function DetailPanenPage({
     ? panen.potongan_hutang_log
     : [];
 
+  const luasLahan = Number(lahan?.luas || 0);
+  const hasilKg = Number(panen.hasil_kg || 0);
+  const produktivitas = luasLahan > 0 ? hasilKg / luasLahan : 0;
+
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
@@ -130,7 +135,24 @@ export default async function DetailPanenPage({
         </p>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap gap-2">
+        <TombolSharePanen
+          komoditas={panen.komoditas || "padi"}
+          komoditasLabel={
+            KOMODITAS_LABEL[panen.komoditas] || panen.komoditas || "Padi"
+          }
+          hasilKg={hasilKg}
+          luasHa={luasLahan}
+          produktivitas={produktivitas}
+          hargaJual={harga}
+          tanggal={panen.tanggal}
+          namaPenggarap={penggarap?.nama || null}
+          namaLahan={lahan?.nama || null}
+          profitOwner={profitOwnerFinal}
+          profitPenggarap={profitPenggarapFinal}
+          polygon={(lahan?.polygon as any) || null}
+          koordinat={lahan?.lokasi_koordinat || null}
+        />
         <TombolDownloadInvoice
           panen={panen}
           penggarap={penggarap || { nama: "?", alamat: null, kontak: null }}
@@ -508,7 +530,7 @@ export default async function DetailPanenPage({
           </div>
         </div>
 
-        {/* RIWAYAT PERUBAHAN HUTANG — ✅ FIX NaN */}
+        {/* RIWAYAT PERUBAHAN HUTANG */}
         {log.length > 0 && (
           <div className="pt-4 border-t">
             <p className="text-xs text-gray-500 uppercase mb-3">
@@ -565,7 +587,6 @@ export default async function DetailPanenPage({
                       </div>
                     );
                   }
-                  // ✅ FIX: Fallback jumlah || jumlah_dipotong
                   const jumlah =
                     entry.jumlah !== undefined
                       ? Number(entry.jumlah)
