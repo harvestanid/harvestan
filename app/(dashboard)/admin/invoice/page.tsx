@@ -45,14 +45,15 @@ export default async function AdminInvoicePage() {
           🧾 Invoice Admin
         </h1>
         <p className="text-gray-600 text-sm mt-1">
-          Kelola invoice transfer bank — approve atau tolak
+          Kelola invoice transfer bank — approve, tolak, tandai testing, atau
+          hapus
         </p>
       </div>
 
       {/* STATISTIK REVENUE */}
       <div className="bg-gradient-to-br from-green-600 to-emerald-700 rounded-2xl p-5 mb-6 text-white shadow-lg">
         <div className="text-xs font-bold uppercase opacity-80 mb-2">
-          💰 Revenue
+          💰 Revenue (Tidak Termasuk Testing)
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -74,10 +75,24 @@ export default async function AdminInvoicePage() {
             </div>
           </div>
         </div>
+
+        {stats.revenue_testing_total > 0 && (
+          <div className="mt-4 pt-4 border-t border-white/20 flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🧪</span>
+              <span className="text-xs opacity-90">
+                Testing (tidak dihitung):
+              </span>
+            </div>
+            <span className="text-sm font-bold opacity-90">
+              {formatRp(stats.revenue_testing_total)}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* STATISTIK INVOICE */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
         <div className="bg-white border border-gray-200 rounded-xl p-4">
           <div className="text-[10px] text-gray-600 font-bold uppercase">
             Total Invoice
@@ -108,6 +123,14 @@ export default async function AdminInvoicePage() {
           </div>
           <div className="text-2xl font-bold text-red-900 mt-1">
             {stats.total_rejected}
+          </div>
+        </div>
+        <div className="bg-[#f0b429]/15 border-2 border-[#f0b429]/40 rounded-xl p-4">
+          <div className="text-[10px] text-[#2c5e2e] font-bold uppercase">
+            🧪 Testing
+          </div>
+          <div className="text-2xl font-bold text-[#2c5e2e] mt-1">
+            {stats.total_testing}
           </div>
         </div>
         <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">

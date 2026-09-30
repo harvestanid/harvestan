@@ -41,6 +41,7 @@ export type Invoice = {
   notif_approved_sent: boolean | null;
   notif_rejected_sent: boolean | null;
   catatan: string | null;
+  is_testing: boolean;
   created_at: string;
 };
 
@@ -50,9 +51,11 @@ export type InvoiceStats = {
   total_approved: number;
   total_rejected: number;
   total_expired: number;
+  total_testing: number;
   revenue_total: number;
   revenue_this_month: number;
   revenue_this_year: number;
+  revenue_testing_total: number;
   premium_users: number;
 };
 
@@ -110,6 +113,11 @@ export type OrderStats = {
   total_expired: number;
   revenue_this_month: number;
   revenue_total: number;
+};
+
+export type SubscriptionWithUser = Subscription & {
+  user_email: string | null;
+  user_nama: string | null;
 };
 
 export const PAYMENT_INFO = {
@@ -337,7 +345,8 @@ export type ActivatePremiumInput = {
 export async function activatePremium(
   input: ActivatePremiumInput
 ): Promise<{ ok: boolean; message: string }> {
-  const supabase = await createClient();
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const supabase = createAdminClient();
 
   const {
     userId,
@@ -391,6 +400,122 @@ export async function activatePremium(
   }
 
   return { ok: true, message: "Premium berhasil diaktifkan" };
+}
+
+export async function revokePremium(
+  userId: string,
+  adminEmail: string,
+  alasan?: string | null
+): Promise<{ ok: boolean; message: string }> {
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const supabase = createAdminClient();
+
+  const { data: existing } = await supabase
+    .from("subscriptions")
+    .select("id, is_premium")
+    .eq("user_id", userId)
+    .single();
+
+  if (!existing) {
+    return { ok: false, message: "User tidak punya subscription" };
+  }
+
+  if (!existing.is_premium) {
+    return { ok: true, message: "User sudah bukan premium" };
+  }
+
+  const notesText = alasan
+    ? `Revoked by ${adminEmail}: ${alasan}`
+    : `Revoked by ${adminEmail}`;
+
+  const { error } = await supabase
+    .from("subscriptions")
+    .update({
+      is_premium: false,
+      premium_until: null,
+      premium_type: "free",
+      premium_source: "revoked_by_admin",
+      notes: notesText,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("user_id", userId);
+
+  if (error) {
+    console.error("revokePremium error:", error);
+    return { ok: false, message: error.message };
+  }
+
+  return { ok: true, message: "Premium berhasil dicabut" };
+}
+
+export async function getAllSubscriptions(filters?: {
+  status?: "all" | "premium" | "free";
+  search?: string;
+}): Promise<SubscriptionWithUser[]> {
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const supabase = createAdminClient();
+
+  let query = supabase
+    .from("subscriptions")
+    .select("*")
+    .order("updated_at", { ascending: false })
+    .limit(500);
+
+  if (filters?.status === "premium") {
+    query = query.eq("is_premium", true);
+  } else if (filters?.status === "free") {
+    query = query.eq("is_premium", false);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("getAllSubscriptions error:", error);
+    return [];
+  }
+
+  const subs = (data || []) as Subscription[];
+
+  const userIds = subs.map((s) => s.user_id);
+
+  let invoiceInfo: Record<
+    string,
+    { email: string | null; nama: string | null }
+  > = {};
+
+  if (userIds.length > 0) {
+    const { data: invoices } = await supabase
+      .from("invoices")
+      .select("user_id, user_email, user_nama")
+      .in("user_id", userIds);
+
+    (invoices || []).forEach((inv) => {
+      if (!invoiceInfo[inv.user_id]) {
+        invoiceInfo[inv.user_id] = {
+          email: inv.user_email,
+          nama: inv.user_nama,
+        };
+      }
+    });
+  }
+
+  let result: SubscriptionWithUser[] = subs.map((s) => ({
+    ...s,
+    user_email: invoiceInfo[s.user_id]?.email || null,
+    user_nama: invoiceInfo[s.user_id]?.nama || null,
+  }));
+
+  if (filters?.search) {
+    const q = filters.search.toLowerCase().trim();
+    result = result.filter(
+      (s) =>
+        (s.user_email || "").toLowerCase().includes(q) ||
+        (s.user_nama || "").toLowerCase().includes(q) ||
+        s.user_id.toLowerCase().includes(q)
+    );
+  }
+
+  return result;
 }
 
 function generateInvoiceCode(): string {
@@ -485,6 +610,7 @@ export async function createInvoice(
       nominal: PAYMENT_INFO.harga,
       status: "pending",
       expires_at: expiresAt,
+      is_testing: false,
     })
     .select()
     .single();
@@ -590,6 +716,93 @@ export async function rejectInvoice(
   return { ok: true, message: "Invoice ditolak" };
 }
 
+export async function toggleInvoiceTesting(
+  invoiceCode: string,
+  isTesting: boolean
+): Promise<{ ok: boolean; message: string }> {
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from("invoices")
+    .update({ is_testing: isTesting })
+    .eq("invoice_code", invoiceCode);
+
+  if (error) {
+    console.error("toggleInvoiceTesting error:", error);
+    return { ok: false, message: error.message };
+  }
+
+  return {
+    ok: true,
+    message: isTesting
+      ? "Invoice ditandai TESTING (tidak masuk revenue)"
+      : "Invoice kembali normal (masuk revenue)",
+  };
+}
+
+// ✅ BARU: Hapus 1 invoice
+export async function deleteInvoice(
+  invoiceCode: string
+): Promise<{ ok: boolean; message: string }> {
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const supabase = createAdminClient();
+
+  const { error } = await supabase
+    .from("invoices")
+    .delete()
+    .eq("invoice_code", invoiceCode);
+
+  if (error) {
+    console.error("deleteInvoice error:", error);
+    return { ok: false, message: error.message };
+  }
+
+  return { ok: true, message: "Invoice berhasil dihapus" };
+}
+
+// ✅ BARU: Hapus semua invoice testing
+export async function deleteAllTestingInvoices(): Promise<{
+  ok: boolean;
+  message: string;
+  count?: number;
+}> {
+  const { createAdminClient } = await import("@/lib/supabase/admin");
+  const supabase = createAdminClient();
+
+  const { data: list, error: errFetch } = await supabase
+    .from("invoices")
+    .select("id")
+    .eq("is_testing", true);
+
+  if (errFetch) {
+    console.error("deleteAllTestingInvoices fetch error:", errFetch);
+    return { ok: false, message: errFetch.message };
+  }
+
+  const count = (list || []).length;
+
+  if (count === 0) {
+    return { ok: true, message: "Tidak ada invoice testing", count: 0 };
+  }
+
+  const { error } = await supabase
+    .from("invoices")
+    .delete()
+    .eq("is_testing", true);
+
+  if (error) {
+    console.error("deleteAllTestingInvoices error:", error);
+    return { ok: false, message: error.message };
+  }
+
+  return {
+    ok: true,
+    message: `${count} invoice testing berhasil dihapus`,
+    count,
+  };
+}
+
 export async function getPendingInvoices(filters?: {
   status?: string;
   search?: string;
@@ -686,7 +899,7 @@ export async function getInvoiceStats(): Promise<InvoiceStats> {
 
   const { data: invoices } = await supabase
     .from("invoices")
-    .select("status, nominal, approved_at, created_at");
+    .select("status, nominal, approved_at, created_at, is_testing");
 
   const all = invoices || [];
 
@@ -697,9 +910,16 @@ export async function getInvoiceStats(): Promise<InvoiceStats> {
   let revenue_total = 0;
   let revenue_this_month = 0;
   let revenue_this_year = 0;
+  let revenue_testing_total = 0;
 
   all.forEach((inv) => {
     if (inv.status !== "approved") return;
+
+    if (inv.is_testing) {
+      revenue_testing_total += Number(inv.nominal);
+      return;
+    }
+
     revenue_total += Number(inv.nominal);
     const approvedDate = inv.approved_at ? new Date(inv.approved_at) : null;
     if (approvedDate) {
@@ -723,9 +943,11 @@ export async function getInvoiceStats(): Promise<InvoiceStats> {
     total_approved: all.filter((i) => i.status === "approved").length,
     total_rejected: all.filter((i) => i.status === "rejected").length,
     total_expired: all.filter((i) => i.status === "expired").length,
+    total_testing: all.filter((i) => i.is_testing).length,
     revenue_total,
     revenue_this_month,
     revenue_this_year,
+    revenue_testing_total,
     premium_users: premium_users || 0,
   };
 }
@@ -836,7 +1058,6 @@ export async function approveOrder(
     return { ok: false, message: error.message };
   }
 
-  // Kurangi stok produk & tambah total_terjual
   for (const item of order.items || []) {
     if (!item.product_id) continue;
 
@@ -848,8 +1069,7 @@ export async function approveOrder(
 
     if (p) {
       const newStok = Math.max(0, Number(p.stok) - Number(item.qty));
-      const newTerjual =
-        Number(p.total_terjual || 0) + Number(item.qty);
+      const newTerjual = Number(p.total_terjual || 0) + Number(item.qty);
 
       await supabase
         .from("products")
@@ -989,7 +1209,7 @@ export async function getUserOrders(userId: string): Promise<Order[]> {
 }
 
 // =================================================================
-// MAYAR (disimpan untuk masa depan)
+// MAYAR
 // =================================================================
 
 export async function saveMayarOrder(input: {
