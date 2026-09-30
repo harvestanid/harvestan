@@ -28,7 +28,9 @@ export default async function GrafikPage() {
 
   const { data: harvests } = await supabase
     .from("harvests")
-    .select("id, land_id, tanggal, komoditas, hasil_kg, musim")
+    .select(
+      "id, land_id, tanggal, komoditas, hasil_kg, harga_gabah, harga_per_kg, musim"
+    )
     .eq("user_id", filter.user_id)
     .eq("is_demo", filter.is_demo)
     .order("tanggal", { ascending: true });
@@ -40,7 +42,7 @@ export default async function GrafikPage() {
           📊 Grafik & Analisis
         </h1>
         <p className="text-gray-600 text-sm mt-1">
-          Visualisasi produksi & produktivitas per komoditas dan penggarap
+          Visualisasi hasil panen & tren harga komoditas
         </p>
       </div>
 
