@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import Link from "next/link";
 import { CtaThreshold } from "@/components/cta-threshold";
+import { BadgeTipeGarap } from "@/components/badge-tipe-garap";
 
 const KOMODITAS_LABEL: Record<string, string> = {
   padi: "🌾 Padi",
@@ -41,7 +42,14 @@ function formatKg(n: number) {
 
 type Props = {
   penggaraps: { id: string; nama: string }[];
-  lands: { id: string; penggarap_id: string; nama: string; luas: number }[];
+  lands: {
+    id: string;
+    penggarap_id: string;
+    nama: string;
+    luas: number;
+    tipe_garap?: string;
+    nama_owner_external?: string | null;
+  }[];
   harvests: any[];
   debts: any[];
   musimCabaiList: { id: string; nama: string }[];
@@ -281,6 +289,8 @@ export function KeuanganClient({
         lahanNama: string;
         penggarapNama: string;
         luas: number;
+        tipeGarap: string;
+        namaOwnerExternal: string | null;
         komoditasSet: Set<string>;
         totalHasil: number;
         profitOwner: number;
@@ -296,6 +306,8 @@ export function KeuanganClient({
         lahanNama: land.nama,
         penggarapNama: p?.nama || "?",
         luas: Number(land.luas),
+        tipeGarap: land.tipe_garap || "bagi_hasil_owner",
+        namaOwnerExternal: land.nama_owner_external || null,
         komoditasSet: new Set<string>(),
         totalHasil: 0,
         profitOwner: 0,
@@ -728,11 +740,18 @@ export function KeuanganClient({
                     className="border-b border-gray-100 hover:bg-gray-50"
                   >
                     <td className="py-2 px-2">
-                      <div className="font-medium text-gray-900">
-                        {l.lahanNama}
+                      <div className="font-medium text-gray-900 flex items-center gap-2 flex-wrap">
+                        <span>{l.lahanNama}</span>
+                        <BadgeTipeGarap tipe={l.tipeGarap} size="sm" />
                       </div>
-                      <div className="text-xs text-gray-500">
-                        {l.luas.toFixed(2)} Ha
+                      <div className="text-xs text-gray-500 flex items-center gap-2 flex-wrap">
+                        <span>{l.luas.toFixed(2)} Ha</span>
+                        {l.tipeGarap === "bagi_hasil_penggarap" &&
+                          l.namaOwnerExternal && (
+                            <span className="text-orange-700">
+                              👤 {l.namaOwnerExternal}
+                            </span>
+                          )}
                       </div>
                     </td>
                     <td className="py-2 px-2 text-gray-700">

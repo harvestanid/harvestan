@@ -13,7 +13,6 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Ambil SEMUA data mentah
     const { data: penggaraps } = await supabase
       .from("penggaraps")
       .select("*")
@@ -48,7 +47,7 @@ export async function GET() {
 
     // ===== Sheet 1: Penggarap (RAW) =====
     const penggarapRows = [
-      ["id", "nama", "alamat", "usia", "kontak", "created_at"],
+      ["id", "nama", "alamat", "usia", "kontak", "is_self", "created_at"],
     ];
     (penggaraps || []).forEach((p) => {
       penggarapRows.push([
@@ -57,6 +56,7 @@ export async function GET() {
         p.alamat || "",
         p.usia || "",
         p.kontak || "",
+        p.is_self ? "TRUE" : "FALSE",
         p.created_at || "",
       ]);
     });
@@ -72,10 +72,30 @@ export async function GET() {
         "luas",
         "lokasi_koordinat",
         "polygon_json",
+        "tipe_garap",
+        "nama_owner_external",
+        "persen_owner_default",
+        "persen_penggarap_default",
         "created_at",
       ],
     ];
     (lands || []).forEach((l) => {
+      const tipeGarap = (l as any).tipe_garap || "bagi_hasil_owner";
+      const persenOwnerDefault =
+        (l as any).persen_owner_default !== undefined &&
+        (l as any).persen_owner_default !== null
+          ? Number((l as any).persen_owner_default)
+          : tipeGarap === "mandiri"
+          ? 0
+          : 50;
+      const persenPenggarapDefault =
+        (l as any).persen_penggarap_default !== undefined &&
+        (l as any).persen_penggarap_default !== null
+          ? Number((l as any).persen_penggarap_default)
+          : tipeGarap === "mandiri"
+          ? 100
+          : 50;
+
       lahanRows.push([
         l.id,
         l.penggarap_id,
@@ -83,6 +103,10 @@ export async function GET() {
         Number(l.luas) || 0,
         l.lokasi_koordinat || "",
         l.polygon ? JSON.stringify(l.polygon) : "",
+        tipeGarap,
+        (l as any).nama_owner_external || "",
+        persenOwnerDefault,
+        persenPenggarapDefault,
         l.created_at || "",
       ]);
     });
@@ -135,8 +159,8 @@ export async function GET() {
         Number(h.bawa_penggarap) || 0,
         Number(h.bawa_owner) || 0,
         Number(h.bawa_lain) || 0,
-        Number(h.persen_owner) || 50,
-        Number(h.persen_penggarap) || 50,
+        Number(h.persen_owner) || 0,
+        Number(h.persen_penggarap) || 100,
         Number(h.profit_bersih) || 0,
         Number(h.profit_owner) || 0,
         Number(h.profit_penggarap) || 0,
@@ -144,9 +168,7 @@ export async function GET() {
         Number(h.total_hutang_sebelum) || 0,
         Number(h.sisa_hutang_sesudah) || 0,
         h.catatan || "",
-        h.potongan_hutang_log
-          ? JSON.stringify(h.potongan_hutang_log)
-          : "",
+        h.potongan_hutang_log ? JSON.stringify(h.potongan_hutang_log) : "",
         h.created_at || "",
       ]);
     });
@@ -218,7 +240,7 @@ export async function GET() {
     const infoRows = [
       ["keterangan", "nilai"],
       ["tipe_file", "BACKUP"],
-      ["versi", "1.6"],
+      ["versi", "1.7"],
       ["tanggal_export", new Date().toISOString()],
       ["jumlah_penggarap", (penggaraps || []).length],
       ["jumlah_lahan", (lands || []).length],
@@ -230,7 +252,6 @@ export async function GET() {
     const ws7 = XLSX.utils.aoa_to_sheet(infoRows);
     XLSX.utils.book_append_sheet(wb, ws7, "Info");
 
-    // Generate buffer
     const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
 
     const filename = `Harvestan_Backup_${

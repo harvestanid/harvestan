@@ -21,6 +21,17 @@ function safeJSON(str: any): any {
   }
 }
 
+function parseBool(v: any): boolean {
+  if (v === true) return true;
+  if (v === false) return false;
+  if (typeof v === "string") {
+    const s = v.trim().toUpperCase();
+    return s === "TRUE" || s === "1" || s === "YA" || s === "YES";
+  }
+  if (typeof v === "number") return v !== 0;
+  return false;
+}
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient();
@@ -32,10 +43,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Ambil file + mode dari form-data
     const formData = await request.formData();
     const file = formData.get("file") as File;
-    const mode = (formData.get("mode") as string) || "merge"; // "merge" | "replace"
+    const mode = (formData.get("mode") as string) || "merge";
 
     if (!file) {
       return NextResponse.json(
@@ -44,12 +54,10 @@ export async function POST(request: Request) {
       );
     }
 
-    // Baca file Excel
     const arrayBuffer = await file.arrayBuffer();
     const data = new Uint8Array(arrayBuffer);
     const wb = XLSX.read(data, { type: "array" });
 
-    // Cek apakah file ini backup (ada sheet Info dengan tipe_file=BACKUP)
     const wsInfo = wb.Sheets["Info"];
     if (!wsInfo) {
       return NextResponse.json(
@@ -60,220 +68,306 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
     const infoRows: any[] = XLSX.utils.sheet_to_json(wsInfo, {
       header: 1,
       defval: "",
     });
     let tipeFile = "";
+    let versiFile = "";
     infoRows.forEach((r) => {
-      if (r[0] === "tipe_file") tipeFile = r[1];
+      if (r[0] === "tipe_file") tipeFile = String(r[1]);
+      if (r[0] === "versi") versiFile = String(r[1]);
     });
+
     if (tipeFile !== "BACKUP") {
       return NextResponse.json(
         {
           error:
-            "File ini bukan file backup. Gunakan file dari tombol 'Export Backup'.",
+            "File ini bukan backup. Gunakan tombol 'Export Backup', bukan 'Export Laporan'.",
         },
         { status: 400 }
       );
     }
 
-    // ===== PARSE SEMUA SHEET =====
-    const wsP = wb.Sheets["Penggarap"];
-    const wsL = wb.Sheets["Lahan"];
-    const wsPn = wb.Sheets["Panen"];
-    const wsH = wb.Sheets["Hutang"];
-    const wsK = wb.Sheets["Kategori"];
-    const wsM = wb.Sheets["MusimCabai"];
-
-    const rawPenggarap: any[] = wsP
-      ? XLSX.utils.sheet_to_json(wsP, { defval: "" })
-      : [];
-    const rawLahan: any[] = wsL
-      ? XLSX.utils.sheet_to_json(wsL, { defval: "" })
-      : [];
-    const rawPanen: any[] = wsPn
-      ? XLSX.utils.sheet_to_json(wsPn, { defval: "" })
-      : [];
-    const rawHutang: any[] = wsH
-      ? XLSX.utils.sheet_to_json(wsH, { defval: "" })
-      : [];
-    const rawKategori: any[] = wsK
-      ? XLSX.utils.sheet_to_json(wsK, { defval: "" })
-      : [];
-    const rawMusim: any[] = wsM
-      ? XLSX.utils.sheet_to_json(wsM, { defval: "" })
-      : [];
-
-    // ===== MODE REPLACE: HAPUS DULU =====
+    // ===== MODE REPLACE: hapus semua data lama =====
     if (mode === "replace") {
-      // Hapus berurutan: harvests → debts → musim_cabai → categories → lands → penggaraps
       await supabase.from("harvests").delete().eq("user_id", user.id);
       await supabase.from("debts").delete().eq("user_id", user.id);
-      await supabase.from("musim_cabai").delete().eq("user_id", user.id);
-      await supabase.from("categories").delete().eq("user_id", user.id);
       await supabase.from("lands").delete().eq("user_id", user.id);
       await supabase.from("penggaraps").delete().eq("user_id", user.id);
+      await supabase.from("categories").delete().eq("user_id", user.id);
+      await supabase.from("musim_cabai").delete().eq("user_id", user.id);
     }
 
-    // ===== AUTO-REMAP UUID =====
-    const mapPenggarap: Record<string, string> = {};
-    const mapLahan: Record<string, string> = {};
+    // ===== IMPORT PENGGARAP =====
+    const wsPenggarap = wb.Sheets["Penggarap"];
+    const penggarapRows: any[] = wsPenggarap
+      ? XLSX.utils.sheet_to_json(wsPenggarap, { defval: "" })
+      : [];
 
-    // ==== 1. INSERT PENGGARAP ====
-    let suksesPenggarap = 0;
-    for (const p of rawPenggarap) {
-      const oldId = String(p.id || "").trim();
-      if (!oldId || !p.nama) continue;
-      const newId = genUUID();
-      mapPenggarap[oldId] = newId;
+    const idMapPenggarap: Record<string, string> = {};
+
+    for (const row of penggarapRows) {
+      if (!row.id || !row.nama) continue;
+
+      const newId = mode === "replace" ? String(row.id) : genUUID();
+      idMapPenggarap[String(row.id)] = newId;
+
+      const isSelf = parseBool(row.is_self);
 
       const { error } = await supabase.from("penggaraps").insert({
         id: newId,
         user_id: user.id,
-        nama: String(p.nama || "").trim(),
-        alamat: p.alamat || null,
-        usia: p.usia ? Number(p.usia) : null,
-        kontak: p.kontak || null,
+        nama: String(row.nama),
+        alamat: row.alamat ? String(row.alamat) : null,
+        usia: row.usia ? parseInt(String(row.usia)) || null : null,
+        kontak: row.kontak ? String(row.kontak) : null,
+        is_self: isSelf,
+        is_demo: false,
       });
-      if (!error) suksesPenggarap++;
+
+      if (error) {
+        console.error("Import penggarap error:", error, "row:", row);
+      }
     }
 
-    // ==== 2. INSERT LAHAN ====
-    let suksesLahan = 0;
-    for (const l of rawLahan) {
-      const oldId = String(l.id || "").trim();
-      const oldPenggarapId = String(l.penggarap_id || "").trim();
-      const newPenggarapId = mapPenggarap[oldPenggarapId];
-      if (!oldId || !newPenggarapId || !l.nama) continue;
+    // ===== IMPORT LAHAN =====
+    const wsLahan = wb.Sheets["Lahan"];
+    const lahanRows: any[] = wsLahan
+      ? XLSX.utils.sheet_to_json(wsLahan, { defval: "" })
+      : [];
 
-      const newId = genUUID();
-      mapLahan[oldId] = newId;
+    const idMapLahan: Record<string, string> = {};
+
+    for (const row of lahanRows) {
+      if (!row.id || !row.penggarap_id) continue;
+
+      const oldPenggarapId = String(row.penggarap_id);
+      const newPenggarapId = idMapPenggarap[oldPenggarapId];
+      if (!newPenggarapId) continue;
+
+      const newId = mode === "replace" ? String(row.id) : genUUID();
+      idMapLahan[String(row.id)] = newId;
+
+      // Baca tipe garap (kalau gak ada di file lama = bagi_hasil_owner)
+      let tipeGarap = row.tipe_garap ? String(row.tipe_garap) : "";
+      if (
+        tipeGarap !== "mandiri" &&
+        tipeGarap !== "bagi_hasil_owner" &&
+        tipeGarap !== "bagi_hasil_penggarap"
+      ) {
+        tipeGarap = "bagi_hasil_owner";
+      }
+
+      const namaOwnerExternal = row.nama_owner_external
+        ? String(row.nama_owner_external)
+        : null;
+
+      let persenOwnerDefault = row.persen_owner_default
+        ? Number(row.persen_owner_default)
+        : tipeGarap === "mandiri"
+        ? 0
+        : 50;
+      let persenPenggarapDefault = row.persen_penggarap_default
+        ? Number(row.persen_penggarap_default)
+        : tipeGarap === "mandiri"
+        ? 100
+        : 50;
+
+      if (
+        isNaN(persenOwnerDefault) ||
+        persenOwnerDefault < 0 ||
+        persenOwnerDefault > 100
+      ) {
+        persenOwnerDefault = tipeGarap === "mandiri" ? 0 : 50;
+      }
+      if (
+        isNaN(persenPenggarapDefault) ||
+        persenPenggarapDefault < 0 ||
+        persenPenggarapDefault > 100
+      ) {
+        persenPenggarapDefault = tipeGarap === "mandiri" ? 100 : 50;
+      }
 
       const { error } = await supabase.from("lands").insert({
         id: newId,
         user_id: user.id,
         penggarap_id: newPenggarapId,
-        nama: String(l.nama || "").trim(),
-        luas: Number(l.luas) || 0,
-        lokasi_koordinat: l.lokasi_koordinat || null,
-        polygon: l.polygon_json ? safeJSON(l.polygon_json) : null,
+        nama: String(row.nama),
+        luas: Number(row.luas) || 0,
+        lokasi_koordinat: row.lokasi_koordinat
+          ? String(row.lokasi_koordinat)
+          : null,
+        polygon: safeJSON(row.polygon_json),
+        tipe_garap: tipeGarap,
+        nama_owner_external: namaOwnerExternal,
+        persen_owner_default: persenOwnerDefault,
+        persen_penggarap_default: persenPenggarapDefault,
+        is_demo: false,
       });
-      if (!error) suksesLahan++;
+
+      if (error) {
+        console.error("Import lahan error:", error, "row:", row);
+      }
     }
 
-    // ==== 3. INSERT PANEN ====
-    let suksesPanen = 0;
-    for (const h of rawPanen) {
-      const oldId = String(h.id || "").trim();
-      const oldLandId = String(h.land_id || "").trim();
-      const newLandId = mapLahan[oldLandId];
-      if (!oldId || !newLandId || !h.tanggal) continue;
+    // ===== IMPORT PANEN =====
+    const wsPanen = wb.Sheets["Panen"];
+    const panenRows: any[] = wsPanen
+      ? XLSX.utils.sheet_to_json(wsPanen, { defval: "" })
+      : [];
 
-      const newId = genUUID();
+    for (const row of panenRows) {
+      if (!row.id || !row.land_id) continue;
+
+      const oldLandId = String(row.land_id);
+      const newLandId = idMapLahan[oldLandId];
+      if (!newLandId) continue;
+
+      const newId = mode === "replace" ? String(row.id) : genUUID();
 
       const { error } = await supabase.from("harvests").insert({
         id: newId,
         user_id: user.id,
         land_id: newLandId,
-        tanggal: h.tanggal,
-        komoditas: h.komoditas || "padi",
-        musim: h.musim || null,
-        hasil_kg: Number(h.hasil_kg) || 0,
-        harga_gabah: Number(h.harga_gabah) || 0,
-        harga_per_kg: Number(h.harga_per_kg) || 0,
-        biaya_panen_per_kg: Number(h.biaya_panen_per_kg) || 0,
-        biaya_tambahan: Number(h.biaya_tambahan) || 0,
-        keterangan_biaya: h.keterangan_biaya || null,
-        bawa_penggarap: Number(h.bawa_penggarap) || 0,
-        bawa_owner: Number(h.bawa_owner) || 0,
-        bawa_lain: Number(h.bawa_lain) || 0,
-        persen_owner: Number(h.persen_owner) || 50,
-        persen_penggarap: Number(h.persen_penggarap) || 50,
-        profit_bersih: Number(h.profit_bersih) || 0,
-        profit_owner: Number(h.profit_owner) || 0,
-        profit_penggarap: Number(h.profit_penggarap) || 0,
-        potongan_hutang: Number(h.potongan_hutang) || 0,
-        total_hutang_sebelum: Number(h.total_hutang_sebelum) || 0,
-        sisa_hutang_sesudah: Number(h.sisa_hutang_sesudah) || 0,
-        catatan: h.catatan || null,
-        potongan_hutang_log: h.potongan_hutang_log_json
-          ? safeJSON(h.potongan_hutang_log_json)
-          : [],
+        tanggal: String(row.tanggal),
+        komoditas: row.komoditas ? String(row.komoditas) : "padi",
+        musim: row.musim ? String(row.musim) : null,
+        hasil_kg: Number(row.hasil_kg) || 0,
+        harga_gabah: Number(row.harga_gabah) || 0,
+        harga_per_kg: Number(row.harga_per_kg) || 0,
+        biaya_panen_per_kg: Number(row.biaya_panen_per_kg) || 0,
+        biaya_tambahan: Number(row.biaya_tambahan) || 0,
+        keterangan_biaya: row.keterangan_biaya
+          ? String(row.keterangan_biaya)
+          : null,
+        bawa_penggarap: Number(row.bawa_penggarap) || 0,
+        bawa_owner: Number(row.bawa_owner) || 0,
+        bawa_lain: Number(row.bawa_lain) || 0,
+        persen_owner: Number(row.persen_owner) || 0,
+        persen_penggarap: Number(row.persen_penggarap) || 100,
+        profit_bersih: Number(row.profit_bersih) || 0,
+        profit_owner: Number(row.profit_owner) || 0,
+        profit_penggarap: Number(row.profit_penggarap) || 0,
+        potongan_hutang: Number(row.potongan_hutang) || 0,
+        total_hutang_sebelum: Number(row.total_hutang_sebelum) || 0,
+        sisa_hutang_sesudah: Number(row.sisa_hutang_sesudah) || 0,
+        catatan: row.catatan ? String(row.catatan) : null,
+        potongan_hutang_log: safeJSON(row.potongan_hutang_log_json),
+        is_demo: false,
       });
-      if (!error) suksesPanen++;
+
+      if (error) {
+        console.error("Import panen error:", error, "row:", row);
+      }
     }
 
-    // ==== 4. INSERT HUTANG ====
-    let suksesHutang = 0;
-    for (const d of rawHutang) {
-      const oldId = String(d.id || "").trim();
-      const oldPenggarapId = String(d.penggarap_id || "").trim();
-      const newPenggarapId = mapPenggarap[oldPenggarapId];
-      if (!oldId || !newPenggarapId || !d.tanggal) continue;
+    // ===== IMPORT HUTANG =====
+    const wsHutang = wb.Sheets["Hutang"];
+    const hutangRows: any[] = wsHutang
+      ? XLSX.utils.sheet_to_json(wsHutang, { defval: "" })
+      : [];
 
-      const newId = genUUID();
+    for (const row of hutangRows) {
+      if (!row.id || !row.penggarap_id) continue;
+
+      const oldPenggarapId = String(row.penggarap_id);
+      const newPenggarapId = idMapPenggarap[oldPenggarapId];
+      if (!newPenggarapId) continue;
+
+      const newId = mode === "replace" ? String(row.id) : genUUID();
 
       const { error } = await supabase.from("debts").insert({
         id: newId,
         user_id: user.id,
         penggarap_id: newPenggarapId,
-        tanggal: d.tanggal,
-        jumlah: Number(d.jumlah) || 0,
-        keperluan: d.keperluan || null,
-        dibayar: Number(d.dibayar) || 0,
-        sisa: Number(d.sisa) || 0,
-        log_perubahan: d.log_perubahan_json
-          ? safeJSON(d.log_perubahan_json)
-          : [],
+        tanggal: String(row.tanggal),
+        jumlah: Number(row.jumlah) || 0,
+        keperluan: row.keperluan ? String(row.keperluan) : null,
+        dibayar: Number(row.dibayar) || 0,
+        sisa: Number(row.sisa) || 0,
+        log_perubahan: safeJSON(row.log_perubahan_json),
+        is_demo: false,
       });
-      if (!error) suksesHutang++;
+
+      if (error) {
+        console.error("Import hutang error:", error, "row:", row);
+      }
     }
 
-    // ==== 5. INSERT KATEGORI ====
-    let suksesKategori = 0;
-    for (const k of rawKategori) {
-      if (!k.komoditas) continue;
+    // ===== IMPORT KATEGORI =====
+    const wsKategori = wb.Sheets["Kategori"];
+    const kategoriRows: any[] = wsKategori
+      ? XLSX.utils.sheet_to_json(wsKategori, { defval: "" })
+      : [];
+
+    for (const row of kategoriRows) {
+      if (!row.komoditas) continue;
+
       const { error } = await supabase.from("categories").insert({
         user_id: user.id,
-        komoditas: k.komoditas,
-        cukup: k.cukup !== "" ? Number(k.cukup) : null,
-        baik: k.baik !== "" ? Number(k.baik) : null,
-        sangat_baik: k.sangat_baik !== "" ? Number(k.sangat_baik) : null,
+        komoditas: String(row.komoditas),
+        cukup: row.cukup !== "" ? Number(row.cukup) : null,
+        baik: row.baik !== "" ? Number(row.baik) : null,
+        sangat_baik:
+          row.sangat_baik !== "" ? Number(row.sangat_baik) : null,
+        is_demo: false,
       });
-      if (!error) suksesKategori++;
+
+      if (error) {
+        console.error("Import kategori error:", error, "row:", row);
+      }
     }
 
-    // ==== 6. INSERT MUSIM CABAI ====
-    let suksesMusim = 0;
-    for (const m of rawMusim) {
-      if (!m.nama) continue;
+    // ===== IMPORT MUSIM CABAI =====
+    const wsMusim = wb.Sheets["MusimCabai"];
+    const musimRows: any[] = wsMusim
+      ? XLSX.utils.sheet_to_json(wsMusim, { defval: "" })
+      : [];
+
+    for (const row of musimRows) {
+      if (!row.nama) continue;
+
+      const newId = mode === "replace" && row.id ? String(row.id) : genUUID();
+
       const { error } = await supabase.from("musim_cabai").insert({
+        id: newId,
         user_id: user.id,
-        nama: m.nama,
-        tanggal_mulai: m.tanggal_mulai || null,
-        tanggal_selesai: m.tanggal_selesai || null,
-        catatan: m.catatan || null,
+        nama: String(row.nama),
+        tanggal_mulai: row.tanggal_mulai
+          ? String(row.tanggal_mulai)
+          : null,
+        tanggal_selesai: row.tanggal_selesai
+          ? String(row.tanggal_selesai)
+          : null,
+        catatan: row.catatan ? String(row.catatan) : null,
+        is_demo: false,
       });
-      if (!error) suksesMusim++;
+
+      if (error) {
+        console.error("Import musim error:", error, "row:", row);
+      }
     }
 
     return NextResponse.json({
       success: true,
       mode,
+      versi_file: versiFile || "unknown",
       summary: {
-        penggarap: suksesPenggarap,
-        lahan: suksesLahan,
-        panen: suksesPanen,
-        hutang: suksesHutang,
-        kategori: suksesKategori,
-        musim: suksesMusim,
+        penggarap: penggarapRows.filter((r) => r.id && r.nama).length,
+        lahan: lahanRows.filter((r) => r.id && r.penggarap_id).length,
+        panen: panenRows.filter((r) => r.id && r.land_id).length,
+        hutang: hutangRows.filter((r) => r.id && r.penggarap_id).length,
+        kategori: kategoriRows.filter((r) => r.komoditas).length,
+        musim: musimRows.filter((r) => r.nama).length,
       },
+      message: "Import berhasil",
     });
   } catch (err: any) {
     console.error("Import error:", err);
     return NextResponse.json(
-      { error: "Terjadi kesalahan saat import: " + (err.message || "Unknown") },
+      { error: "Terjadi kesalahan: " + (err.message || "Unknown") },
       { status: 500 }
     );
   }
