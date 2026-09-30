@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { SkemaBagiHasilV2 } from "@/components/skema-bagi-hasil-v2";
 import { isDemoActive } from "@/lib/demo/demo-mode";
+import { BadgeTipeGarap } from "@/components/badge-tipe-garap";
 
 async function editPanen(formData: FormData) {
   "use server";
@@ -31,7 +32,7 @@ async function editPanen(formData: FormData) {
     parseFloat(formData.get("bawa_penggarap") as string) || 0;
   const bawa_owner = parseFloat(formData.get("bawa_owner") as string) || 0;
   const bawa_lain = parseFloat(formData.get("bawa_lain") as string) || 0;
-  const persen_owner = parseFloat(formData.get("persen_owner") as string) || 50;
+  const persen_owner = parseFloat(formData.get("persen_owner") as string) || 0;
   const catatan = (formData.get("catatan") as string) || null;
   const potongHutang = formData.get("potong_hutang") === "on";
 
@@ -46,7 +47,6 @@ async function editPanen(formData: FormData) {
     redirect(`${editBase}/edit?error=Persen+owner+harus+0-100`);
   }
 
-  // Ambil data panen LAMA
   const { data: panenLama } = await supabase
     .from("harvests")
     .select("*")
@@ -60,7 +60,6 @@ async function editPanen(formData: FormData) {
   const potonganHutangLama = Number(panenLama.potongan_hutang || 0);
   const wasPotongHutang = potonganHutangLama > 0;
 
-  // ========== STEP 1: REVERT potongan hutang lama (kalau ada) ==========
   const revertLog: Array<{
     debt_id: string;
     jumlah_direvert: number;
@@ -120,7 +119,6 @@ async function editPanen(formData: FormData) {
     }
   }
 
-  // ========== STEP 2: HITUNG PROFIT BARU ==========
   const persen_penggarap = 100 - persen_owner;
   const pendapatan = hasil_kg * harga_gabah;
   const totalBiaya = hasil_kg * biaya_panen_per_kg + biaya_tambahan;
@@ -264,6 +262,10 @@ async function editPanen(formData: FormData) {
   redirect(editBase);
 }
 
+function formatRp(n: number) {
+  return "Rp " + Math.round(n).toLocaleString("id-ID");
+}
+
 export default async function EditPanenPage({
   params,
   searchParams,
@@ -280,7 +282,6 @@ export default async function EditPanenPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  // 🔒 KUNCI: Cek mode demo — kalau demo aktif, tampilkan layar terkunci
   const demoActive = await isDemoActive(user.id);
   if (demoActive) {
     return (
@@ -300,9 +301,7 @@ export default async function EditPanenPage({
             Edit Panen Terkunci di Mode Demo
           </h1>
           <p className="text-sm text-amber-800 mb-6 leading-relaxed max-w-md mx-auto">
-            Di mode demo, Anda tidak bisa mengubah data panen. Ini supaya Anda
-            bisa melihat data contoh yang realistis tanpa khawatir datanya
-            berubah.
+            Di mode demo, Anda tidak bisa mengubah data panen.
             <br />
             <br />
             Untuk mengedit panen, selesaikan demo dulu dan kembali ke data
@@ -327,7 +326,6 @@ export default async function EditPanenPage({
     );
   }
 
-  // Bukan demo → lanjutkan seperti biasa
   const { data: panen } = await supabase
     .from("harvests")
     .select("*")
@@ -338,17 +336,22 @@ export default async function EditPanenPage({
 
   const { data: penggarap } = await supabase
     .from("penggaraps")
-    .select("id, nama")
+    .select("id, nama, is_self")
     .eq("id", id)
     .single();
 
   const { data: lahan } = await supabase
     .from("lands")
-    .select("id, nama, luas")
+    .select("id, nama, luas, tipe_garap, nama_owner_external")
     .eq("id", landId)
     .single();
 
   if (!penggarap || !lahan) redirect(`/penggarap/${id}`);
+
+  const tipeGarap = (lahan as any).tipe_garap || "bagi_hasil_owner";
+  const namaOwnerExternal = (lahan as any).nama_owner_external || null;
+  const isMandiri = tipeGarap === "mandiri";
+  const isPenggarap = tipeGarap === "bagi_hasil_penggarap";
 
   const { data: hutangAktif } = await supabase
     .from("debts")
@@ -366,10 +369,6 @@ export default async function EditPanenPage({
   const potonganHutangLama = Number(panen.potongan_hutang || 0);
   const wasPotongHutang = potonganHutangLama > 0;
 
-  function formatRp(n: number) {
-    return "Rp " + Math.round(n).toLocaleString("id-ID");
-  }
-
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
@@ -379,13 +378,37 @@ export default async function EditPanenPage({
         >
           ← Kembali ke Detail Panen
         </Link>
-        <h1 className="text-2xl font-bold text-gray-800 mt-2">
-          ✏️ Edit Panen
-        </h1>
+        <div className="flex items-center gap-3 mt-2 flex-wrap">
+          <h1 className="text-2xl font-bold text-gray-800">✏️ Edit Panen</h1>
+          <BadgeTipeGarap tipe={tipeGarap} />
+        </div>
         <p className="text-gray-600 text-sm mt-1">
           {penggarap.nama} &middot; {lahan.nama} ({lahan.luas} Ha)
         </p>
       </div>
+
+      {isMandiri && (
+        <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl flex-shrink-0">🌱</span>
+            <div className="text-xs text-green-800 leading-relaxed">
+              <strong>Garap Sendiri</strong> — semua profit 100% untuk
+              penggarap. Field bagi hasil disembunyikan.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isPenggarap && namaOwnerExternal && (
+        <div className="bg-orange-50 border-2 border-orange-300 rounded-2xl p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl flex-shrink-0">⚠️</span>
+            <div className="text-xs text-orange-800 leading-relaxed">
+              Lahan ini milik <strong>{namaOwnerExternal}</strong>.
+            </div>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg mb-4 text-sm">
@@ -397,23 +420,17 @@ export default async function EditPanenPage({
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-800">
           ℹ️ Panen ini sebelumnya memotong hutang{" "}
           <strong>{formatRp(potonganHutangLama)}</strong>.
-          <br />
-          Ubah centang di bawah untuk menyesuaikan.
         </div>
       )}
 
       {totalHutangAktif > 0 && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div>
-              <div className="font-bold text-red-800 text-sm">
-                ⚠️ {penggarap.nama} punya hutang aktif
-              </div>
-              <div className="text-xs text-red-700 mt-1">
-                Total: <strong>{formatRp(totalHutangAktif)}</strong> (
-                {hutangAktif?.length} hutang)
-              </div>
-            </div>
+          <div className="font-bold text-red-800 text-sm">
+            ⚠️ {penggarap.nama} punya hutang aktif
+          </div>
+          <div className="text-xs text-red-700 mt-1">
+            Total: <strong>{formatRp(totalHutangAktif)}</strong> (
+            {hutangAktif?.length} hutang)
           </div>
         </div>
       )}
@@ -457,6 +474,12 @@ export default async function EditPanenPage({
             </select>
           </div>
         </div>
+
+        {panen.musim && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-xs text-orange-800">
+            🗓️ Musim: <strong>{panen.musim}</strong>
+          </div>
+        )}
 
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -531,8 +554,35 @@ export default async function EditPanenPage({
           />
         </div>
 
-        {/* ===== SKEMA BAGI HASIL ===== */}
-        <SkemaBagiHasilV2 />
+        {/* ===== SKEMA BAGI HASIL — KONDISIONAL ===== */}
+        {isMandiri ? (
+          <div className="bg-green-50 border-2 border-green-300 rounded-xl p-4">
+            <div className="flex items-start gap-3">
+              <span className="text-2xl flex-shrink-0">🌱</span>
+              <div className="text-xs text-green-900 leading-relaxed">
+                <strong>Garap Sendiri</strong> — 100% untuk penggarap. Bagi
+                hasil otomatis 0:100.
+              </div>
+            </div>
+            <input type="hidden" name="persen_owner" value="0" />
+          </div>
+        ) : (
+          <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <label className="text-sm font-bold text-[#2c5e2e]">
+                💰 Skema Bagi Hasil
+              </label>
+              {isPenggarap && namaOwnerExternal && (
+                <span className="text-[10px] bg-orange-100 border border-orange-300 text-orange-800 rounded-full px-2.5 py-1 font-bold uppercase tracking-widest">
+                  👤 Owner: {namaOwnerExternal}
+                </span>
+              )}
+            </div>
+            <SkemaBagiHasilV2
+              defaultValue={Number(panen.persen_owner || 50)}
+            />
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-3">
           <div>
@@ -576,7 +626,8 @@ export default async function EditPanenPage({
           </div>
         </div>
 
-        {(totalHutangAktif > 0 || wasPotongHutang) && (
+        {/* Potong hutang — sembunyiin kalau mandiri */}
+        {!isMandiri && (totalHutangAktif > 0 || wasPotongHutang) && (
           <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
             <label className="flex items-start gap-3 cursor-pointer">
               <input
@@ -593,13 +644,12 @@ export default async function EditPanenPage({
                   {totalHutangAktif > 0 ? (
                     <>
                       Otomatis potong profit penggarap sebesar{" "}
-                      <strong>{formatRp(totalHutangAktif)}</strong> (atau
-                      sampai profit habis).
+                      <strong>{formatRp(totalHutangAktif)}</strong>.
                     </>
                   ) : (
                     <>
-                      Saat ini <strong>tidak ada hutang aktif</strong>.
-                      Centang jika Anda ingin tetap coba potong.
+                      Saat ini tidak ada hutang aktif. Centang jika tetap mau
+                      coba potong.
                     </>
                   )}
                 </div>
@@ -652,20 +702,6 @@ export default async function EditPanenPage({
             placeholder="Catatan tambahan (opsional)"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
           />
-        </div>
-
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-xs text-yellow-900">
-          <strong>💡 Cara kerja:</strong>
-          <ul className="list-disc list-inside mt-1 space-y-0.5">
-            <li>
-              <strong>Centang</strong>: potong hutang dari profit penggarap
-              baru
-            </li>
-            <li>
-              <strong>Uncheck</strong>: kembalikan hutang yang pernah dipotong
-              panen ini
-            </li>
-          </ul>
         </div>
 
         <div className="flex gap-3 pt-2">

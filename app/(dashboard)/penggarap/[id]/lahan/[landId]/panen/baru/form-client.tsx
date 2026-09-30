@@ -11,22 +11,42 @@ type Musim = {
 };
 
 type Props = {
+  hargaDefault: number;
+  biayaDefault: number;
+  totalHutang: number;
   musimList: Musim[];
-  defaultPersen: number;
+  tipeGarap?: string;
+  namaOwnerExternal?: string | null;
+  persenOwnerDefault?: number;
+  persenPenggarapDefault?: number;
 };
 
+function formatRp(n: number) {
+  return "Rp " + Math.round(n).toLocaleString("id-ID");
+}
+
 export function FormPanenFields({
+  hargaDefault,
+  biayaDefault,
+  totalHutang,
   musimList: initialMusimList,
-  defaultPersen,
+  tipeGarap = "bagi_hasil_owner",
+  namaOwnerExternal = null,
+  persenOwnerDefault = 50,
+  persenPenggarapDefault = 50,
 }: Props) {
   const router = useRouter();
+
+  const isMandiri = tipeGarap === "mandiri";
+  const isPenggarap = tipeGarap === "bagi_hasil_penggarap";
+
   const [komoditas, setKomoditas] = useState("padi");
   const [musimList, setMusimList] = useState<Musim[]>(initialMusimList);
   const [selectedMusim, setSelectedMusim] = useState("");
   const [showModalMusim, setShowModalMusim] = useState(false);
-  const [persenOwner, setPersenOwner] = useState(defaultPersen);
-  const [inputKey, setInputKey] = useState(0);
-  const [skema, setSkema] = useState(String(defaultPersen));
+  const [persenOwner, setPersenOwner] = useState(
+    isMandiri ? 0 : persenOwnerDefault
+  );
   const [namaMusimBaru, setNamaMusimBaru] = useState("");
   const [tanggalMulaiBaru, setTanggalMulaiBaru] = useState(
     new Date().toISOString().split("T")[0]
@@ -36,17 +56,6 @@ export function FormPanenFields({
   const [errorMusim, setErrorMusim] = useState("");
 
   const persenPenggarap = 100 - persenOwner;
-
-  function handleSkemaChange(value: string) {
-    setSkema(value);
-    if (value !== "custom") {
-      const num = parseInt(value, 10);
-      setPersenOwner(num);
-    } else {
-      setPersenOwner(0);
-      setInputKey((prev) => prev + 1);
-    }
-  }
 
   async function handleSimpanMusimClick() {
     if (!namaMusimBaru.trim()) {
@@ -76,17 +85,12 @@ export function FormPanenFields({
         return;
       }
 
-      // Update list & auto-select
       setMusimList([json.data, ...musimList]);
       setSelectedMusim(json.data.nama);
       setShowModalMusim(false);
-
-      // Reset form
       setNamaMusimBaru("");
       setTanggalMulaiBaru(new Date().toISOString().split("T")[0]);
       setCatatanMusimBaru("");
-
-      // Refresh server component (biar data ke-refresh kalau user reload)
       router.refresh();
     } catch (err: any) {
       setErrorMusim(err.message || "Terjadi kesalahan");
@@ -105,6 +109,21 @@ export function FormPanenFields({
 
   return (
     <>
+      {/* ===== TANGGAL ===== */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Tanggal Panen <span className="text-red-500">*</span>
+        </label>
+        <input
+          type="date"
+          name="tanggal"
+          defaultValue={new Date().toISOString().split("T")[0]}
+          required
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+      </div>
+
+      {/* ===== KOMODITAS ===== */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Komoditas <span className="text-red-500">*</span>
@@ -124,6 +143,7 @@ export function FormPanenFields({
         </select>
       </div>
 
+      {/* ===== MUSIM (khusus cabai) ===== */}
       {komoditas === "cabai_rawit" && (
         <div className="bg-orange-50 border-2 border-orange-300 rounded-lg p-3">
           <label className="block text-sm font-medium text-orange-900 mb-2">
@@ -158,76 +178,258 @@ export function FormPanenFields({
         </div>
       )}
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          💰 Skema Bagi Hasil
-        </label>
-        <select
-          value={skema}
-          onChange={(e) => handleSkemaChange(e.target.value)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-        >
-          <option value="50">50 : 50 (Owner : Penggarap)</option>
-          <option value="60">60 : 40 (Owner : Penggarap)</option>
-          <option value="70">70 : 30 (Owner : Penggarap)</option>
-          <option value="100">100 : 0 (Owner garap sendiri)</option>
-          <option value="custom">⚙️ Custom (input manual)</option>
-        </select>
-
-        {skema === "custom" && (
-          <div className="mt-3 bg-yellow-50 border-2 border-yellow-300 rounded-lg p-3">
-            <p className="text-xs font-semibold text-yellow-800 mb-2">
-              ⚙️ Atur Persentase Custom:
-            </p>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Owner (%)
-                </label>
-                <input
-                  key={inputKey}
-                  type="number"
-                  inputMode="numeric"
-                  defaultValue={persenOwner === 0 ? "" : persenOwner}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    let num = v === "" ? 0 : parseInt(v, 10);
-                    if (isNaN(num)) num = 0;
-                    if (num > 100) num = 100;
-                    if (num < 0) num = 0;
-                    setPersenOwner(num);
-                  }}
-                  placeholder="0"
-                  min="0"
-                  max="100"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 bg-white font-bold text-center"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">
-                  Penggarap (%)
-                </label>
-                <input
-                  type="number"
-                  value={persenPenggarap}
-                  readOnly
-                  className="w-full bg-gray-100 border border-gray-300 rounded-lg px-3 py-2 text-gray-700 font-bold text-center cursor-not-allowed"
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {skema !== "custom" && (
-          <div className="mt-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2 text-xs text-green-800">
-            Owner: <strong>{persenOwner}%</strong> &middot; Penggarap:{" "}
-            <strong>{persenPenggarap}%</strong>
-          </div>
-        )}
-
-        <input type="hidden" name="persen_owner" value={persenOwner} />
+      {/* ===== HASIL & HARGA ===== */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Hasil Panen (Kg) <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            name="hasil_kg"
+            step="any"
+            min="0.01"
+            required
+            placeholder="0"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Harga per Kg (Rp) <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="number"
+            name="harga_gabah"
+            step="any"
+            min="0"
+            required
+            defaultValue={hargaDefault}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
       </div>
 
+      {/* ===== BIAYA ===== */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Biaya Panen per Kg (Rp)
+          </label>
+          <input
+            type="number"
+            name="biaya_panen_per_kg"
+            step="any"
+            min="0"
+            defaultValue={biayaDefault}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Biaya Tambahan (Rp)
+          </label>
+          <input
+            type="number"
+            name="biaya_tambahan"
+            step="any"
+            min="0"
+            defaultValue={0}
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Keterangan Biaya Tambahan
+        </label>
+        <input
+          type="text"
+          name="keterangan_biaya"
+          placeholder="Contoh: Sewa mesin, transport"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+      </div>
+
+      {/* ===== SKEMA BAGI HASIL — KONDISIONAL ===== */}
+      {isMandiri ? (
+        <div className="bg-green-50 border-2 border-green-300 rounded-xl p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl flex-shrink-0">🌱</span>
+            <div className="text-xs text-green-900 leading-relaxed">
+              <strong>Garap Sendiri</strong> — semua profit panen ini{" "}
+              <strong>100% untuk penggarap</strong>. Field bagi hasil otomatis
+              di-set 0:100.
+            </div>
+          </div>
+          <input type="hidden" name="persen_owner" value="0" />
+        </div>
+      ) : (
+        <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-4 space-y-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <label className="text-sm font-bold text-[#2c5e2e]">
+              💰 Skema Bagi Hasil
+            </label>
+            {isPenggarap && namaOwnerExternal && (
+              <span className="text-[10px] bg-orange-100 border border-orange-300 text-orange-800 rounded-full px-2.5 py-1 font-bold uppercase tracking-widest">
+                👤 Owner: {namaOwnerExternal}
+              </span>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-[#2c5e2e] mb-1">
+                {isPenggarap ? "Owner External (%)" : "Owner (%)"}
+              </label>
+              <input
+                type="number"
+                name="persen_owner"
+                value={persenOwner}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  let num = v === "" ? 0 : parseInt(v, 10);
+                  if (isNaN(num)) num = 0;
+                  if (num > 100) num = 100;
+                  if (num < 0) num = 0;
+                  setPersenOwner(num);
+                }}
+                min="0"
+                max="100"
+                className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-3 py-2 focus:outline-none focus:border-[#f0b429] bg-white font-bold text-center text-[#2c5e2e]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-[#2c5e2e] mb-1">
+                Penggarap (%)
+              </label>
+              <input
+                type="number"
+                value={persenPenggarap}
+                readOnly
+                className="w-full bg-white/60 border-2 border-[#2c5e2e]/10 rounded-2xl px-3 py-2 text-[#2c5e2e] font-bold text-center cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {[
+              { o: 50, p: 50 },
+              { o: 40, p: 60 },
+              { o: 30, p: 70 },
+            ].map((s) => (
+              <button
+                key={`${s.o}-${s.p}`}
+                type="button"
+                onClick={() => setPersenOwner(s.o)}
+                className={`text-[10px] font-bold px-3 py-1.5 rounded-full transition-all ${
+                  persenOwner === s.o
+                    ? "bg-[#f0b429] text-[#2c5e2e]"
+                    : "bg-white border border-[#2c5e2e]/20 text-[#2c5e2e] hover:border-[#f0b429]"
+                }`}
+              >
+                {s.o}:{s.p}
+              </button>
+            ))}
+          </div>
+
+          <div className="bg-white border border-[#f0b429]/40 rounded-xl px-3 py-2 text-xs text-[#2c5e2e] text-center">
+            Owner: <strong>{persenOwner}%</strong> · Penggarap:{" "}
+            <strong>{persenPenggarap}%</strong>
+          </div>
+        </div>
+      )}
+
+      {/* ===== BAWA PULANG ===== */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          🏠 Gabah Bawa Pulang (Kg)
+        </label>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              👨‍🌾 Penggarap
+            </label>
+            <input
+              type="number"
+              name="bawa_penggarap"
+              step="any"
+              min="0"
+              defaultValue={0}
+              className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              🏠 Owner
+            </label>
+            <input
+              type="number"
+              name="bawa_owner"
+              step="any"
+              min="0"
+              defaultValue={0}
+              className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">
+              📦 Lainnya
+            </label>
+            <input
+              type="number"
+              name="bawa_lain"
+              step="any"
+              min="0"
+              defaultValue={0}
+              className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
+            />
+          </div>
+        </div>
+        <p className="text-xs text-gray-500 mt-1 italic">
+          Isi kalau ada gabah yang dibawa pulang (tidak dijual).
+        </p>
+      </div>
+
+      {/* ===== POTONG HUTANG ===== */}
+      {totalHutang > 0 && !isMandiri && (
+        <div className="bg-yellow-50 border-2 border-yellow-300 rounded-xl p-4">
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              name="potong_hutang"
+              defaultChecked={false}
+              className="mt-1 w-5 h-5 accent-red-600"
+            />
+            <div className="flex-1">
+              <div className="font-bold text-yellow-900 text-sm">
+                💸 Potong Hutang dari Profit Penggarap
+              </div>
+              <div className="text-xs text-yellow-800 mt-1">
+                Otomatis potong profit penggarap sebesar{" "}
+                <strong>{formatRp(totalHutang)}</strong> (atau sampai profit
+                habis).
+              </div>
+            </div>
+          </label>
+        </div>
+      )}
+
+      {/* ===== CATATAN ===== */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          Catatan
+        </label>
+        <textarea
+          name="catatan"
+          rows={2}
+          placeholder="Catatan tambahan (opsional)"
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
+        />
+      </div>
+
+      {/* ===== MODAL MUSIM BARU ===== */}
       {showModalMusim && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-[3000] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">

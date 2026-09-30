@@ -5,64 +5,11 @@ import {
   canUserInput,
   checkPremiumStatus,
 } from "@/lib/supabase/queries/subscription-server";
+import { FormLahanBaru } from "./form-client";
 
-async function tambahLahan(formData: FormData) {
-  "use server";
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect("/login");
-
-  const penggarap_id = formData.get("penggarap_id") as string;
-  const nama = formData.get("nama") as string;
-  const luas = parseFloat(formData.get("luas") as string);
-  const lokasi_koordinat = formData.get("lokasi_koordinat") as string;
-  const polygonStr = formData.get("polygon") as string;
-
-  if (!penggarap_id || !nama || isNaN(luas)) {
-    redirect(`/penggarap/${penggarap_id}/lahan/baru?error=Data+tidak+lengkap`);
-  }
-
-  const check = await canUserInput(user.id, "lahan");
-  if (!check.allowed) {
-    redirect(
-      `/penggarap/${penggarap_id}/lahan/baru?error=${encodeURIComponent(
-        check.reason || "Limit lahan tercapai"
-      )}`
-    );
-  }
-
-  let polygon = null;
-  if (polygonStr) {
-    try {
-      polygon = JSON.parse(polygonStr);
-    } catch (e) {
-      polygon = null;
-    }
-  }
-
-  const { error } = await supabase.from("lands").insert({
-    user_id: user.id,
-    penggarap_id,
-    nama,
-    luas,
-    lokasi_koordinat: lokasi_koordinat || null,
-    polygon,
-  });
-
-  if (error) {
-    redirect(
-      `/penggarap/${penggarap_id}/lahan/baru?error=${encodeURIComponent(
-        error.message
-      )}`
-    );
-  }
-
-  redirect(`/penggarap/${penggarap_id}`);
-}
+export const metadata = {
+  title: "Tambah Lahan",
+};
 
 export default async function TambahLahanPage({
   params,
@@ -90,7 +37,7 @@ export default async function TambahLahanPage({
 
   const { data: penggarap } = await supabase
     .from("penggaraps")
-    .select("id, nama")
+    .select("id, nama, is_self")
     .eq("id", id)
     .eq("user_id", user.id)
     .single();
@@ -101,7 +48,6 @@ export default async function TambahLahanPage({
   const premium = await checkPremiumStatus(user.id);
   const isPremiumActive = premium.effectivePremium;
 
-  // Kalau tidak boleh → halaman locked
   if (!check.allowed) {
     return (
       <div className="p-4 md:p-6 max-w-2xl mx-auto">
@@ -243,76 +189,14 @@ export default async function TambahLahanPage({
         </div>
       )}
 
-      <form
-        action={tambahLahan}
-        className="bg-white rounded-xl shadow-sm p-6 space-y-4"
-      >
-        <input type="hidden" name="penggarap_id" value={id} />
-        {gps_polygon && (
-          <input type="hidden" name="polygon" value={gps_polygon} />
-        )}
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Nama Lahan <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="text"
-            name="nama"
-            required
-            defaultValue={gps_nama || ""}
-            placeholder="Contoh: Sawah Utama, Kebun Belakang"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Luas (Hektar) <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="number"
-            name="luas"
-            step="0.001"
-            min="0.001"
-            required
-            defaultValue={gps_luas || ""}
-            placeholder="Contoh: 1.5"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Koordinat GPS (opsional)
-          </label>
-          <input
-            type="text"
-            name="lokasi_koordinat"
-            defaultValue={gps_koordinat || ""}
-            placeholder="Contoh: -6.994303,112.174348"
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            📍 Format: latitude,longitude (bisa copy dari Google Maps)
-          </p>
-        </div>
-
-        <div className="flex gap-3 pt-2">
-          <button
-            type="submit"
-            className="bg-green-700 hover:bg-green-800 text-white font-medium px-6 py-2 rounded-lg transition"
-          >
-            💾 Simpan Lahan
-          </button>
-          <Link
-            href={`/penggarap/${id}`}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-6 py-2 rounded-lg transition"
-          >
-            Batal
-          </Link>
-        </div>
-      </form>
+      <FormLahanBaru
+        penggarapId={id}
+        isSelf={penggarap.is_self || false}
+        gpsNama={gps_nama || ""}
+        gpsLuas={gps_luas || ""}
+        gpsKoordinat={gps_koordinat || ""}
+        gpsPolygon={gps_polygon || ""}
+      />
     </div>
   );
 }

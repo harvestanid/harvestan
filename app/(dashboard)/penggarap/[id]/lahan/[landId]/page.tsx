@@ -5,6 +5,7 @@ import { getDataFilter } from "@/lib/demo/demo-mode";
 import { TombolAksiLahan } from "./tombol-aksi";
 import PetaMiniWrapper from "@/components/peta-mini-wrapper";
 import { CtaThreshold } from "@/components/cta-threshold";
+import { BadgeTipeGarap } from "@/components/badge-tipe-garap";
 import {
   getKategoriList,
   hitungProduktivitasPerKomoditas,
@@ -58,7 +59,7 @@ export default async function DetailLahanPage({
 
   const { data: penggarap } = await supabase
     .from("penggaraps")
-    .select("id, nama, kontak")
+    .select("id, nama, kontak, is_self")
     .eq("id", id)
     .eq("user_id", filter.user_id)
     .eq("is_demo", filter.is_demo)
@@ -127,7 +128,11 @@ export default async function DetailLahanPage({
     0
   );
 
-  // Cek apakah ada data lokasi (polygon ATAU koordinat manual)
+  const tipeGarap = (lahan as any).tipe_garap || "bagi_hasil_owner";
+  const namaOwnerExternal = (lahan as any).nama_owner_external || null;
+  const isMandiri = tipeGarap === "mandiri";
+  const isPenggarap = tipeGarap === "bagi_hasil_penggarap";
+
   const adaPolygon =
     lahan.polygon &&
     typeof lahan.polygon === "object" &&
@@ -146,9 +151,17 @@ export default async function DetailLahanPage({
         >
           ← Kembali ke {penggarap.nama}
         </Link>
-        <h1 className="text-2xl font-bold text-gray-800 mt-2">
-          🗺️ {lahan.nama}
-        </h1>
+        <div className="flex items-center gap-3 mt-2 flex-wrap">
+          <h1 className="text-2xl font-bold text-gray-800">
+            🗺️ {lahan.nama}
+          </h1>
+          <BadgeTipeGarap tipe={tipeGarap} />
+          {isPenggarap && namaOwnerExternal && (
+            <span className="text-[10px] bg-orange-100 border-2 border-orange-300 text-orange-800 rounded-full px-2.5 py-1 font-bold uppercase tracking-widest">
+              👤 Owner: {namaOwnerExternal}
+            </span>
+          )}
+        </div>
         <p className="text-gray-600 text-sm mt-1">
           {penggarap.nama} &middot; {Number(lahan.luas).toFixed(2)} Ha
           {lahan.lokasi_koordinat && (
@@ -168,7 +181,34 @@ export default async function DetailLahanPage({
         </p>
       </div>
 
-      {/* Mini-map — tampil kalau ada polygon ATAU koordinat */}
+      {/* Info box untuk mode penggarap */}
+      {isPenggarap && namaOwnerExternal && (
+        <div className="bg-orange-50 border-2 border-orange-300 rounded-2xl p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl flex-shrink-0">⚠️</span>
+            <div className="text-xs text-orange-800 leading-relaxed">
+              <strong>Lahan ini bukan milikmu.</strong> Ini lahan garapan dari{" "}
+              <strong>{namaOwnerExternal}</strong>. Profit dari lahan ini akan
+              dibagi sesuai skema yang ditentukan.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Info box untuk mode mandiri */}
+      {isMandiri && (
+        <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl flex-shrink-0">🌱</span>
+            <div className="text-xs text-green-800 leading-relaxed">
+              <strong>Lahan milik sendiri, digarap sendiri.</strong> Semua
+              profit dari lahan ini <strong>100% untuk penggarap</strong>.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mini-map */}
       {tampilkanPeta && (
         <div className="mb-6 relative z-0">
           <PetaMiniWrapper
@@ -203,22 +243,35 @@ export default async function DetailLahanPage({
             {totalHasil.toLocaleString("id-ID")} Kg
           </div>
         </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
-          <div className="text-[10px] text-gray-500 uppercase">
-            Profit Owner
+        {isMandiri ? (
+          <div className="col-span-2 bg-[#2c5e2e]/5 border-2 border-[#2c5e2e]/30 rounded-xl p-3 text-center">
+            <div className="text-[10px] text-[#2c5e2e] uppercase font-bold tracking-widest">
+              🌱 Total Profit Penggarap
+            </div>
+            <div className="text-xl font-bold text-[#2c5e2e] mt-1">
+              {formatRp(totalProfitPenggarap)}
+            </div>
           </div>
-          <div className="text-sm font-bold text-green-700 break-words">
-            {formatRp(totalProfitOwner)}
-          </div>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
-          <div className="text-[10px] text-gray-500 uppercase">
-            Profit Penggarap
-          </div>
-          <div className="text-sm font-bold text-orange-700 break-words">
-            {formatRp(totalProfitPenggarap)}
-          </div>
-        </div>
+        ) : (
+          <>
+            <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
+              <div className="text-[10px] text-gray-500 uppercase">
+                Profit {isPenggarap ? "Owner Ext." : "Owner"}
+              </div>
+              <div className="text-sm font-bold text-green-700 break-words">
+                {formatRp(totalProfitOwner)}
+              </div>
+            </div>
+            <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
+              <div className="text-[10px] text-gray-500 uppercase">
+                Profit Penggarap
+              </div>
+              <div className="text-sm font-bold text-orange-700 break-words">
+                {formatRp(totalProfitPenggarap)}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Produktivitas per Komoditas */}
@@ -366,6 +419,11 @@ export default async function DetailLahanPage({
                           💸 Potong Hutang
                         </span>
                       )}
+                      {isMandiri && (
+                        <span className="text-[10px] bg-[#2c5e2e]/10 text-[#2c5e2e] px-2 py-0.5 rounded-full font-bold">
+                          🌱 Full Penggarap
+                        </span>
+                      )}
                     </div>
                     <span className="text-[10px] text-gray-500">
                       {new Date(h.tanggal).toLocaleDateString("id-ID", {
@@ -375,7 +433,7 @@ export default async function DetailLahanPage({
                       })}
                     </span>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
+                  <div className={`grid ${isMandiri ? "grid-cols-3" : "grid-cols-4"} gap-2 text-xs`}>
                     <div>
                       <div className="text-gray-500 text-[10px]">Hasil</div>
                       <div className="font-bold text-gray-800">
@@ -398,6 +456,22 @@ export default async function DetailLahanPage({
                         {formatRp(Number(h.profit_bersih || 0))}
                       </div>
                     </div>
+                    {!isMandiri && (
+                      <div>
+                        <div className="text-gray-500 text-[10px]">
+                          Bagi Hasil
+                        </div>
+                        <div className="text-[10px] font-bold">
+                          <span className="text-green-700">
+                            👤 {formatRp(Number(h.profit_owner || 0))}
+                          </span>
+                          {" · "}
+                          <span className="text-orange-700">
+                            👨‍🌾 {formatRp(Number(h.profit_penggarap || 0))}
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </Link>
               );

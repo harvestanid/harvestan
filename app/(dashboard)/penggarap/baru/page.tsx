@@ -2,13 +2,19 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { canUserInput } from "@/lib/supabase/queries/subscription-server";
+import { getPenggarapDiriSendiri } from "@/lib/supabase/queries/penggarap-server";
+import { getDataFilter } from "@/lib/demo/demo-mode";
 import { FormPenggarapBaru } from "./form";
 
 export const metadata = {
   title: "Tambah Penggarap",
 };
 
-export default async function PenggarapBaruPage() {
+export default async function PenggarapBaruPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ is_self?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -16,11 +22,23 @@ export default async function PenggarapBaruPage() {
 
   if (!user) redirect("/login");
 
-  // Cek apakah user boleh input penggarap lagi
+  const params = await searchParams;
+  const isSelf = params.is_self === "true";
+
+  const filter = await getDataFilter(user.id);
+
+  // Kalau mode "diri sendiri" & user sudah punya → redirect ke penggarap itu
+  if (isSelf) {
+    const existing = await getPenggarapDiriSendiri(filter.is_demo);
+    if (existing) {
+      redirect(`/penggarap/${existing.id}`);
+    }
+  }
+
+  // Cek limit penggarap (khusus mode non-self, biar gak makan kuota)
   const check = await canUserInput(user.id, "penggarap");
 
-  // Kalau tidak boleh (limit tercapai), tampilkan upgrade prompt
-  if (!check.allowed) {
+  if (!check.allowed && !isSelf) {
     return (
       <div className="p-4 md:p-6 max-w-2xl mx-auto">
         <div className="mb-6">
@@ -49,11 +67,12 @@ export default async function PenggarapBaruPage() {
               {check.currentCount} / {check.maxCount}
             </div>
           </div>
-          <p className="text-xs text-orange-700 mb-6 max-w-md mx-auto">
-            💎 Upgrade ke Premium untuk input unlimited penggarap, lahan,
-            dan panen — hanya Rp 59.000 sekali bayar!
+          <p className="text-xs text-orange-700 mb-4 max-w-md mx-auto">
+            💡 Kalau mau catat <strong>diri sendiri</strong> sebagai penggarap,
+            itu <strong>tidak kena limit</strong> — tinggal klik tombol
+            "+ Diri Sendiri" di halaman penggarap.
           </p>
-          <div className="flex flex-wrap gap-3 justify-center">
+          <div className="flex flex-wrap gap-3 justify-center mt-6">
             <Link
               href="/premium"
               className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold px-6 py-3 rounded-xl transition shadow-lg"
@@ -64,7 +83,7 @@ export default async function PenggarapBaruPage() {
               href="/demo"
               className="bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium px-6 py-3 rounded-xl transition border border-blue-200"
             >
-              🎬 Lihat Demo Dulu
+              🎬 Lihat Demo
             </Link>
           </div>
         </div>
@@ -72,7 +91,12 @@ export default async function PenggarapBaruPage() {
     );
   }
 
-  // Boleh input → tampilkan form
+  // Pre-fill dari metadata user
+  const meta = user.user_metadata || {};
+  const namaUser =
+    meta.username || meta.nama || meta.full_name || user.email?.split("@")[0] || "";
+  const kontakUser = meta.kontak || meta.phone || "";
+
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
       <div className="mb-6">
@@ -83,25 +107,31 @@ export default async function PenggarapBaruPage() {
           ← Kembali ke Penggarap
         </Link>
         <h1 className="text-2xl font-bold text-gray-800 mt-2">
-          👨‍🌾 Tambah Penggarap Baru
+          {isSelf ? "🌱 Tambah Diri Sendiri" : "👨‍🌾 Tambah Penggarap"}
         </h1>
-        <p className="text-gray-600 text-sm mt-1">
-          Isi data penggarap di bawah ini
-        </p>
+        {isSelf && (
+          <p className="text-gray-600 text-sm mt-1">
+            Catat diri sendiri sebagai penggarap — bisa garap lahan sendiri
+            atau lahan orang
+          </p>
+        )}
       </div>
 
-      {/* Info limit untuk free tier */}
-      {check.maxCount !== undefined && (
+      {!isSelf && check.maxCount !== undefined && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 text-xs text-blue-800">
           💡 Anda menggunakan paket <strong>Gratis</strong>:{" "}
           <strong>
             {check.currentCount} / {check.maxCount}
           </strong>{" "}
-          penggarap terpakai.
+          penggarap terpakai. <strong>Diri sendiri tidak kena limit.</strong>
         </div>
       )}
 
-      <FormPenggarapBaru />
+      <FormPenggarapBaru
+        isSelf={isSelf}
+        namaPrefill={isSelf ? namaUser : ""}
+        kontakPrefill={isSelf ? kontakUser : ""}
+      />
     </div>
   );
 }

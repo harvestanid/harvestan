@@ -9,6 +9,10 @@ export type Land = {
   luas: number;
   lokasi_koordinat: string | null;
   polygon: any;
+  tipe_garap: "mandiri" | "bagi_hasil_owner" | "bagi_hasil_penggarap";
+  nama_owner_external: string | null;
+  persen_owner_default: number;
+  persen_penggarap_default: number;
   is_demo: boolean;
   created_at: string;
   updated_at: string;
@@ -25,6 +29,7 @@ export async function getPenggarapList(
     .from("penggaraps")
     .select("*")
     .eq("is_demo", isDemo)
+    .order("is_self", { ascending: false })
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -32,6 +37,28 @@ export async function getPenggarapList(
     return [];
   }
   return (data as Penggarap[]) || [];
+}
+
+// ===================================================
+// GET PENGGARAP DIRI SENDIRI
+// ===================================================
+export async function getPenggarapDiriSendiri(
+  isDemo: boolean = false
+): Promise<Penggarap | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("penggaraps")
+    .select("*")
+    .eq("is_demo", isDemo)
+    .eq("is_self", true)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error getPenggarapDiriSendiri:", error);
+    return null;
+  }
+  return (data as Penggarap) || null;
 }
 
 // ===================================================

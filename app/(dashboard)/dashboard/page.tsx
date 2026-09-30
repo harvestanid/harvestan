@@ -54,14 +54,14 @@ export default async function DashboardPage() {
 
   const { data: penggaraps } = await supabase
     .from("penggaraps")
-    .select("id, nama, kontak, alamat")
+    .select("id, nama, kontak, alamat, is_self")
     .eq("user_id", filter.user_id)
     .eq("is_demo", filter.is_demo)
     .order("nama");
 
   const { data: lands } = await supabase
     .from("lands")
-    .select("id, penggarap_id, nama, luas")
+    .select("id, penggarap_id, nama, luas, tipe_garap")
     .eq("user_id", filter.user_id)
     .eq("is_demo", filter.is_demo);
 
@@ -107,6 +107,37 @@ export default async function DashboardPage() {
     (s, h) => s + Number(h.bawa_owner || 0),
     0
   );
+
+  // ===================================================
+  // HITUNG "PROFIT SAYA" — bedasarkan tipe garap per lahan
+  // ===================================================
+  const profitSayaBreakdown = {
+    mandiri: 0,
+    bagi_hasil_owner: 0,
+    bagi_hasil_penggarap: 0,
+  };
+
+  (harvests || []).forEach((h) => {
+    const land = (lands || []).find((l) => l.id === h.land_id);
+    if (!land) return;
+
+    const tipeGarap = (land as any).tipe_garap || "bagi_hasil_owner";
+
+    if (tipeGarap === "mandiri") {
+      profitSayaBreakdown.mandiri += Number(h.profit_penggarap || 0);
+    } else if (tipeGarap === "bagi_hasil_owner") {
+      profitSayaBreakdown.bagi_hasil_owner += Number(h.profit_owner || 0);
+    } else if (tipeGarap === "bagi_hasil_penggarap") {
+      profitSayaBreakdown.bagi_hasil_penggarap += Number(
+        h.profit_penggarap || 0
+      );
+    }
+  });
+
+  const totalProfitSaya =
+    profitSayaBreakdown.mandiri +
+    profitSayaBreakdown.bagi_hasil_owner +
+    profitSayaBreakdown.bagi_hasil_penggarap;
 
   type StatPenggarap = {
     id: string;
@@ -171,10 +202,12 @@ export default async function DashboardPage() {
       namaLahan: land?.nama || "?",
       luasLahan: Number(land?.luas || 0),
       namaPenggarap: penggarap?.nama || "?",
+      tipeGarap: (land as any)?.tipe_garap || "bagi_hasil_owner",
     };
   });
 
   const username = getUsername(user);
+  const adaProfitSaya = totalProfitSaya > 0;
 
   return (
     <div className="space-y-6">
@@ -193,6 +226,62 @@ export default async function DashboardPage() {
           </p>
         </div>
       </div>
+
+      {/* ===== CARD PROFIT SAYA (HANYA kalau ada) ===== */}
+      {adaProfitSaya && (
+        <div className="relative overflow-hidden bg-gradient-to-br from-[#f0b429] via-orange-400 to-[#f0b429] rounded-3xl p-6 md:p-8 shadow-2xl shadow-[#f0b429]/30">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-white/20 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#2c5e2e]/20 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="relative">
+            <div className="flex items-center gap-2 mb-3 flex-wrap">
+              <span className="text-2xl">💎</span>
+              <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-[0.25em]">
+                Profit Saya (Total)
+              </div>
+            </div>
+
+            <div className="text-3xl md:text-4xl font-bold text-[#2c5e2e] tracking-tighter mb-1">
+              {formatRingkas(totalProfitSaya)}
+            </div>
+            <div className="text-xs text-[#2c5e2e]/70 font-semibold mb-4 break-all">
+              {formatRp(totalProfitSaya)}
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 md:gap-3 mt-4 pt-4 border-t border-[#2c5e2e]/20">
+              <div className="bg-white/30 backdrop-blur rounded-2xl p-3 text-center min-w-0">
+                <div className="text-[9px] text-[#2c5e2e] font-bold uppercase tracking-widest mb-1 leading-tight">
+                  🌱 Mandiri
+                </div>
+                <div className="font-bold text-[#2c5e2e] text-xs md:text-sm tracking-tight break-words leading-tight">
+                  {formatRingkas(profitSayaBreakdown.mandiri)}
+                </div>
+              </div>
+              <div className="bg-white/30 backdrop-blur rounded-2xl p-3 text-center min-w-0">
+                <div className="text-[9px] text-[#2c5e2e] font-bold uppercase tracking-widest mb-1 leading-tight">
+                  👤 Sbg Owner
+                </div>
+                <div className="font-bold text-[#2c5e2e] text-xs md:text-sm tracking-tight break-words leading-tight">
+                  {formatRingkas(profitSayaBreakdown.bagi_hasil_owner)}
+                </div>
+              </div>
+              <div className="bg-white/30 backdrop-blur rounded-2xl p-3 text-center min-w-0">
+                <div className="text-[9px] text-[#2c5e2e] font-bold uppercase tracking-widest mb-1 leading-tight">
+                  👨‍🌾 Sbg Penggarap
+                </div>
+                <div className="font-bold text-[#2c5e2e] text-xs md:text-sm tracking-tight break-words leading-tight">
+                  {formatRingkas(profitSayaBreakdown.bagi_hasil_penggarap)}
+                </div>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-[#2c5e2e]/70 mt-3 italic leading-relaxed">
+              💡 Profit yang <strong>kamu terima</strong> dari semua lahan —
+              baik lahan sendiri, sebagai owner, maupun sebagai penggarap.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ===== STATISTIK ===== */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
@@ -258,19 +347,19 @@ export default async function DashboardPage() {
         ))}
       </div>
 
-      {/* ===== PROFIT SUMMARY ===== */}
+      {/* ===== PROFIT SUMMARY (global) ===== */}
       <div className="relative overflow-hidden bg-gradient-to-br from-[#2c5e2e] via-[#1f4521] to-[#2c5e2e] rounded-3xl p-6 md:p-8 shadow-2xl shadow-[#2c5e2e]/20">
         <div className="absolute top-0 right-0 w-96 h-96 bg-[#f0b429]/20 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-[#4a8f3f]/30 rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative">
           <div className="text-[10px] font-bold text-[#f0b429] uppercase tracking-[0.25em] mb-4">
-            💵 Profit Summary
+            💵 Profit Summary (Semua Pihak)
           </div>
           <div className="grid grid-cols-2 gap-3 md:gap-4">
             <div className="bg-white/10 backdrop-blur rounded-2xl p-4 border border-white/20">
               <div className="text-[10px] text-[#f0b429] font-bold uppercase tracking-widest mb-1">
-                👤 Owner
+                👤 Semua Owner
               </div>
               <div className="text-lg md:text-2xl font-bold text-white tracking-tight">
                 {formatRingkas(totalProfitOwner)}
@@ -281,7 +370,7 @@ export default async function DashboardPage() {
             </div>
             <div className="bg-white/10 backdrop-blur rounded-2xl p-4 border border-white/20">
               <div className="text-[10px] text-[#f0b429] font-bold uppercase tracking-widest mb-1">
-                👨‍🌾 Penggarap
+                👨‍🌾 Semua Penggarap
               </div>
               <div className="text-lg md:text-2xl font-bold text-white tracking-tight">
                 {formatRingkas(totalProfitPenggarap)}
@@ -450,6 +539,7 @@ export default async function DashboardPage() {
                 "bg-gray-100 text-gray-800 border-gray-300";
               const persenOwner = Number(h.persen_owner || 50);
               const persenPenggarap = Number(h.persen_penggarap || 50);
+              const isMandiri = h.tipeGarap === "mandiri";
 
               return (
                 <div
@@ -463,6 +553,11 @@ export default async function DashboardPage() {
                       >
                         {KOMODITAS_LABEL[kom] || kom}
                       </span>
+                      {isMandiri && (
+                        <span className="text-[9px] bg-[#2c5e2e]/10 border border-[#2c5e2e]/30 text-[#2c5e2e] rounded-full px-2 py-0.5 font-bold uppercase tracking-widest">
+                          🌱 Mandiri
+                        </span>
+                      )}
                       <div className="text-xs text-[#2c5e2e] min-w-0">
                         <div className="font-bold truncate">
                           {h.namaPenggarap}
@@ -489,24 +584,37 @@ export default async function DashboardPage() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 pt-3 border-t border-[#2c5e2e]/10">
-                    <div className="bg-[#2c5e2e]/5 border border-[#2c5e2e]/15 rounded-xl p-2.5 text-center min-w-0">
-                      <div className="text-[10px] text-[#2c5e2e] font-bold uppercase tracking-widest">
-                        👤 Owner ({persenOwner}%)
-                      </div>
-                      <div className="font-bold text-[#2c5e2e] text-xs mt-1 break-words leading-tight">
-                        {formatRp(Number(h.profit_owner || 0))}
-                      </div>
-                    </div>
-                    <div className="bg-[#f0b429]/10 border border-[#f0b429]/30 rounded-xl p-2.5 text-center min-w-0">
-                      <div className="text-[10px] text-[#2c5e2e] font-bold uppercase tracking-widest">
-                        👨‍🌾 Penggarap ({persenPenggarap}%)
-                      </div>
-                      <div className="font-bold text-[#2c5e2e] text-xs mt-1 break-words leading-tight">
-                        {formatRp(Number(h.profit_penggarap || 0))}
+                  {isMandiri ? (
+                    <div className="pt-3 border-t border-[#2c5e2e]/10">
+                      <div className="bg-[#2c5e2e]/5 border border-[#2c5e2e]/20 rounded-xl p-2.5 text-center">
+                        <div className="text-[10px] text-[#2c5e2e] font-bold uppercase tracking-widest">
+                          🌱 Profit Penggarap (100%)
+                        </div>
+                        <div className="font-bold text-[#2c5e2e] text-sm mt-1 break-words">
+                          {formatRp(Number(h.profit_penggarap || 0))}
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2 pt-3 border-t border-[#2c5e2e]/10">
+                      <div className="bg-[#2c5e2e]/5 border border-[#2c5e2e]/15 rounded-xl p-2.5 text-center min-w-0">
+                        <div className="text-[10px] text-[#2c5e2e] font-bold uppercase tracking-widest">
+                          👤 Owner ({persenOwner}%)
+                        </div>
+                        <div className="font-bold text-[#2c5e2e] text-xs mt-1 break-words leading-tight">
+                          {formatRp(Number(h.profit_owner || 0))}
+                        </div>
+                      </div>
+                      <div className="bg-[#f0b429]/10 border border-[#f0b429]/30 rounded-xl p-2.5 text-center min-w-0">
+                        <div className="text-[10px] text-[#2c5e2e] font-bold uppercase tracking-widest">
+                          👨‍🌾 Penggarap ({persenPenggarap}%)
+                        </div>
+                        <div className="font-bold text-[#2c5e2e] text-xs mt-1 break-words leading-tight">
+                          {formatRp(Number(h.profit_penggarap || 0))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}

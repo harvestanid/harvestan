@@ -5,6 +5,7 @@ import { getDataFilter } from "@/lib/demo/demo-mode";
 import { TombolAksiPanen } from "./tombol-aksi";
 import { TombolDownloadInvoice } from "./tombol-download-invoice";
 import { TombolSharePanen } from "@/components/tombol-share-panen";
+import { BadgeTipeGarap } from "@/components/badge-tipe-garap";
 
 function formatRp(n: number) {
   return "Rp " + Math.round(n).toLocaleString("id-ID");
@@ -46,7 +47,9 @@ export default async function DetailPanenPage({
 
   const { data: lahan } = await supabase
     .from("lands")
-    .select("id, nama, luas, polygon, lokasi_koordinat")
+    .select(
+      "id, nama, luas, polygon, lokasi_koordinat, tipe_garap, nama_owner_external"
+    )
     .eq("id", landId)
     .eq("user_id", filter.user_id)
     .eq("is_demo", filter.is_demo)
@@ -54,11 +57,18 @@ export default async function DetailPanenPage({
 
   const { data: penggarap } = await supabase
     .from("penggaraps")
-    .select("id, nama, alamat, kontak")
+    .select("id, nama, alamat, kontak, is_self")
     .eq("id", id)
     .eq("user_id", filter.user_id)
     .eq("is_demo", filter.is_demo)
     .single();
+
+  const tipeGarap = (lahan as any)?.tipe_garap || "bagi_hasil_owner";
+  const namaOwnerExternal =
+    (lahan as any)?.nama_owner_external || null;
+  const isMandiri = tipeGarap === "mandiri";
+  const isPenggarap = tipeGarap === "bagi_hasil_penggarap";
+  const isSelf = penggarap?.is_self || false;
 
   const potonganHutang = Number(panen.potongan_hutang || 0);
   const totalHutangSebelum = Number(panen.total_hutang_sebelum || 0);
@@ -127,13 +137,44 @@ export default async function DetailPanenPage({
         >
           ← Kembali ke {lahan?.nama || "Lahan"}
         </Link>
-        <h1 className="text-2xl font-bold text-gray-800 mt-2">
-          🌾 Detail Panen
-        </h1>
+        <div className="flex items-center gap-3 mt-2 flex-wrap">
+          <h1 className="text-2xl font-bold text-gray-800">🌾 Detail Panen</h1>
+          <BadgeTipeGarap tipe={tipeGarap} />
+          {isPenggarap && namaOwnerExternal && (
+            <span className="text-[10px] bg-orange-100 border border-orange-300 text-orange-800 rounded-full px-2.5 py-1 font-bold uppercase tracking-widest">
+              👤 Owner: {namaOwnerExternal}
+            </span>
+          )}
+        </div>
         <p className="text-gray-600 text-sm mt-1">
           {penggarap?.nama} &middot; {lahan?.nama}
         </p>
       </div>
+
+      {/* Info banner untuk mode khusus */}
+      {isMandiri && (
+        <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl flex-shrink-0">🌱</span>
+            <div className="text-xs text-green-800 leading-relaxed">
+              <strong>Panen dari lahan garap sendiri.</strong> Semua profit
+              bersih <strong>100% milik penggarap</strong>.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isPenggarap && namaOwnerExternal && (
+        <div className="bg-orange-50 border-2 border-orange-300 rounded-2xl p-4 mb-6">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl flex-shrink-0">⚠️</span>
+            <div className="text-xs text-orange-800 leading-relaxed">
+              Panen ini dari lahan milik <strong>{namaOwnerExternal}</strong>.
+              Profit dibagi sesuai skema.
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="mb-4 flex flex-wrap gap-2">
         <TombolSharePanen
@@ -148,10 +189,10 @@ export default async function DetailPanenPage({
           tanggal={panen.tanggal}
           namaPenggarap={penggarap?.nama || null}
           namaLahan={lahan?.nama || null}
-          profitOwner={profitOwnerFinal}
+          profitOwner={isMandiri ? null : profitOwnerFinal}
           profitPenggarap={profitPenggarapFinal}
           polygon={(lahan?.polygon as any) || null}
-          koordinat={lahan?.lokasi_koordinat || null}
+          koordinat={(lahan as any)?.lokasi_koordinat || null}
         />
         <TombolDownloadInvoice
           panen={panen}
@@ -247,388 +288,357 @@ export default async function DetailPanenPage({
           </div>
         </div>
 
-        {/* BAGI HASIL DASAR */}
-        <div className="pt-4 border-t bg-gray-50 -mx-6 px-6 py-4">
-          <p className="text-xs text-gray-500 uppercase mb-1">
-            🧮 Bagi Hasil Dasar
-          </p>
-          <p className="text-[10px] text-gray-400 mb-3 italic">
-            Skema: {persenOwner}:{persenPenggarap} dari profit bersih{" "}
-            {formatRp(profitBersih)}
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-green-100 rounded-lg p-3 text-center min-w-0">
-              <p className="text-xs text-green-800 font-medium">
-                👤 OWNER ({persenOwner}%)
-              </p>
-              <p className="font-bold text-green-900 text-sm mt-1 leading-tight break-all">
-                {formatRp(profitOwnerMurni)}
-              </p>
-            </div>
-            <div className="bg-orange-100 rounded-lg p-3 text-center min-w-0">
-              <p className="text-xs text-orange-800 font-medium">
-                👨‍🌾 PENGGARAP ({persenPenggarap}%)
-              </p>
-              <p className="font-bold text-orange-900 text-sm mt-1 leading-tight break-all">
-                {formatRp(profitPenggarapMurni)}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* PENYESUAIAN GABAH BAWA PULANG */}
-        {adaBawaPulang && (
+        {/* ===== BAGI HASIL — KONDISIONAL ===== */}
+        {isMandiri ? (
           <div className="pt-4 border-t">
-            <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
-              <p className="text-sm text-orange-800 uppercase font-bold mb-2">
-                🏠 Penyesuaian Gabah Bawa Pulang
+            <div className="bg-[#2c5e2e]/5 border-2 border-[#2c5e2e]/30 rounded-xl p-4">
+              <p className="text-sm text-[#2c5e2e] uppercase font-bold mb-3">
+                🌱 Garap Sendiri — 100% Penggarap
               </p>
-              <p className="text-[10px] text-orange-600 italic mb-3">
-                Nilai gabah yang dibawa pulang dialihkan ke pihak lain (harga:{" "}
-                {formatRp(harga)}/Kg)
-              </p>
-
-              <div className="space-y-2 text-sm mb-4">
-                {nilaiBawaPenggarap > 0 && (
-                  <div className="bg-white rounded-lg p-2.5 border border-orange-200">
-                    <div className="flex justify-between font-medium text-orange-900 gap-2 flex-wrap">
-                      <span>
-                        👨‍🌾 Penggarap bawa {bawaPenggarap} Kg
-                      </span>
-                      <span className="font-mono break-all">
-                        {formatRp(nilaiBawaPenggarap)}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      → Owner{" "}
-                      <span className="text-green-700 font-bold">
-                        +{formatRp(nilaiBawaPenggarap)}
-                      </span>
-                      {" · "}
-                      Penggarap{" "}
-                      <span className="text-red-600 font-bold">
-                        −{formatRp(nilaiBawaPenggarap)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {nilaiBawaOwner > 0 && (
-                  <div className="bg-white rounded-lg p-2.5 border border-orange-200">
-                    <div className="flex justify-between font-medium text-orange-900 gap-2 flex-wrap">
-                      <span>👤 Owner bawa {bawaOwner} Kg</span>
-                      <span className="font-mono break-all">
-                        {formatRp(nilaiBawaOwner)}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      → Penggarap{" "}
-                      <span className="text-green-700 font-bold">
-                        +{formatRp(nilaiBawaOwner)}
-                      </span>
-                      {" · "}
-                      Owner{" "}
-                      <span className="text-red-600 font-bold">
-                        −{formatRp(nilaiBawaOwner)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {nilaiBawaLain > 0 && (
-                  <div className="bg-white rounded-lg p-2.5 border border-orange-200">
-                    <div className="flex justify-between font-medium text-orange-900 gap-2 flex-wrap">
-                      <span>📦 Lainnya {bawaLain} Kg</span>
-                      <span className="font-mono break-all">
-                        {formatRp(nilaiBawaLain)}
-                      </span>
-                    </div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      → Masing-masing{" "}
-                      <span className="text-red-600 font-bold">
-                        −{formatRp(nilaiBawaLain * 0.5)}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-white rounded-lg p-3 border-2 border-orange-300">
-                <p className="text-xs font-bold text-orange-800 uppercase mb-2">
-                  📊 Profit Setelah Penyesuaian Bawa Pulang
+              <div className="bg-white rounded-lg p-4 border-2 border-[#2c5e2e] text-center">
+                <p className="text-xs text-[#2c5e2e] font-bold uppercase tracking-widest">
+                  👨‍🌾 {isSelf ? "Profit Saya" : "Profit Penggarap"}
                 </p>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div className="text-center min-w-0">
-                    <p className="text-xs text-green-800">👤 OWNER</p>
-                    <p className="font-bold text-green-900 text-sm break-all leading-tight">
-                      {formatRp(profitOwnerSetelahBawa)}
-                    </p>
-                  </div>
-                  <div className="text-center min-w-0">
-                    <p className="text-xs text-orange-800">👨‍🌾 PENGGARAP</p>
-                    <p className="font-bold text-orange-900 text-sm break-all leading-tight">
-                      {formatRp(profitPenggarapSetelahBawa)}
-                    </p>
-                  </div>
-                </div>
+                <p className="font-bold text-[#2c5e2e] text-2xl mt-2 break-all leading-tight">
+                  {formatRp(profitBersih)}
+                </p>
+                <p className="text-[10px] text-[#2c5e2e]/60 mt-2 italic">
+                  Tidak ada bagi hasil — semua profit milik penggarap
+                </p>
               </div>
             </div>
           </div>
-        )}
-
-        {/* ✅ POTONG HUTANG — SELALU TAMPIL */}
-        <div className="pt-4 border-t">
-          <div
-            className={`border-2 rounded-xl p-4 ${
-              potonganHutang > 0
-                ? "bg-red-50 border-red-300"
-                : "bg-blue-50 border-blue-200"
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-3 flex-wrap">
-              <p
-                className={`text-sm uppercase font-bold ${
-                  potonganHutang > 0 ? "text-red-700" : "text-blue-700"
-                }`}
-              >
-                💸 Potong Hutang Otomatis
+        ) : (
+          <>
+            {/* BAGI HASIL DASAR */}
+            <div className="pt-4 border-t bg-gray-50 -mx-6 px-6 py-4">
+              <p className="text-xs text-gray-500 uppercase mb-1">
+                🧮 Bagi Hasil Dasar
+                {isPenggarap && namaOwnerExternal
+                  ? ` dengan ${namaOwnerExternal}`
+                  : ""}
               </p>
-              {potonganHutang > 0 ? (
-                <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold">
-                  FITUR UNGGULAN
-                </span>
-              ) : (
-                <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-bold">
-                  FITUR PREMIUM
-                </span>
-              )}
-            </div>
-
-            {potonganHutang > 0 ? (
-              <>
-                <p className="text-[11px] text-red-700 italic mb-3">
-                  Profit penggarap otomatis dipotong untuk bayar hutang — owner
-                  menerima penggantinya.
-                </p>
-
-                <div className="space-y-2 text-sm mb-4">
-                  <div className="flex justify-between gap-2 flex-wrap">
-                    <span className="text-gray-600">Hutang sebelum:</span>
-                    <span className="font-medium break-all">
-                      {formatRp(totalHutangSebelum)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between gap-2 flex-wrap">
-                    <span className="text-gray-600">
-                      Dipotong dari profit penggarap:
-                    </span>
-                    <span className="font-bold text-red-600 break-all">
-                      − {formatRp(potonganHutang)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between pt-2 border-t gap-2 flex-wrap">
-                    <span className="text-gray-600 font-medium">
-                      Sisa hutang:
-                    </span>
-                    <span
-                      className={`font-bold break-all ${
-                        sisaHutangSesudah > 0
-                          ? "text-red-600"
-                          : "text-green-600"
-                      }`}
-                    >
-                      {sisaHutangSesudah > 0
-                        ? formatRp(sisaHutangSesudah)
-                        : "LUNAS ✅"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="bg-white border-2 border-green-300 rounded-lg p-3">
-                  <p className="text-xs font-bold text-green-800 uppercase mb-2">
-                    ✅ Total Diterima (Final)
+              <p className="text-[10px] text-gray-400 mb-3 italic">
+                Skema: {persenOwner}:{persenPenggarap} dari profit bersih{" "}
+                {formatRp(profitBersih)}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-green-100 rounded-lg p-3 text-center min-w-0">
+                  <p className="text-xs text-green-800 font-medium">
+                    👤 {isPenggarap ? "OWNER EXTERNAL" : "OWNER"} (
+                    {persenOwner}%)
                   </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-green-50 rounded-lg p-3 text-center border border-green-200 min-w-0">
-                      <p className="text-xs text-green-800 font-medium">
-                        👤 OWNER
-                      </p>
-                      <p className="font-bold text-green-900 text-sm mt-1 leading-tight break-all">
-                        {formatRp(profitOwnerFinal)}
-                      </p>
-                      <p className="text-[10px] text-green-700 mt-1 break-all">
-                        = {formatRp(profitOwnerSetelahBawa)} +{" "}
-                        {formatRp(potonganHutang)}
-                      </p>
-                    </div>
-                    <div className="bg-orange-50 rounded-lg p-3 text-center border border-orange-200 min-w-0">
-                      <p className="text-xs text-orange-800 font-medium">
-                        👨‍🌾 PENGGARAP
-                      </p>
-                      <p className="font-bold text-orange-900 text-sm mt-1 leading-tight break-all">
-                        {formatRp(profitPenggarapFinal)}
-                      </p>
-                      <p className="text-[10px] text-orange-700 mt-1 break-all">
-                        = {formatRp(profitPenggarapSetelahBawa)} −{" "}
-                        {formatRp(potonganHutang)}
-                      </p>
-                    </div>
-                  </div>
+                  <p className="font-bold text-green-900 text-sm mt-1 leading-tight break-all">
+                    {formatRp(profitOwnerMurni)}
+                  </p>
                 </div>
-              </>
-            ) : adaHutangSekarang || totalHutangSebelum > 0 ? (
-              <>
-                <p className="text-[11px] text-blue-700 italic mb-3">
-                  Panen ini <strong>tidak</strong> memotong hutang. Tapi
-                  penggarap masih punya hutang aktif yang bisa dipotong
-                  otomatis.
-                </p>
-
-                <div className="bg-white rounded-lg p-3 border border-blue-200 mb-3">
-                  <div className="flex justify-between gap-2 text-sm flex-wrap">
-                    <span className="text-gray-600">
-                      Hutang aktif saat ini:
-                    </span>
-                    <span className="font-bold text-red-600 break-all">
-                      {formatRp(totalHutangSekarang || totalHutangSebelum)}
-                    </span>
-                  </div>
+                <div className="bg-orange-100 rounded-lg p-3 text-center min-w-0">
+                  <p className="text-xs text-orange-800 font-medium">
+                    👨‍🌾 PENGGARAP ({persenPenggarap}%)
+                  </p>
+                  <p className="font-bold text-orange-900 text-sm mt-1 leading-tight break-all">
+                    {formatRp(profitPenggarapMurni)}
+                  </p>
                 </div>
+              </div>
+            </div>
 
-                <div className="text-xs text-blue-800">
-                  💡 <strong>Cara aktifkan:</strong> Klik{" "}
-                  <strong>Edit Panen</strong> di bawah → centang{" "}
-                  <strong>"Potong Hutang Otomatis"</strong> → simpan.
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-[11px] text-blue-700 italic mb-3">
-                  Fitur ini akan{" "}
-                  <strong>otomatis memotong hutang penggarap</strong> dari hasil
-                  panen kalau penggarap punya hutang aktif.
-                </p>
+            {/* PENYESUAIAN GABAH BAWA PULANG */}
+            {adaBawaPulang && (
+              <div className="pt-4 border-t">
+                <div className="bg-orange-50 border-2 border-orange-200 rounded-xl p-4">
+                  <p className="text-sm text-orange-800 uppercase font-bold mb-2">
+                    🏠 Penyesuaian Gabah Bawa Pulang
+                  </p>
+                  <p className="text-[10px] text-orange-600 italic mb-3">
+                    Nilai gabah yang dibawa pulang dialihkan ke pihak lain
+                    (harga: {formatRp(harga)}/Kg)
+                  </p>
 
-                <div className="bg-white rounded-lg p-3 border border-green-200 mb-3">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="text-green-600 text-lg">✅</span>
-                    <span className="text-green-800 font-medium">
-                      {penggarap?.nama} tidak punya hutang aktif saat ini
-                    </span>
-                  </div>
-                </div>
-
-                <div className="text-xs text-blue-800 space-y-1">
-                  <p className="font-bold">💡 Cara kerja fitur:</p>
-                  <ul className="list-disc list-inside space-y-0.5 ml-1">
-                    <li>Penggarap punya hutang (misal beli pupuk)</li>
-                    <li>Saat panen, profit penggarap otomatis dipotong</li>
-                    <li>Hutang berkurang, owner terima pengganti</li>
-                    <li>Tidak perlu bayar manual lagi ✅</li>
-                  </ul>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* RIWAYAT PERUBAHAN HUTANG */}
-        {log.length > 0 && (
-          <div className="pt-4 border-t">
-            <p className="text-xs text-gray-500 uppercase mb-3">
-              📜 Riwayat Perubahan Hutang ({log.length})
-            </p>
-            <div className="space-y-2 max-h-72 overflow-y-auto">
-              {log
-                .slice()
-                .reverse()
-                .map((entry: any, i: number) => {
-                  if (entry.aksi === "edit") {
-                    return (
-                      <div
-                        key={i}
-                        className="bg-blue-50 rounded-lg p-3 text-xs border border-blue-200"
-                      >
-                        <div className="font-bold text-blue-800 flex justify-between flex-wrap gap-1">
-                          <span>✏️ Edit Panen</span>
-                          <span className="text-blue-600 font-normal">
-                            {entry.waktu
-                              ? new Date(entry.waktu).toLocaleString("id-ID", {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
-                              : "-"}
+                  <div className="space-y-2 text-sm mb-4">
+                    {nilaiBawaPenggarap > 0 && (
+                      <div className="bg-white rounded-lg p-2.5 border border-orange-200">
+                        <div className="flex justify-between font-medium text-orange-900 gap-2 flex-wrap">
+                          <span>👨‍🌾 Penggarap bawa {bawaPenggarap} Kg</span>
+                          <span className="font-mono break-all">
+                            {formatRp(nilaiBawaPenggarap)}
                           </span>
                         </div>
-                        <div className="mt-2 text-blue-900">
-                          Potongan lama:{" "}
-                          <strong>
-                            {formatRp(Number(entry.potongan_lama || 0))}
-                          </strong>{" "}
-                          → Potongan baru:{" "}
-                          <strong>
-                            {formatRp(Number(entry.potongan_baru || 0))}
-                          </strong>
+                        <div className="text-xs text-gray-600 mt-1">
+                          → Owner{" "}
+                          <span className="text-green-700 font-bold">
+                            +{formatRp(nilaiBawaPenggarap)}
+                          </span>
+                          {" · "}
+                          Penggarap{" "}
+                          <span className="text-red-600 font-bold">
+                            −{formatRp(nilaiBawaPenggarap)}
+                          </span>
                         </div>
-                        {entry.revert_log && entry.revert_log.length > 0 && (
-                          <div className="mt-1 text-blue-700">
-                            ↩️ Revert {entry.revert_log.length} hutang (
-                            {formatRp(
-                              entry.revert_log.reduce(
-                                (s: number, r: any) =>
-                                  s + Number(r.jumlah_direvert || 0),
-                                0
-                              )
-                            )}
-                            )
-                          </div>
-                        )}
                       </div>
-                    );
-                  }
-                  const jumlah =
-                    entry.jumlah !== undefined
-                      ? Number(entry.jumlah)
-                      : entry.jumlah_dipotong !== undefined
-                      ? Number(entry.jumlah_dipotong)
-                      : 0;
-
-                  const tanggalHutang = entry.tanggal_hutang || "-";
-                  const keperluan = entry.keperluan || "";
-
-                  return (
-                    <div
-                      key={i}
-                      className="bg-red-50 rounded-lg p-2.5 text-xs border border-red-200"
-                    >
-                      <div className="font-bold text-red-800 flex justify-between flex-wrap gap-1">
-                        <span>💸 Potong Hutang</span>
-                        <span className="text-red-600 font-normal">
-                          {entry.waktu_potong
-                            ? new Date(entry.waktu_potong).toLocaleString(
-                                "id-ID",
-                                {
-                                  day: "numeric",
-                                  month: "short",
-                                  year: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                }
-                              )
-                            : "-"}
-                        </span>
+                    )}
+                    {nilaiBawaOwner > 0 && (
+                      <div className="bg-white rounded-lg p-2.5 border border-orange-200">
+                        <div className="flex justify-between font-medium text-orange-900 gap-2 flex-wrap">
+                          <span>👤 Owner bawa {bawaOwner} Kg</span>
+                          <span className="font-mono break-all">
+                            {formatRp(nilaiBawaOwner)}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          → Penggarap{" "}
+                          <span className="text-green-700 font-bold">
+                            +{formatRp(nilaiBawaOwner)}
+                          </span>
+                          {" · "}
+                          Owner{" "}
+                          <span className="text-red-600 font-bold">
+                            −{formatRp(nilaiBawaOwner)}
+                          </span>
+                        </div>
                       </div>
-                      <div className="mt-1 text-red-900">
-                        Hutang {tanggalHutang}
-                        {keperluan ? ` (${keperluan})` : ""} —{" "}
-                        <strong>{formatRp(jumlah)}</strong>
+                    )}
+                    {nilaiBawaLain > 0 && (
+                      <div className="bg-white rounded-lg p-2.5 border border-orange-200">
+                        <div className="flex justify-between font-medium text-orange-900 gap-2 flex-wrap">
+                          <span>📦 Lainnya {bawaLain} Kg</span>
+                          <span className="font-mono break-all">
+                            {formatRp(nilaiBawaLain)}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          → Masing-masing{" "}
+                          <span className="text-red-600 font-bold">
+                            −{formatRp(nilaiBawaLain * 0.5)}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="bg-white rounded-lg p-3 border-2 border-orange-300">
+                    <p className="text-xs font-bold text-orange-800 uppercase mb-2">
+                      📊 Profit Setelah Penyesuaian
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div className="text-center min-w-0">
+                        <p className="text-xs text-green-800">👤 OWNER</p>
+                        <p className="font-bold text-green-900 text-sm break-all leading-tight">
+                          {formatRp(profitOwnerSetelahBawa)}
+                        </p>
+                      </div>
+                      <div className="text-center min-w-0">
+                        <p className="text-xs text-orange-800">
+                          👨‍🌾 PENGGARAP
+                        </p>
+                        <p className="font-bold text-orange-900 text-sm break-all leading-tight">
+                          {formatRp(profitPenggarapSetelahBawa)}
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* POTONG HUTANG */}
+            <div className="pt-4 border-t">
+              <div
+                className={`border-2 rounded-xl p-4 ${
+                  potonganHutang > 0
+                    ? "bg-red-50 border-red-300"
+                    : "bg-blue-50 border-blue-200"
+                }`}
+              >
+                <div className="flex items-center gap-2 mb-3 flex-wrap">
+                  <p
+                    className={`text-sm uppercase font-bold ${
+                      potonganHutang > 0 ? "text-red-700" : "text-blue-700"
+                    }`}
+                  >
+                    💸 Potong Hutang Otomatis
+                  </p>
+                  {potonganHutang > 0 ? (
+                    <span className="text-[10px] bg-red-600 text-white px-2 py-0.5 rounded-full font-bold">
+                      AKTIF
+                    </span>
+                  ) : (
+                    <span className="text-[10px] bg-blue-600 text-white px-2 py-0.5 rounded-full font-bold">
+                      TIDAK AKTIF
+                    </span>
+                  )}
+                </div>
+
+                {potonganHutang > 0 ? (
+                  <>
+                    <p className="text-[11px] text-red-700 italic mb-3">
+                      Profit penggarap otomatis dipotong untuk bayar hutang —
+                      owner menerima penggantinya.
+                    </p>
+
+                    <div className="space-y-2 text-sm mb-4">
+                      <div className="flex justify-between gap-2 flex-wrap">
+                        <span className="text-gray-600">Hutang sebelum:</span>
+                        <span className="font-medium break-all">
+                          {formatRp(totalHutangSebelum)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between gap-2 flex-wrap">
+                        <span className="text-gray-600">
+                          Dipotong dari profit penggarap:
+                        </span>
+                        <span className="font-bold text-red-600 break-all">
+                          − {formatRp(potonganHutang)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between pt-2 border-t gap-2 flex-wrap">
+                        <span className="text-gray-600 font-medium">
+                          Sisa hutang:
+                        </span>
+                        <span
+                          className={`font-bold break-all ${
+                            sisaHutangSesudah > 0
+                              ? "text-red-600"
+                              : "text-green-600"
+                          }`}
+                        >
+                          {sisaHutangSesudah > 0
+                            ? formatRp(sisaHutangSesudah)
+                            : "LUNAS ✅"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="bg-white border-2 border-green-300 rounded-lg p-3">
+                      <p className="text-xs font-bold text-green-800 uppercase mb-2">
+                        ✅ Total Diterima (Final)
+                      </p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-green-50 rounded-lg p-3 text-center border border-green-200 min-w-0">
+                          <p className="text-xs text-green-800 font-medium">
+                            👤 OWNER
+                          </p>
+                          <p className="font-bold text-green-900 text-sm mt-1 leading-tight break-all">
+                            {formatRp(profitOwnerFinal)}
+                          </p>
+                        </div>
+                        <div className="bg-orange-50 rounded-lg p-3 text-center border border-orange-200 min-w-0">
+                          <p className="text-xs text-orange-800 font-medium">
+                            👨‍🌾 PENGGARAP
+                          </p>
+                          <p className="font-bold text-orange-900 text-sm mt-1 leading-tight break-all">
+                            {formatRp(profitPenggarapFinal)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                ) : adaHutangSekarang || totalHutangSebelum > 0 ? (
+                  <p className="text-[11px] text-blue-700 italic">
+                    Panen ini tidak memotong hutang. Penggarap masih punya
+                    hutang aktif ({formatRp(totalHutangSekarang)}). Edit panen
+                    untuk aktifkan potong hutang.
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-blue-700 italic">
+                    Penggarap tidak punya hutang aktif. Fitur ini akan otomatis
+                    memotong kalau ada hutang.
+                  </p>
+                )}
+              </div>
             </div>
-          </div>
+
+            {/* RIWAYAT PERUBAHAN HUTANG */}
+            {log.length > 0 && (
+              <div className="pt-4 border-t">
+                <p className="text-xs text-gray-500 uppercase mb-3">
+                  📜 Riwayat Perubahan Hutang ({log.length})
+                </p>
+                <div className="space-y-2 max-h-72 overflow-y-auto">
+                  {log
+                    .slice()
+                    .reverse()
+                    .map((entry: any, i: number) => {
+                      if (entry.aksi === "edit") {
+                        return (
+                          <div
+                            key={i}
+                            className="bg-blue-50 rounded-lg p-3 text-xs border border-blue-200"
+                          >
+                            <div className="font-bold text-blue-800 flex justify-between flex-wrap gap-1">
+                              <span>✏️ Edit Panen</span>
+                              <span className="text-blue-600 font-normal">
+                                {entry.waktu
+                                  ? new Date(entry.waktu).toLocaleString(
+                                      "id-ID",
+                                      {
+                                        day: "numeric",
+                                        month: "short",
+                                        year: "numeric",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      }
+                                    )
+                                  : "-"}
+                              </span>
+                            </div>
+                            <div className="mt-2 text-blue-900">
+                              Potongan lama:{" "}
+                              <strong>
+                                {formatRp(Number(entry.potongan_lama || 0))}
+                              </strong>{" "}
+                              → Potongan baru:{" "}
+                              <strong>
+                                {formatRp(Number(entry.potongan_baru || 0))}
+                              </strong>
+                            </div>
+                          </div>
+                        );
+                      }
+                      const jumlah =
+                        entry.jumlah !== undefined
+                          ? Number(entry.jumlah)
+                          : entry.jumlah_dipotong !== undefined
+                          ? Number(entry.jumlah_dipotong)
+                          : 0;
+
+                      const tanggalHutang = entry.tanggal_hutang || "-";
+                      const keperluan = entry.keperluan || "";
+
+                      return (
+                        <div
+                          key={i}
+                          className="bg-red-50 rounded-lg p-2.5 text-xs border border-red-200"
+                        >
+                          <div className="font-bold text-red-800 flex justify-between flex-wrap gap-1">
+                            <span>💸 Potong Hutang</span>
+                            <span className="text-red-600 font-normal">
+                              {entry.waktu_potong
+                                ? new Date(entry.waktu_potong).toLocaleString(
+                                    "id-ID",
+                                    {
+                                      day: "numeric",
+                                      month: "short",
+                                      year: "numeric",
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    }
+                                  )
+                                : "-"}
+                            </span>
+                          </div>
+                          <div className="mt-1 text-red-900">
+                            Hutang {tanggalHutang}
+                            {keperluan ? ` (${keperluan})` : ""} —{" "}
+                            <strong>{formatRp(jumlah)}</strong>
+                          </div>
+                        </div>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </>
         )}
 
         {panen.catatan && (

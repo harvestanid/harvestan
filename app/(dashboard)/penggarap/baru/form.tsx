@@ -5,12 +5,24 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createPenggarap } from "@/lib/supabase/queries/penggarap";
 
-export function FormPenggarapBaru() {
+type Props = {
+  isSelf?: boolean;
+  namaPrefill?: string;
+  alamatPrefill?: string;
+  kontakPrefill?: string;
+};
+
+export function FormPenggarapBaru({
+  isSelf = false,
+  namaPrefill = "",
+  alamatPrefill = "",
+  kontakPrefill = "",
+}: Props) {
   const router = useRouter();
-  const [nama, setNama] = useState("");
-  const [alamat, setAlamat] = useState("");
+  const [nama, setNama] = useState(namaPrefill);
+  const [alamat, setAlamat] = useState(alamatPrefill);
   const [usia, setUsia] = useState("");
-  const [kontak, setKontak] = useState("");
+  const [kontak, setKontak] = useState(kontakPrefill);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -24,11 +36,19 @@ export function FormPenggarapBaru() {
       alamat: alamat.trim(),
       usia: usia ? parseInt(usia) : undefined,
       kontak: kontak.trim(),
+      is_self: isSelf,
     });
 
     if (!result.success) {
       setError(result.error || "Gagal menyimpan");
       setLoading(false);
+      return;
+    }
+
+    // Kalau is_self → redirect ke dashboard penggarap (langsung bisa tambah lahan)
+    if (isSelf && result.id) {
+      router.push(`/penggarap/${result.id}/lahan/baru`);
+      router.refresh();
       return;
     }
 
@@ -38,6 +58,21 @@ export function FormPenggarapBaru() {
 
   return (
     <>
+      {isSelf && (
+        <div className="mb-4 bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl flex-shrink-0">🌱</span>
+            <div className="text-xs text-[#2c5e2e] leading-relaxed">
+              <strong>Mode Diri Sendiri</strong> — kamu akan dicatat sebagai
+              penggarap. Nama & kontak di bawah diambil otomatis dari akunmu,
+              tapi bisa diubah.
+              <br />
+              Setelah simpan, kamu langsung diarahkan ke form <strong>tambah lahan</strong>.
+            </div>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
           ❌ {error}
@@ -110,7 +145,11 @@ export function FormPenggarapBaru() {
             disabled={loading}
             className="flex-1 bg-green-700 text-white py-3 rounded-lg font-semibold hover:bg-green-800 transition disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? "Menyimpan..." : "Simpan Penggarap"}
+            {loading
+              ? "Menyimpan..."
+              : isSelf
+              ? "🌱 Simpan & Tambah Lahan"
+              : "Simpan Penggarap"}
           </button>
           <Link
             href="/penggarap"

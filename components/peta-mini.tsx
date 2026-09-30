@@ -1,3 +1,4 @@
+
 "use client";
 
 import { MapContainer, TileLayer, Polygon, Marker } from "react-leaflet";
@@ -13,12 +14,28 @@ type Props = {
   luas?: number;
 };
 
-// Fix icon Leaflet default (sering ilang di Next.js)
-const iconPin = L.icon({
-  iconUrl:
-    "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDMyIDQwIj48cGF0aCBkPSJNMTYgMEMxMCAwIDUgNCA1IDEwYzAgOCA5IDE2IDEwIDI1IDAgMCAxMCAwIDEwLTE3IDUgMCAxMC01IDUtMTAgMC02LTUtMTAtMTAtMTB6IiBmaWxsPSIjMTBiOTgxIi8+PGNpcmNsZSBjeD0iMTYiIGN5PSIxMCIgcj0iNCIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==",
-  iconSize: [32, 40],
-  iconAnchor: [16, 40],
+// Marker gaya Google Maps (pin merah klasik + shadow)
+const iconPin = L.divIcon({
+  className: "harvestan-pin",
+  iconSize: [30, 42],
+  iconAnchor: [15, 42],
+  popupAnchor: [0, -42],
+  html: `
+    <div style="position: relative; width: 30px; height: 42px; filter: drop-shadow(0 2px 3px rgba(0,0,0,0.35));">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 30 42" width="30" height="42">
+        <defs>
+          <radialGradient id="pinBody" cx="50%" cy="30%" r="70%">
+            <stop offset="0%" stop-color="#ff5c4d"/>
+            <stop offset="55%" stop-color="#ea4335"/>
+            <stop offset="100%" stop-color="#b31412"/>
+          </radialGradient>
+        </defs>
+        <path d="M15 0 C6.72 0 0 6.72 0 15 C0 26.25 15 42 15 42 C15 42 30 26.25 30 15 C30 6.72 23.28 0 15 0 Z" fill="url(#pinBody)"/>
+        <circle cx="15" cy="15" r="5.5" fill="#7a0a0a" opacity="0.5"/>
+        <circle cx="15" cy="15" r="4" fill="#4a0505"/>
+      </svg>
+    </div>
+  `,
 });
 
 function parseKoordinat(str: string | null | undefined): [number, number] | null {
@@ -39,7 +56,6 @@ export default function PetaMini({ polygon, koordinat, luas }: Props) {
   const punyaPolygon = ring.length >= 3;
   const punyaTitik = titikManual !== null;
 
-  // Placeholder kalau GAK ADA data sama sekali
   if (!punyaPolygon && !punyaTitik) {
     return (
       <div className="w-full h-48 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm">
@@ -105,7 +121,7 @@ export default function PetaMini({ polygon, koordinat, luas }: Props) {
     );
   }
 
-  // ===== MODE TITIK MANUAL (pin saja) =====
+  // ===== MODE TITIK MANUAL (pin) =====
   return (
     <div className="relative z-0">
       <div className="w-full h-48 rounded-lg overflow-hidden border border-gray-200">

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { BadgeTipeGarap } from "@/components/badge-tipe-garap";
 
 const KOMODITAS_LABEL: Record<string, string> = {
   padi: "🌾 Padi",
@@ -38,12 +39,28 @@ function hitungKategoriLokal(prod: number, komoditas: string) {
   const k = KATEGORI[komoditas as keyof typeof KATEGORI];
   if (!k) return null;
   if (prod >= k.sangatBaik)
-    return { icon: "⭐⭐⭐", label: "SANGAT BAIK", color: "text-[#2c5e2e] bg-[#2c5e2e]/10 border-[#2c5e2e]/30" };
+    return {
+      icon: "⭐⭐⭐",
+      label: "SANGAT BAIK",
+      color: "text-[#2c5e2e] bg-[#2c5e2e]/10 border-[#2c5e2e]/30",
+    };
   if (prod >= k.baik)
-    return { icon: "⭐⭐", label: "BAIK", color: "text-blue-800 bg-blue-100 border-blue-300" };
+    return {
+      icon: "⭐⭐",
+      label: "BAIK",
+      color: "text-blue-800 bg-blue-100 border-blue-300",
+    };
   if (prod >= k.cukup)
-    return { icon: "⭐", label: "CUKUP", color: "text-[#2c5e2e] bg-[#f0b429]/15 border-[#f0b429]/40" };
-  return { icon: "⚠️", label: "KURANG OPTIMAL", color: "text-red-800 bg-red-100 border-red-300" };
+    return {
+      icon: "⭐",
+      label: "CUKUP",
+      color: "text-[#2c5e2e] bg-[#f0b429]/15 border-[#f0b429]/40",
+    };
+  return {
+    icon: "⚠️",
+    label: "KURANG OPTIMAL",
+    color: "text-red-800 bg-red-100 border-red-300",
+  };
 }
 
 type KomoditasRingkas = {
@@ -85,6 +102,8 @@ type LahanItem = {
   nama: string;
   luas: number;
   lokasi_koordinat: string | null;
+  tipe_garap: string;
+  nama_owner_external: string | null;
   jmlPanen: number;
   totalHasilKg: number;
   rataProduktivitas: number;
@@ -99,6 +118,7 @@ type PenggarapLengkap = {
   nama: string;
   kontak: string | null;
   alamat: string | null;
+  is_self: boolean;
   totalLahan: number;
   totalLuas: number;
   jmlPanen: number;
@@ -118,7 +138,9 @@ type Props = {
 };
 
 export function PenggarapKlien({ penggarapLengkap }: Props) {
-  const [expandedPenggarap, setExpandedPenggarap] = useState<string | null>(null);
+  const [expandedPenggarap, setExpandedPenggarap] = useState<string | null>(
+    null
+  );
   const [expandedLahan, setExpandedLahan] = useState<string | null>(null);
   const [expandedTahun, setExpandedTahun] = useState<string | null>(null);
   const [expandedMusim, setExpandedMusim] = useState<string | null>(null);
@@ -253,8 +275,10 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
         ];
 
         items.sort((a, b) => {
-          const tglA = a.tipe === "musim" ? a.data.tanggalMulai : a.data.tanggal;
-          const tglB = b.tipe === "musim" ? b.data.tanggalMulai : b.data.tanggal;
+          const tglA =
+            a.tipe === "musim" ? a.data.tanggalMulai : a.data.tanggal;
+          const tglB =
+            b.tipe === "musim" ? b.data.tanggalMulai : b.data.tanggal;
           return new Date(tglB).getTime() - new Date(tglA).getTime();
         });
 
@@ -272,6 +296,8 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
     sisaHutangSesudah,
     persenOwner,
     persenPenggarap,
+    tipeGarap,
+    isSelf,
   }: {
     profitBersih: number;
     profitOwnerFinal: number;
@@ -280,18 +306,44 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
     sisaHutangSesudah: number;
     persenOwner: number;
     persenPenggarap: number;
+    tipeGarap: string;
+    isSelf: boolean;
   }) {
     const profitOwnerMurni = profitBersih * (persenOwner / 100);
     const profitPenggarapMurni = profitBersih * (persenPenggarap / 100);
     const adaPotongan = potonganHutang > 0;
     const lunas = adaPotongan && sisaHutangSesudah <= 0;
 
+    // Khusus mandiri: cuma profit bersih
+    if (tipeGarap === "mandiri") {
+      return (
+        <div className="bg-[#2c5e2e]/5 border border-[#2c5e2e]/20 rounded-xl p-2.5">
+          <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-1.5">
+            🌱 Garap Sendiri (100%)
+          </div>
+          <div className="text-[10px] text-[#2c5e2e]/60 mb-1">
+            Semua profit untuk penggarap
+          </div>
+          <div className="bg-white border-2 border-[#2c5e2e] rounded-xl p-2 text-center">
+            <div className="text-[10px] text-[#2c5e2e] font-bold">
+              👨‍🌾 Profit Bersih
+            </div>
+            <div className="font-bold text-[#2c5e2e] text-[12px] break-all leading-tight mt-1">
+              {formatRp(profitBersih)}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Khusus bagi_hasil_penggarap: label owner external
+    const isPenggarap = tipeGarap === "bagi_hasil_penggarap";
+
     return (
       <div className="space-y-2">
-        {/* TAHAP 1: BAGI HASIL DASAR */}
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-2.5">
           <div className="text-[10px] font-bold text-blue-800 uppercase tracking-widest mb-1.5">
-            Bagi Hasil Dasar ({persenOwner}:{persenPenggarap})
+            Bagi Hasil ({persenOwner}:{persenPenggarap})
           </div>
           <div className="text-[10px] text-blue-600 mb-2">
             Profit Bersih:{" "}
@@ -300,7 +352,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
           <div className="grid grid-cols-2 gap-2">
             <div className="bg-white border-2 border-[#2c5e2e]/30 rounded-xl p-2 text-center min-w-0">
               <div className="text-[10px] text-[#2c5e2e] font-bold">
-                👤 Owner ({persenOwner}%)
+                👤 {isPenggarap ? "Owner External" : "Owner"} ({persenOwner}%)
               </div>
               <div className="font-bold text-[#2c5e2e] text-[11px] break-all leading-tight mt-1">
                 {formatRp(profitOwnerMurni)}
@@ -317,7 +369,6 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
           </div>
         </div>
 
-        {/* TAHAP 2: SETELAH POTONG HUTANG */}
         {adaPotongan && (
           <div className="bg-red-50 border-2 border-red-300 rounded-xl p-2.5">
             <div className="text-[10px] font-bold text-red-800 uppercase tracking-widest mb-1.5">
@@ -374,7 +425,11 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
           <div
             key={p.id}
             className={`rounded-3xl overflow-hidden transition-all duration-300 ${
-              isExpanded
+              p.is_self
+                ? isExpanded
+                  ? "bg-gradient-to-br from-[#f0b429]/15 to-white border-2 border-[#f0b429] shadow-2xl shadow-[#f0b429]/20 ring-4 ring-[#f0b429]/10"
+                  : "bg-gradient-to-br from-[#f0b429]/8 to-white border-2 border-[#f0b429]/40 hover:border-[#f0b429] shadow-md"
+                : isExpanded
                 ? "bg-gradient-to-br from-[#f0b429]/10 to-white border-2 border-[#f0b429]/50 shadow-2xl shadow-[#f0b429]/20 ring-4 ring-[#f0b429]/10"
                 : "bg-white border-2 border-[#2c5e2e]/8 hover:border-[#2c5e2e]/20 hover:shadow-lg shadow-[#2c5e2e]/5"
             }`}
@@ -389,10 +444,15 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap mb-1.5">
                     <span className="font-bold text-lg text-[#2c5e2e] tracking-tight">
-                      👨‍🌾 {p.nama}
+                      {p.is_self ? "🌱" : "👨‍🌾"} {p.nama}
                     </span>
-                    {isExpanded && (
+                    {p.is_self && (
                       <span className="text-[9px] bg-[#f0b429] text-[#2c5e2e] rounded-full px-2.5 py-0.5 font-bold uppercase tracking-widest">
+                        Diri Sendiri
+                      </span>
+                    )}
+                    {isExpanded && (
+                      <span className="text-[9px] bg-[#2c5e2e] text-white rounded-full px-2.5 py-0.5 font-bold uppercase tracking-widest">
                         Aktif
                       </span>
                     )}
@@ -422,7 +482,9 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <span
                     className={`text-xl transition-transform ${
-                      isExpanded ? "rotate-180 text-[#f0b429]" : "text-[#2c5e2e]/40"
+                      isExpanded
+                        ? "rotate-180 text-[#f0b429]"
+                        : "text-[#2c5e2e]/40"
                     }`}
                   >
                     ▼
@@ -466,17 +528,25 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                 isLahanExpanded
                                   ? "hover:bg-blue-50"
                                   : "hover:bg-white"
-                              } ${lahanHeaderMuted ? "opacity-40" : "opacity-100"}`}
+                              } ${
+                                lahanHeaderMuted ? "opacity-40" : "opacity-100"
+                              }`}
                             >
                               <div className="flex items-center justify-between flex-wrap gap-2">
                                 <div className="min-w-0 flex-1">
                                   <div className="font-bold text-sm text-[#2c5e2e] flex items-center gap-2 flex-wrap">
                                     🗺️ {l.nama}
-                                    {isLahanExpanded && (
-                                      <span className="text-[9px] bg-blue-500 text-white rounded-full px-2.5 py-0.5 font-bold uppercase tracking-widest">
-                                        Aktif
-                                      </span>
-                                    )}
+                                    <BadgeTipeGarap
+                                      tipe={l.tipe_garap}
+                                      size="sm"
+                                    />
+                                    {l.tipe_garap ===
+                                      "bagi_hasil_penggarap" &&
+                                      l.nama_owner_external && (
+                                        <span className="text-[9px] bg-orange-100 border border-orange-300 text-orange-800 rounded-full px-2 py-0.5 font-bold">
+                                          👤 {l.nama_owner_external}
+                                        </span>
+                                      )}
                                   </div>
                                   <div className="text-xs text-[#2c5e2e]/60 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
                                     <span>📏 {l.luas.toFixed(2)} Ha</span>
@@ -573,7 +643,11 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                               isTahunExpanded
                                                 ? "hover:bg-purple-50"
                                                 : "hover:bg-[#faf9f5]"
-                                            } ${tahunHeaderMuted ? "opacity-40" : "opacity-100"}`}
+                                            } ${
+                                              tahunHeaderMuted
+                                                ? "opacity-40"
+                                                : "opacity-100"
+                                            }`}
                                           >
                                             <div className="flex items-center justify-between flex-wrap gap-2">
                                               <div className="flex items-center gap-2 flex-wrap">
@@ -804,7 +878,8 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                                 className="text-[10px] bg-red-600 hover:bg-red-700 text-white font-bold px-3 py-1.5 rounded-full transition-all hover:scale-105"
                                                               >
                                                                 🧾 Invoice
-                                                                Musim ({m.jmlPanen}{" "}
+                                                                Musim (
+                                                                {m.jmlPanen}{" "}
                                                                 panen)
                                                               </Link>
                                                             </div>
@@ -903,6 +978,12 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                                       persenPenggarap={
                                                                         h.persenPenggarap ||
                                                                         50
+                                                                      }
+                                                                      tipeGarap={
+                                                                        l.tipe_garap
+                                                                      }
+                                                                      isSelf={
+                                                                        p.is_self
                                                                       }
                                                                     />
 
@@ -1035,6 +1116,8 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                           h.persenPenggarap ||
                                                           50
                                                         }
+                                                        tipeGarap={l.tipe_garap}
+                                                        isSelf={p.is_self}
                                                       />
 
                                                       <div className="flex flex-wrap gap-1.5 pt-2 mt-2 border-t border-[#2c5e2e]/10">

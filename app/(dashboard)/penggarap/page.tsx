@@ -35,7 +35,9 @@ export default async function PenggarapPage() {
 
   const { data: lands } = await supabase
     .from("lands")
-    .select("id, penggarap_id, nama, luas")
+    .select(
+      "id, penggarap_id, nama, luas, tipe_garap, nama_owner_external"
+    )
     .eq("user_id", filter.user_id)
     .eq("is_demo", filter.is_demo);
 
@@ -48,6 +50,9 @@ export default async function PenggarapPage() {
 
   const allLands = lands || [];
   const harvestsData = allHarvests || [];
+
+  // Cek apakah user sudah punya penggarap "diri sendiri"
+  const hasDiriSendiri = penggaraps.some((p) => p.is_self === true);
 
   const penggarapLengkap = penggaraps.map((p) => {
     const penggarapLands = allLands.filter((l) => l.penggarap_id === p.id);
@@ -64,7 +69,6 @@ export default async function PenggarapPage() {
 
     const totalLuas = penggarapLands.reduce((s, l) => s + Number(l.luas), 0);
 
-    // Komoditas yang ditanam penggarap (unique)
     const komoditasSetGlobal = new Set<string>();
     penggarapHarvests.forEach((h) =>
       komoditasSetGlobal.add(normalisasiKomoditas(h.komoditas))
@@ -94,7 +98,6 @@ export default async function PenggarapPage() {
         komoditasSet.add(normalisasiKomoditas(h.komoditas))
       );
 
-      // Hitung jml panen per komoditas (cabai per musim, lain per panen)
       const perKomoditas: Record<
         string,
         { jml: number; totalHasilKg: number }
@@ -127,7 +130,6 @@ export default async function PenggarapPage() {
         })
       );
 
-      // Group per tahun
       const perTahun: Record<
         number,
         {
@@ -190,6 +192,8 @@ export default async function PenggarapPage() {
         nama: l.nama,
         luas: Number(l.luas),
         lokasi_koordinat: null,
+        tipe_garap: (l as any).tipe_garap || "bagi_hasil_owner",
+        nama_owner_external: (l as any).nama_owner_external || null,
         jmlPanen: lahanHarvests.length,
         totalHasilKg: totalHasilLahan,
         rataProduktivitas,
@@ -220,6 +224,7 @@ export default async function PenggarapPage() {
       nama: p.nama,
       kontak: p.kontak || null,
       alamat: p.alamat || null,
+      is_self: p.is_self || false,
       totalLahan: penggarapLands.length,
       totalLuas,
       jmlPanen: penggarapHarvests.length,
@@ -254,12 +259,22 @@ export default async function PenggarapPage() {
                 : `${penggaraps.length} penggarap terdaftar`}
             </p>
           </div>
-          <Link
-            href="/penggarap/baru"
-            className="bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-green-800 transition text-sm"
-          >
-            + Tambah Penggarap
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            {!hasDiriSendiri && (
+              <Link
+                href="/penggarap/baru?is_self=true"
+                className="bg-[#f0b429] text-[#2c5e2e] px-5 py-2.5 rounded-lg font-bold hover:bg-[#e6a617] transition text-sm shadow-md"
+              >
+                🌱 + Diri Sendiri
+              </Link>
+            )}
+            <Link
+              href="/penggarap/baru"
+              className="bg-green-700 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-green-800 transition text-sm"
+            >
+              + Tambah Penggarap
+            </Link>
+          </div>
         </div>
 
         {penggaraps.length > 0 && (
@@ -275,14 +290,23 @@ export default async function PenggarapPage() {
           <h3 className="font-bold text-gray-900 mb-2">Belum ada penggarap</h3>
           <p className="text-gray-600 text-sm mb-6 max-w-md mx-auto">
             Mulai kelola lahan dan bagi hasil dengan menambahkan penggarap
-            pertama Anda.
+            pertama Anda. Atau tambahkan diri sendiri kalau kamu garap lahan
+            sendiri.
           </p>
-          <Link
-            href="/penggarap/baru"
-            className="inline-block bg-green-700 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-800 transition"
-          >
-            + Tambah Penggarap Pertama
-          </Link>
+          <div className="flex flex-wrap gap-2 justify-center">
+            <Link
+              href="/penggarap/baru?is_self=true"
+              className="inline-block bg-[#f0b429] text-[#2c5e2e] px-6 py-3 rounded-lg font-bold hover:bg-[#e6a617] transition shadow-md"
+            >
+              🌱 Tambah Diri Sendiri
+            </Link>
+            <Link
+              href="/penggarap/baru"
+              className="inline-block bg-green-700 text-white px-6 py-3 rounded-lg font-medium hover:bg-green-800 transition"
+            >
+              + Tambah Penggarap
+            </Link>
+          </div>
         </div>
       ) : (
         <PenggarapKlien penggarapLengkap={penggarapLengkap} />
