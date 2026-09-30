@@ -81,7 +81,7 @@ export default async function DashboardLayout({
   const username = getUsername(user);
 
   return (
-    <div className="min-h-screen bg-[#faf9f5]">
+    <div className="min-h-screen bg-gray-50">
       {isDemoActive && demoStatus && (
         <DemoBanner
           expiresAt={demoStatus.expiresAt}
@@ -144,6 +144,15 @@ export default async function DashboardLayout({
               </Link>
             )}
 
+            {/* 🌐 TOMBOL LANDING — BARU */}
+            <Link
+              href="/"
+              className="inline-flex items-center gap-1 text-[10px] md:text-xs font-bold text-[#2c5e2e]/70 hover:text-[#2c5e2e] px-2.5 md:px-3 py-1.5 rounded-full hover:bg-[#2c5e2e]/5 transition-all border border-[#2c5e2e]/15 hover:border-[#2c5e2e]/30"
+              title="Lihat Landing Page"
+            >
+              🌐 <span className="hidden sm:inline">Landing</span>
+            </Link>
+
             <form action="/auth/logout" method="post">
               <button
                 type="submit"
@@ -159,7 +168,7 @@ export default async function DashboardLayout({
       {/* ===== KONTEN ===== */}
       <div className="max-w-7xl mx-auto flex gap-6 px-3 md:px-6 py-4 md:py-6">
         <aside className="hidden md:block w-64 flex-shrink-0">
-          <div className="bg-white rounded-3xl border border-[#2c5e2e]/8 p-3 sticky top-24 shadow-lg shadow-[#2c5e2e]/5">
+          <div className="bg-white rounded-2xl border border-[#2c5e2e]/10 p-3 sticky top-24 shadow-sm">
             <nav className="space-y-1">
               {MENU_ITEMS.map((item) => (
                 <NavLink
@@ -176,7 +185,7 @@ export default async function DashboardLayout({
 
               {isAdmin && (
                 <div className="pt-3 mt-3 border-t border-[#2c5e2e]/10">
-                  <div className="text-[10px] font-bold text-[#2c5e2e]/40 uppercase tracking-widest px-4 mb-2">
+                  <div className="text-[10px] font-bold text-[#2c5e2e]/40 uppercase tracking-widest px-4 mb-1">
                     Admin Only
                   </div>
                   <NavLink
@@ -215,22 +224,22 @@ export default async function DashboardLayout({
             </nav>
 
             {!isPremiumActive && !isDemoActive && (
-              <div className="mt-3 p-4 bg-gradient-to-br from-[#f0b429]/15 to-[#e6a617]/10 border-2 border-[#f0b429]/30 rounded-2xl">
+              <div className="mt-3 p-3 bg-gradient-to-br from-[#f0b429]/10 to-[#f0b429]/5 border-2 border-[#f0b429]/40 rounded-2xl">
                 <div className="text-xs font-bold text-[#2c5e2e] mb-1">
                   💎 Premium — Rp 59.000
                 </div>
-                <div className="text-[10px] text-[#2c5e2e]/70 mb-3 leading-relaxed">
+                <div className="text-[10px] text-[#2c5e2e]/70 mb-2 leading-relaxed">
                   Akses semua fitur, sekali bayar, selamanya!
                 </div>
                 <Link
                   href="/premium"
-                  className="block w-full bg-[#2c5e2e] hover:bg-[#1f4521] text-white text-xs font-bold text-center py-2 rounded-full transition-all hover:scale-105 shadow-md shadow-[#2c5e2e]/20"
+                  className="block w-full bg-[#2c5e2e] hover:bg-[#1f4521] text-white text-xs font-bold text-center py-2 rounded-full transition-all hover:scale-[1.02]"
                 >
                   Upgrade Sekarang
                 </Link>
                 <Link
                   href="/demo"
-                  className="block w-full bg-white hover:bg-[#f0b429]/10 text-[#2c5e2e] text-xs font-bold text-center py-2 rounded-full transition border border-[#f0b429]/40 mt-2"
+                  className="block w-full bg-white hover:bg-[#f0b429]/10 text-[#2c5e2e] text-xs font-bold text-center py-2 rounded-full transition-all hover:scale-[1.02] border border-[#f0b429]/40 mt-2"
                 >
                   🎬 Coba Demo Dulu
                 </Link>
@@ -238,16 +247,16 @@ export default async function DashboardLayout({
             )}
 
             {isDemoActive && (
-              <div className="mt-3 p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl">
+              <div className="mt-3 p-3 bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-2xl">
                 <div className="text-xs font-bold text-blue-900 mb-1">
                   🎬 Mode Demo Aktif
                 </div>
-                <div className="text-[10px] text-blue-700 mb-3 leading-relaxed">
+                <div className="text-[10px] text-blue-700 mb-2 leading-relaxed">
                   Anda melihat data contoh. Data asli Anda aman.
                 </div>
                 <Link
                   href="/premium"
-                  className="block w-full bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold text-center py-2 rounded-full transition"
+                  className="block w-full bg-blue-500 hover:bg-blue-600 text-white text-xs font-bold text-center py-2 rounded-full transition-all hover:scale-[1.02]"
                 >
                   💎 Upgrade ke Premium
                 </Link>
@@ -259,9 +268,8 @@ export default async function DashboardLayout({
         <main className="flex-1 min-w-0">{children}</main>
       </div>
 
-      {/* ===== BOTTOM NAV (MOBILE) ===== */}
       <nav
-        className="md:hidden fixed bottom-0 left-0 right-0 bg-[#faf9f5]/95 backdrop-blur-2xl border-t border-[#2c5e2e]/10 z-40"
+        className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#2c5e2e]/10 z-40"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div
