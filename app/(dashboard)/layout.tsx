@@ -1,7 +1,10 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getUnreadFeedbackCount } from "@/lib/supabase/queries/feedback-server";
-import { checkPremiumStatus } from "@/lib/supabase/queries/subscription-server";
+import {
+  checkPremiumStatus,
+  getInvoiceStats,
+} from "@/lib/supabase/queries/subscription-server";
 import { getDemoStatus } from "@/lib/demo/demo-mode";
 import { NavLink } from "./nav-link";
 import { DemoBanner } from "@/components/demo-banner";
@@ -60,7 +63,19 @@ export default async function DashboardLayout({
   } = await supabase.auth.getUser();
 
   const isAdmin = user?.email === ADMIN_EMAIL;
-  const unreadCount = isAdmin ? await getUnreadFeedbackCount() : 0;
+
+  // Query admin-only — dijalankan paralel
+  let unreadCount = 0;
+  let pendingInvoiceCount = 0;
+
+  if (isAdmin) {
+    const [feedbackCount, invoiceStats] = await Promise.all([
+      getUnreadFeedbackCount(),
+      getInvoiceStats(),
+    ]);
+    unreadCount = feedbackCount;
+    pendingInvoiceCount = invoiceStats.total_pending;
+  }
 
   const premiumStatus = user
     ? await checkPremiumStatus(user.id)
@@ -196,15 +211,10 @@ export default async function DashboardLayout({
                     variant="admin"
                   />
                   <NavLink
-                    href="/admin/premium"
-                    icon="🎁"
-                    label="Premium Requests"
-                    variant="admin"
-                  />
-                  <NavLink
                     href="/admin/invoice"
                     icon="🧾"
                     label="Invoice"
+                    badge={pendingInvoiceCount}
                     variant="admin"
                   />
                   <NavLink
@@ -315,15 +325,10 @@ export default async function DashboardLayout({
                 variant="mobile"
               />
               <NavLink
-                href="/admin/premium"
-                icon="🎁"
-                label="Premium"
-                variant="mobile"
-              />
-              <NavLink
                 href="/admin/invoice"
                 icon="🧾"
                 label="Invoice"
+                badge={pendingInvoiceCount}
                 variant="mobile"
               />
               <NavLink

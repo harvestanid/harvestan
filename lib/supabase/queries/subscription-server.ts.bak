@@ -741,7 +741,7 @@ export async function toggleInvoiceTesting(
   };
 }
 
-// ✅ Hapus 1 invoice
+// ✅ BARU: Hapus 1 invoice
 export async function deleteInvoice(
   invoiceCode: string
 ): Promise<{ ok: boolean; message: string }> {
@@ -761,7 +761,7 @@ export async function deleteInvoice(
   return { ok: true, message: "Invoice berhasil dihapus" };
 }
 
-// ✅ Hapus semua invoice testing
+// ✅ BARU: Hapus semua invoice testing
 export async function deleteAllTestingInvoices(): Promise<{
   ok: boolean;
   message: string;
@@ -803,48 +803,6 @@ export async function deleteAllTestingInvoices(): Promise<{
   };
 }
 
-// ✅ BARU: Hapus semua invoice expired
-export async function deleteAllExpiredInvoices(): Promise<{
-  ok: boolean;
-  message: string;
-  count?: number;
-}> {
-  const { createAdminClient } = await import("@/lib/supabase/admin");
-  const supabase = createAdminClient();
-
-  const { data: list, error: errFetch } = await supabase
-    .from("invoices")
-    .select("id")
-    .eq("status", "expired");
-
-  if (errFetch) {
-    console.error("deleteAllExpiredInvoices fetch error:", errFetch);
-    return { ok: false, message: errFetch.message };
-  }
-
-  const count = (list || []).length;
-
-  if (count === 0) {
-    return { ok: true, message: "Tidak ada invoice expired", count: 0 };
-  }
-
-  const { error } = await supabase
-    .from("invoices")
-    .delete()
-    .eq("status", "expired");
-
-  if (error) {
-    console.error("deleteAllExpiredInvoices error:", error);
-    return { ok: false, message: error.message };
-  }
-
-  return {
-    ok: true,
-    message: `${count} invoice expired berhasil dihapus`,
-    count,
-  };
-}
-
 export async function getPendingInvoices(filters?: {
   status?: string;
   search?: string;
@@ -864,7 +822,6 @@ export async function getPendingInvoices(filters?: {
   if (filters?.status && filters.status !== "all") {
     query = query.eq("status", filters.status);
   } else {
-    // Expired TIDAK ditarik ke UI (biar bersih, dihitung aja di stats)
     query = query.in("status", ["pending", "approved", "rejected"]);
   }
 
@@ -946,9 +903,6 @@ export async function getInvoiceStats(): Promise<InvoiceStats> {
 
   const all = invoices || [];
 
-  // ✅ Expired tidak dihitung di total_invoices (biar gak numpuk)
-  const active = all.filter((i) => i.status !== "expired");
-
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const startOfYear = new Date(now.getFullYear(), 0, 1);
@@ -984,12 +938,12 @@ export async function getInvoiceStats(): Promise<InvoiceStats> {
     .eq("is_premium", true);
 
   return {
-    total_invoices: active.length,
-    total_pending: active.filter((i) => i.status === "pending").length,
-    total_approved: active.filter((i) => i.status === "approved").length,
-    total_rejected: active.filter((i) => i.status === "rejected").length,
+    total_invoices: all.length,
+    total_pending: all.filter((i) => i.status === "pending").length,
+    total_approved: all.filter((i) => i.status === "approved").length,
+    total_rejected: all.filter((i) => i.status === "rejected").length,
     total_expired: all.filter((i) => i.status === "expired").length,
-    total_testing: active.filter((i) => i.is_testing).length,
+    total_testing: all.filter((i) => i.is_testing).length,
     revenue_total,
     revenue_this_month,
     revenue_this_year,

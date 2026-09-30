@@ -3,7 +3,6 @@ import { createClient } from "@/lib/supabase/server";
 import {
   deleteInvoice,
   deleteAllTestingInvoices,
-  deleteAllExpiredInvoices,
 } from "@/lib/supabase/queries/subscription-server";
 
 export const runtime = "nodejs";
@@ -71,26 +70,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // ===== Action: hapus semua expired =====
-    if (action === "all_expired") {
-      const result = await deleteAllExpiredInvoices();
-
-      if (!result.ok) {
-        return NextResponse.json({ error: result.message }, { status: 500 });
-      }
-
-      return NextResponse.json({
-        ok: true,
-        message: result.message,
-        count: result.count || 0,
-      });
-    }
-
     return NextResponse.json(
-      {
-        error:
-          "Action tidak valid. Gunakan 'single', 'all_testing', atau 'all_expired'",
-      },
+      { error: "Action tidak valid. Gunakan 'single' atau 'all_testing'" },
       { status: 400 }
     );
   } catch (err: any) {
