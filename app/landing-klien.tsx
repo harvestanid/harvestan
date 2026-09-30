@@ -29,8 +29,15 @@ const FITUR = [
   },
   {
     icon: "🗺️",
-    title: "Peta Lahan + GPS",
-    desc: "Catat lokasi setiap lahan dengan koordinat GPS. Ukur lahan pakai GPS walking.",
+    title: "Ukur Lahan 2 Cara",
+    desc: "Ukur lahan pakai GPS walking (jalan keliling) atau pilih titik langsung di peta satelit. Luas otomatis terhitung.",
+    badge: "Baru",
+  },
+  {
+    icon: "📋",
+    title: "Log Tanam Harian",
+    desc: "Catat semua kegiatan pertanian — olah tanah, tanam, pupuk, penyiangan, panen. Riwayat lengkap per musim.",
+    badge: "Baru",
   },
   {
     icon: "🌾",
@@ -49,15 +56,15 @@ const FITUR = [
     badge: "Baru",
   },
   {
-    icon: "📊",
-    title: "Dashboard & Grafik",
-    desc: "Ringkasan profit, produktivitas, dan kinerja penggarap. Visual interaktif dengan Recharts.",
+    icon: "📈",
+    title: "Grafik Harga & Grafik Panen setiap komoditas",
+    desc: "Pantau tren harga tiap komoditas — padi, jagung, cabai, bawang merah. Visual interaktif dengan Recharts.",
     badge: "Baru",
   },
   {
-    icon: "📄",
-    title: "Export Excel & PDF",
-    desc: "Download laporan lengkap ke Excel atau PDF. Backup data untuk pindah akun.",
+    icon: "📊",
+    title: "Dashboard & Laporan",
+    desc: "Ringkasan profit, produktivitas, dan kinerja penggarap. Export ke Excel atau PDF 1 klik.",
   },
   {
     icon: "🌶️",
@@ -217,6 +224,14 @@ const FAQ = [
     a: "Bisa! Harvestan mendukung multi-komoditas: padi, jagung, kacang tanah, bawang merah, dan cabai rawit.",
   },
   {
+    q: "Bagaimana cara ukur lahan?",
+    a: "Ada 2 cara: (1) GPS Walking — jalan keliling batas lahan, titik otomatis tercatat. (2) Pilih di Peta — tap titik di peta satelit untuk tandai sudut lahan. Keduanya otomatis hitung luas.",
+  },
+  {
+    q: "Apa itu Log Tanam?",
+    a: "Log Tanam adalah catatan kegiatan pertanian harian — mulai dari olah tanah, tanam, pupuk, penyiangan, sampai panen. Setiap lahan punya riwayat lengkap per musim tanam.",
+  },
+  {
     q: "Apa itu Toko Harvestan?",
     a: "Toko online resmi Harvestan — jual input pertanian (pupuk, bibit), output pertanian (beras, cabai), alat & mesin, dan furniture. Bisa diakses di halaman /toko.",
   },
@@ -296,6 +311,7 @@ const MARQUEE_ITEMS = [
   "💰 Bagi Hasil Otomatis",
   "📊 Laporan PDF",
   "📍 GPS Lahan",
+  "📋 Log Tanam",
   "🌱 Pupuk & Bibit",
 ];
 
