@@ -31,6 +31,7 @@ const MENU_ITEMS = [
   },
   { href: "/ukur-lahan", label: "Ukur", icon: "📍", premium: true },
   { href: "/log-tanam", label: "Log Tanam", icon: "📋", premium: false },
+  { href: "/kalkulator", label: "Kalkulator", icon: "🧪", premium: false },
   { href: "/keuangan", label: "Keuangan", icon: "💰", premium: false },
   { href: "/grafik", label: "Grafik", icon: "📈", premium: false },
   { href: "/laporan", label: "Laporan", icon: "📄", premium: true },
@@ -236,6 +237,12 @@ export default async function DashboardLayout({
                     variant="admin"
                   />
                   <NavLink
+                    href="/admin/pupuk"
+                    icon="🧪"
+                    label="Pupuk"
+                    variant="admin"
+                  />
+                  <NavLink
                     href="/admin/blog"
                     icon="📝"
                     label="Blog"
@@ -347,6 +354,12 @@ export default async function DashboardLayout({
                 href="/admin/pesanan"
                 icon="🚚"
                 label="Pesanan"
+                variant="mobile"
+              />
+              <NavLink
+                href="/admin/pupuk"
+                icon="🧪"
+                label="Pupuk"
                 variant="mobile"
               />
               <NavLink
