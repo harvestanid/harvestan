@@ -40,9 +40,21 @@ const FITUR = [
     badge: "Baru",
   },
   {
+    icon: "🧪",
+    title: "Kalkulator Pupuk Standar & Presisi",
+    desc: "Hitung dosis pupuk sesuai komoditas & luas lahan. Mode presisi pakai hasil analisis tanah — dosis disesuaikan status hara (N/P/K).",
+    badge: "Baru",
+  },
+  {
     icon: "🌾",
     title: "Catat Panen Otomatis",
     desc: "Input hasil panen — profit owner & penggarap dihitung otomatis sesuai skema bagi hasil.",
+  },
+  {
+    icon: "📸",
+    title: "Postcard Hasil Panen",
+    desc: "Ubah hasil panen jadi postcard cantik dengan berbagai style. Siap di-share ke Instagram, WhatsApp, atau Facebook.",
+    badge: "Baru",
   },
   {
     icon: "💰",
@@ -57,8 +69,8 @@ const FITUR = [
   },
   {
     icon: "📈",
-    title: "Grafik Harga & Grafik Panen setiap komoditas",
-    desc: "Pantau tren harga tiap komoditas — padi, jagung, cabai, bawang merah. Visual interaktif dengan Recharts.",
+    title: "Grafik Harga & Grafik Panen",
+    desc: "Pantau tren harga & hasil panen tiap komoditas — padi, jagung, cabai, bawang merah. Visual interaktif dengan Recharts.",
     badge: "Baru",
   },
   {
@@ -232,6 +244,14 @@ const FAQ = [
     a: "Log Tanam adalah catatan kegiatan pertanian harian — mulai dari olah tanah, tanam, pupuk, penyiangan, sampai panen. Setiap lahan punya riwayat lengkap per musim tanam.",
   },
   {
+    q: "Bagaimana cara hitung kebutuhan pupuk?",
+    a: "Buka menu Kalkulator. Ada 2 mode: (1) Standar — pakai dosis anjuran Kementan/Balitbangtan sesuai komoditas & luas lahan. (2) Presisi — masukkan hasil analisis tanah (N, P, K, pH), sistem otomatis koreksi dosis sesuai status hara. Bisa juga hitung jadwal pemupukan (split 2-3x) + cara mencampur pupuk.",
+  },
+  {
+    q: "Apa itu Postcard Hasil Panen?",
+    a: "Fitur untuk mengubah data hasil panen jadi postcard cantik dengan berbagai style (klasik, modern, minimalis, dll). Hasilnya bisa langsung di-share ke Instagram, WhatsApp, atau Facebook — cocok untuk dokumentasi & promosi hasil tani.",
+  },
+  {
     q: "Apa itu Toko Harvestan?",
     a: "Toko online resmi Harvestan — jual input pertanian (pupuk, bibit), output pertanian (beras, cabai), alat & mesin, dan furniture. Bisa diakses di halaman /toko.",
   },
@@ -306,6 +326,8 @@ const MARQUEE_ITEMS = [
   "🧅 Bawang Merah",
   "🥜 Kacang Tanah",
   "⚖️ Gabah",
+  "🧪 Kalkulator Pupuk",
+  "📸 Postcard Panen",
   "🚜 Alat Tani",
   "🛒 Toko Harvestan",
   "💰 Bagi Hasil Otomatis",
@@ -353,7 +375,6 @@ export default function LandingKlien({ user, produkTampil }: Props) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Lock scroll kalau menu mobile terbuka
   useEffect(() => {
     if (menuMobile) {
       document.body.style.overflow = "hidden";
@@ -489,7 +510,6 @@ export default function LandingKlien({ user, produkTampil }: Props) {
             />
           </Link>
 
-          {/* Menu desktop */}
           <div className="hidden md:flex items-center gap-8 text-sm font-medium text-[#2c5e2e]/80">
             {[
               { label: "Blog", href: "/blog" },
@@ -507,7 +527,6 @@ export default function LandingKlien({ user, produkTampil }: Props) {
             ))}
           </div>
 
-          {/* Auth desktop */}
           <div className="hidden md:flex items-center gap-2">
             {user ? (
               <Link
@@ -536,7 +555,6 @@ export default function LandingKlien({ user, produkTampil }: Props) {
             )}
           </div>
 
-          {/* Tombol hamburger — mobile only */}
           <button
             type="button"
             onClick={() => setMenuMobile(!menuMobile)}
@@ -567,7 +585,6 @@ export default function LandingKlien({ user, produkTampil }: Props) {
           </button>
         </div>
 
-        {/* Dropdown mobile */}
         {menuMobile && (
           <div className="md:hidden border-t border-[#2c5e2e]/10 bg-[#faf9f5]/95 backdrop-blur-2xl animate-slide-down">
             <div className="px-4 py-3 space-y-1">
@@ -644,7 +661,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
           </div>
         )}
       </nav>
-      
+
       {/* HERO */}
       <section className="relative overflow-hidden noise-overlay">
         <div className="absolute inset-0 -z-10">
@@ -658,7 +675,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
             style={{ animationDelay: "6s" }}
           />
         </div>
-      
+
         <div
           className="absolute inset-0 -z-10 opacity-[0.04]"
           style={{
@@ -669,7 +686,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
               "radial-gradient(ellipse at center, black 30%, transparent 80%)",
           }}
         />
-      
+
         <div
           ref={heroRef}
           className="relative max-w-7xl mx-auto px-6 md:px-10 py-24 md:py-40"
@@ -684,7 +701,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                 Untuk Petani Indonesia
               </span>
             </div>
-      
+
             <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-[#2c5e2e] leading-[0.95] tracking-tighter animate-fade-up delay-1">
               Kelola Lahan Pertanian Anda
               <br />
@@ -707,7 +724,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                 </svg>
               </span>
             </h1>
-      
+
             <p className="text-base md:text-xl text-[#2c5e2e]/70 mt-12 max-w-2xl mx-auto leading-relaxed animate-fade-up delay-2">
               Catat penggarap, lahan, panen, hutang, dan bagi hasil dalam satu
               aplikasi. Plus{" "}
@@ -716,7 +733,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
               </span>{" "}
               untuk jual hasil panen & beli kebutuhan tani.
             </p>
-      
+
             <div className="flex flex-wrap gap-4 justify-center mt-14 animate-fade-up delay-3">
               <Link
                 href="/register"
@@ -735,7 +752,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                 Kunjungi Toko
               </Link>
             </div>
-      
+
             <div className="flex flex-wrap gap-8 justify-center mt-14 text-xs text-[#2c5e2e]/70 animate-fade-up delay-4">
               {["Tanpa kartu kredit", "Coba tanpa biaya", "Data milik Anda"].map(
                 (item, i) => (
@@ -752,10 +769,10 @@ export default function LandingKlien({ user, produkTampil }: Props) {
             </div>
           </div>
         </div>
-      
+
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-b from-transparent to-[#faf9f5] pointer-events-none" />
       </section>
-      
+
       {/* MARQUEE */}
       <section className="relative py-8 border-y border-[#2c5e2e]/10 bg-white/40 backdrop-blur overflow-hidden">
         <div className="flex animate-marquee whitespace-nowrap">
@@ -770,7 +787,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
           ))}
         </div>
       </section>
-      
+
       {/* STATISTIK */}
       <section
         ref={countersRef}
@@ -778,13 +795,13 @@ export default function LandingKlien({ user, produkTampil }: Props) {
       >
         <div className="absolute inset-0 bg-[#2c5e2e]" />
         <div className="absolute inset-0 noise-overlay" />
-      
+
         <div className="absolute top-1/2 left-1/4 w-96 h-96 bg-[#f0b429]/10 rounded-full blur-3xl animate-float" />
         <div
           className="absolute top-1/3 right-1/4 w-96 h-96 bg-[#4a8f3f]/20 rounded-full blur-3xl animate-float"
           style={{ animationDelay: "2s" }}
         />
-      
+
         <div className="relative max-w-7xl mx-auto px-6 md:px-10">
           <div className="text-center mb-20">
             <div className="text-xs uppercase tracking-[0.25em] text-[#f0b429] font-bold mb-5">
@@ -794,7 +811,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
               Angka yang Bicara
             </h2>
           </div>
-      
+
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12">
             {[
               { value: counters.a, suffix: "%", label: "Data Aman" },
@@ -815,7 +832,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
           </div>
         </div>
       </section>
-      
+
       {/* FITUR */}
       <section id="fitur" className="relative py-24 md:py-36">
         <div className="max-w-7xl mx-auto px-6 md:px-10">
@@ -831,7 +848,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
               aplikasi.
             </p>
           </div>
-      
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {FITUR.map((f, i) => (
               <div
@@ -842,7 +859,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                   <div className="w-full h-full rounded-3xl bg-white" />
                 </div>
                 <div className="absolute inset-0 rounded-3xl border-2 border-[#2c5e2e]/8 group-hover:border-transparent transition-colors" />
-      
+
                 <div className="relative">
                   {f.badge && (
                     <span className="absolute -top-2 right-0 text-[10px] font-bold bg-[#f0b429] text-[#2c5e2e] px-3 py-1 rounded-full uppercase tracking-wider shadow-lg">
@@ -864,7 +881,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
           </div>
         </div>
       </section>
-      
+
       {/* TOKO HARVESTAN */}
       {safeProduk.length > 0 && (
         <section className="relative py-24 md:py-36 bg-white overflow-hidden">
@@ -875,7 +892,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
               style={{ animationDelay: "3s" }}
             />
           </div>
-      
+
           <div className="relative max-w-7xl mx-auto px-6 md:px-10">
             <div className="flex items-end justify-between flex-wrap gap-6 mb-16">
               <div>
@@ -901,7 +918,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                 </span>
               </Link>
             </div>
-      
+
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
               {safeProduk.slice(0, 4).map((p) => (
                 <Link
@@ -961,7 +978,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
           </div>
         </section>
       )}
-      
+
       {/* COCOK UNTUK */}
       <section id="cocokuntuk" className="relative py-24 md:py-36">
         <div className="max-w-7xl mx-auto px-6 md:px-10">
@@ -977,7 +994,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
               Indonesia — dari petani individu sampai instansi pemerintah.
             </p>
           </div>
-      
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {COCOK_UNTUK.map((item, i) => (
               <div
@@ -1002,7 +1019,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
               </div>
             ))}
           </div>
-      
+
           <div className="mt-14 text-center">
             <div className="inline-block bg-[#f0b429]/10 border-2 border-[#f0b429]/30 rounded-2xl px-7 py-5 text-sm text-[#2c5e2e] shadow-lg shadow-[#f0b429]/10">
               💡 <strong>Punya profesi lain?</strong> Harvestan bisa
@@ -1024,7 +1041,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
           </div>
         </div>
       </section>
-      
+
             {/* KENAPA HARVESTAN */}
             <section className="relative py-24 md:py-36 bg-white">
               <div className="max-w-5xl mx-auto px-6 md:px-10">
@@ -1036,7 +1053,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                     Kenapa Pilih Harvestan?
                   </h2>
                 </div>
-      
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-[#faf9f5] border-2 border-[#2c5e2e]/8 rounded-3xl p-8">
                     <div className="flex items-center gap-4 mb-7">
@@ -1066,7 +1083,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                       ))}
                     </ul>
                   </div>
-      
+
                   <div className="relative bg-[#2c5e2e] text-white rounded-3xl p-8 shadow-2xl shadow-[#2c5e2e]/30 overflow-hidden noise-overlay">
                     <div className="absolute top-0 right-0 w-64 h-64 bg-[#f0b429]/20 rounded-full blur-3xl animate-float" />
                     <div className="relative">
@@ -1101,14 +1118,14 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                 </div>
               </div>
             </section>
-      
+
             {/* CARA KERJA */}
             <section className="relative py-24 md:py-36 overflow-hidden">
               <div className="absolute inset-0 -z-10 pointer-events-none">
                 <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#2c5e2e]/5 rounded-full blur-3xl" />
                 <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#f0b429]/10 rounded-full blur-3xl" />
               </div>
-      
+
               <div className="max-w-6xl mx-auto px-6 md:px-10">
                 <div className="text-center mb-20">
                   <div className="inline-block text-xs uppercase tracking-[0.25em] text-[#2c5e2e] font-bold mb-5 px-4 py-1.5 bg-[#f0b429]/15 rounded-full">
@@ -1122,7 +1139,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                     butuh beberapa menit.
                   </p>
                 </div>
-      
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {CARA_KERJA.map((step, i) => (
                     <div
@@ -1132,19 +1149,19 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                       <div className="absolute -top-4 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full bg-gradient-to-br from-[#2c5e2e] to-[#1f4521] text-[#f0b429] flex items-center justify-center text-sm font-bold shadow-lg shadow-[#2c5e2e]/30 group-hover:scale-110 transition-transform">
                         {step.no}
                       </div>
-      
+
                       <div className="w-20 h-20 mx-auto mt-6 mb-5 rounded-2xl bg-gradient-to-br from-[#2c5e2e]/8 to-[#f0b429]/15 flex items-center justify-center text-4xl group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500">
                         {step.icon}
                       </div>
-      
+
                       <h3 className="font-bold text-[#2c5e2e] mb-3 text-lg leading-tight">
                         {step.title}
                       </h3>
-      
+
                       <p className="text-sm text-[#2c5e2e]/60 leading-relaxed">
                         {step.desc}
                       </p>
-      
+
                       {i < CARA_KERJA.length - 1 && (
                         <div className="hidden lg:block absolute top-1/2 -right-3 -translate-y-1/2 text-[#f0b429] text-2xl font-bold z-10">
                           →
@@ -1155,7 +1172,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                 </div>
               </div>
             </section>
-      
+
             {/* DISCORD */}
             <section className="relative py-24 md:py-36 overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-[#5865F2] via-[#4752c4] to-[#404EED]" />
@@ -1167,7 +1184,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                   style={{ animationDelay: "3s" }}
                 />
               </div>
-      
+
               <div className="relative max-w-6xl mx-auto px-6 md:px-10 text-white">
                 <div className="text-center mb-16">
                   <div className="inline-flex items-center gap-3 bg-white/15 backdrop-blur-xl px-6 py-2.5 rounded-full text-sm font-semibold mb-8 border border-white/20">
@@ -1176,7 +1193,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                     </svg>
                     Komunitas Resmi
                   </div>
-      
+
                   <h2 className="text-4xl md:text-6xl font-bold mb-6 tracking-tighter">
                     Bergabung dengan
                     <br />
@@ -1187,7 +1204,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                     pengalaman, dan tumbuh bersama.
                   </p>
                 </div>
-      
+
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-14">
                   {DISCORD_FITUR.map((f, i) => (
                     <div
@@ -1203,7 +1220,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                     </div>
                   ))}
                 </div>
-      
+
                 <div className="text-center">
                   <a
                     href="https://discord.gg/v8RZbADBM"
@@ -1227,7 +1244,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                 </div>
               </div>
             </section>
-      
+
             {/* FAQ */}
             <section id="faq" className="relative py-24 md:py-36">
               <div className="max-w-3xl mx-auto px-6 md:px-10">
@@ -1239,7 +1256,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                     Pertanyaan Umum
                   </h2>
                 </div>
-      
+
                 <div className="space-y-3">
                   {FAQ.map((item, i) => (
                     <details
@@ -1260,7 +1277,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                 </div>
               </div>
             </section>
-      
+
             {/* SOSIAL MEDIA */}
             <section className="relative py-24 md:py-36 bg-white">
               <div className="max-w-6xl mx-auto px-6 md:px-10">
@@ -1275,7 +1292,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                     Update fitur terbaru, tips pertanian, dan info menarik lainnya
                   </p>
                 </div>
-      
+
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {SOSIAL_MEDIA.map((s, i) => (
                     <a
@@ -1300,7 +1317,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                 </div>
               </div>
             </section>
-      
+
             {/* CTA AKHIR */}
             <section className="relative py-16 md:py-24">
               <div className="max-w-5xl mx-auto px-6 md:px-10">
@@ -1312,7 +1329,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                       style={{ animationDelay: "4s" }}
                     />
                   </div>
-      
+
                   <div className="relative">
                     <div className="flex justify-center mb-8">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1348,14 +1365,14 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                 </div>
               </div>
             </section>
-      
+
             {/* FOOTER */}
             <footer className="relative bg-[#1f4521] text-white/60 py-16 overflow-hidden noise-overlay">
               <div className="absolute inset-0 opacity-10">
                 <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#f0b429] rounded-full blur-3xl" />
                 <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-[#4a8f3f] rounded-full blur-3xl" />
               </div>
-      
+
               <div className="relative max-w-7xl mx-auto px-6 md:px-10">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-8">
                   <div className="flex items-center">
@@ -1366,7 +1383,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                       className="h-14 md:h-16 w-auto brightness-0 invert opacity-90"
                     />
                   </div>
-      
+
                   <div className="flex items-center gap-3">
                     {SOSIAL_MEDIA.map((s, i) => (
                       <a
@@ -1397,7 +1414,7 @@ export default function LandingKlien({ user, produkTampil }: Props) {
                     </a>
                   </div>
                 </div>
-      
+
                 <div className="mt-10 pt-8 border-t border-white/10 text-xs flex flex-col md:flex-row justify-between items-center gap-3">
                   <p>© 2026 Harvestan. Dibuat dengan ❤️ di Indonesia 🇮🇩</p>
                   <p className="text-white/40">Sistem Manajemen Pertanian Modern</p>
