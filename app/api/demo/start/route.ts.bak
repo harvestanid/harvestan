@@ -21,16 +21,6 @@ function genUUID(): string {
   });
 }
 
-// Cache file supaya gak baca tiap request
-let cachedRaw: string | null = null;
-function loadDemoJSON(): DemoData {
-  if (!cachedRaw) {
-    const filePath = path.join(process.cwd(), "public", "demo-data.json");
-    cachedRaw = fs.readFileSync(filePath, "utf8");
-  }
-  return JSON.parse(cachedRaw);
-}
-
 export async function POST() {
   try {
     const supabase = await createClient();
@@ -59,27 +49,28 @@ export async function POST() {
       }
     }
 
-    // Hapus data demo lama — PARALEL
-    await Promise.all([
-      supabase.from("harvests").delete().eq("user_id", user.id).eq("is_demo", true),
-      supabase.from("debts").delete().eq("user_id", user.id).eq("is_demo", true),
-      supabase.from("musim_cabai").delete().eq("user_id", user.id).eq("is_demo", true),
-      supabase.from("lands").delete().eq("user_id", user.id).eq("is_demo", true),
-      supabase.from("penggaraps").delete().eq("user_id", user.id).eq("is_demo", true),
-      supabase.from("categories").delete().eq("user_id", user.id).eq("is_demo", true),
-    ]);
+    // Hapus data demo lama
+    await supabase.from("harvests").delete().eq("user_id", user.id).eq("is_demo", true);
+    await supabase.from("debts").delete().eq("user_id", user.id).eq("is_demo", true);
+    await supabase.from("musim_cabai").delete().eq("user_id", user.id).eq("is_demo", true);
+    await supabase.from("lands").delete().eq("user_id", user.id).eq("is_demo", true);
+    await supabase.from("penggaraps").delete().eq("user_id", user.id).eq("is_demo", true);
+    await supabase.from("categories").delete().eq("user_id", user.id).eq("is_demo", true);
 
-    const demoData = loadDemoJSON();
+    const filePath = path.join(process.cwd(), "public", "demo-data.json");
+    const raw = fs.readFileSync(filePath, "utf8");
+    const demoData: DemoData = JSON.parse(raw);
 
     const mapPenggarap: Record<string, string> = {};
     const mapLahan: Record<string, string> = {};
     const mapDebt: Record<string, string> = {};
 
-    // ===== PENGARAP — bulk insert =====
-    const penggarapBatch = demoData.penggarap.map((p) => {
+    // Insert Penggarap
+    for (const p of demoData.penggarap) {
       const newId = genUUID();
       mapPenggarap[p.id] = newId;
-      return {
+
+      await supabase.from("penggaraps").insert({
         id: newId,
         user_id: user.id,
         nama: p.nama,
@@ -87,70 +78,49 @@ export async function POST() {
         usia: p.usia,
         kontak: p.kontak,
         is_demo: true,
-      };
-    });
-
-    if (penggarapBatch.length > 0) {
-      const { error: errP } = await supabase
-        .from("penggaraps")
-        .insert(penggarapBatch);
-      if (errP) {
-        console.error("Insert penggaraps error:", errP);
-        throw new Error("Gagal insert penggarap: " + errP.message);
-      }
+      });
     }
 
-    // ===== LAHAN — bulk insert =====
-    const lahanBatch = demoData.lahan.map((l) => {
+    // Insert Lahan — polygon dari JSON
+    for (const l of demoData.lahan) {
       const newId = genUUID();
       mapLahan[l.id] = newId;
-      return {
+      const newPenggarapId = mapPenggarap[l.penggarap_id];
+
+      await supabase.from("lands").insert({
         id: newId,
         user_id: user.id,
-        penggarap_id: mapPenggarap[l.penggarap_id],
+        penggarap_id: newPenggarapId,
         nama: l.nama,
         luas: l.luas,
         lokasi_koordinat: l.lokasi_koordinat || null,
         polygon: l.polygon || null,
         is_demo: true,
-      };
-    });
-
-    if (lahanBatch.length > 0) {
-      const { error: errL } = await supabase.from("lands").insert(lahanBatch);
-      if (errL) {
-        console.error("Insert lands error:", errL);
-        throw new Error("Gagal insert lahan: " + errL.message);
-      }
+      });
     }
 
-    // ===== CATEGORIES — bulk insert =====
-    if (demoData.categories && demoData.categories.length > 0) {
-      const catBatch = demoData.categories.map((c) => ({
+    // Insert Categories — threshold produktivitas demo (#12)
+    for (const c of demoData.categories || []) {
+      await supabase.from("categories").insert({
         user_id: user.id,
         komoditas: c.komoditas,
         cukup: c.cukup,
         baik: c.baik,
         sangat_baik: c.sangat_baik,
         is_demo: true,
-      }));
-
-      const { error: errC } = await supabase
-        .from("categories")
-        .insert(catBatch);
-      if (errC) {
-        console.error("Insert categories error:", errC);
-      }
+      });
     }
 
-    // ===== DEBTS — bulk insert =====
-    const debtBatch = demoData.debts.map((d) => {
+    // Insert Debts — simpan mapping ID lama → ID baru
+    for (const d of demoData.debts) {
       const newDebtId = genUUID();
       mapDebt[d.id] = newDebtId;
-      return {
+      const newPenggarapId = mapPenggarap[d.penggarap_id];
+
+      await supabase.from("debts").insert({
         id: newDebtId,
         user_id: user.id,
-        penggarap_id: mapPenggarap[d.penggarap_id],
+        penggarap_id: newPenggarapId,
         tanggal: d.tanggal,
         jumlah: d.jumlah,
         dibayar: d.dibayar || 0,
@@ -158,18 +128,10 @@ export async function POST() {
         keperluan: d.keperluan,
         log_perubahan: d.log_perubahan || [],
         is_demo: true,
-      };
-    });
-
-    if (debtBatch.length > 0) {
-      const { error: errD } = await supabase.from("debts").insert(debtBatch);
-      if (errD) {
-        console.error("Insert debts error:", errD);
-        throw new Error("Gagal insert hutang: " + errD.message);
-      }
+      });
     }
 
-    // ===== HARVESTS — bulk insert dengan chunk paralel =====
+    // Insert Harvests — baca potongan_hutang dari JSON (#13)
     const harvestsBatch = demoData.harvests.map((h) => {
       const pendapatan = Number(h.hasil_kg) * Number(h.harga_gabah);
       const biaya = Number(h.hasil_kg) * Number(h.biaya_panen_per_kg);
@@ -183,6 +145,7 @@ export async function POST() {
         h.profit_penggarap || profit * persenPenggarap
       );
 
+      // Remap debt_id di log ke ID baru
       const potonganLog = Array.isArray(h.potongan_hutang_log)
         ? h.potongan_hutang_log.map((log: any) => ({
             ...log,
@@ -221,43 +184,21 @@ export async function POST() {
       };
     });
 
-    // Bagi jadi chunk 100, insert PARALEL
-    const CHUNK = 100;
-    const chunks: any[][] = [];
-    for (let i = 0; i < harvestsBatch.length; i += CHUNK) {
-      chunks.push(harvestsBatch.slice(i, i + CHUNK));
+    for (let i = 0; i < harvestsBatch.length; i += 50) {
+      const chunk = harvestsBatch.slice(i, i + 50);
+      await supabase.from("harvests").insert(chunk);
     }
 
-    if (chunks.length > 0) {
-      const results = await Promise.all(
-        chunks.map((chunk) =>
-          supabase.from("harvests").insert(chunk)
-        )
-      );
-      const failed = results.find((r) => r.error);
-      if (failed?.error) {
-        console.error("Insert harvests error:", failed.error);
-        throw new Error("Gagal insert panen: " + failed.error.message);
-      }
-    }
-
-    // ===== MUSIM CABAI — bulk insert =====
-    if (demoData.musim_cabai && demoData.musim_cabai.length > 0) {
-      const musimBatch = demoData.musim_cabai.map((m) => ({
+    // Insert Musim Cabai
+    for (const m of demoData.musim_cabai) {
+      await supabase.from("musim_cabai").insert({
         user_id: user.id,
         nama: m.nama,
         tanggal_mulai: m.tanggal_mulai,
         tanggal_selesai: m.tanggal_selesai,
         catatan: null,
         is_demo: true,
-      }));
-
-      const { error: errM } = await supabase
-        .from("musim_cabai")
-        .insert(musimBatch);
-      if (errM) {
-        console.error("Insert musim_cabai error:", errM);
-      }
+      });
     }
 
     // Upsert session
