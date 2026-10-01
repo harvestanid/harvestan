@@ -97,8 +97,8 @@ export function DemoKlien({
         </h1>
         <p className="text-base md:text-lg text-white/95 max-w-2xl mx-auto leading-relaxed">
           Data contoh dari <strong>petani sukses 10 tahun</strong>{" "}
-          (2016-2025). Lihat semua fitur premium dengan pengalaman yang{" "}
-          <strong>persis seperti akun berbayar</strong>.
+          (2016-2025). Lihat data, grafik, laporan, dan export — tanpa perlu
+          input apa pun.
         </p>
       </div>
 
@@ -112,8 +112,8 @@ export function DemoKlien({
                 Demo Sedang Aktif
               </div>
               <p className="text-sm text-green-800 leading-relaxed mb-3">
-                Anda sedang melihat data contoh. Semua fitur premium terbuka
-                penuh. Data asli Anda tidak terpengaruh dan tetap aman.
+                Anda sedang melihat data contoh. Data asli Anda tidak
+                terpengaruh dan tetap aman.
               </p>
 
               {daysRemaining !== null && (
@@ -170,8 +170,8 @@ export function DemoKlien({
               <li className="flex items-start gap-2">
                 <span className="flex-shrink-0 mt-0.5">✅</span>
                 <span>
-                  Rasakan <strong>semua fitur premium</strong> tanpa bayar
-                  — grafik, laporan, PDF, semua terbuka
+                  <strong>Lihat data, grafik, laporan</strong> — pengalaman
+                  persis seperti akun berbayar
                 </span>
               </li>
               <li className="flex items-start gap-2">
@@ -186,6 +186,13 @@ export function DemoKlien({
                 <span>
                   <strong>Tidak bisa input baru</strong> saat demo aktif —
                   klik "Selesai Demo" dulu untuk kembali input data
+                </span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="flex-shrink-0 mt-0.5">⚠️</span>
+                <span>
+                  Fitur <strong>Gabah, Panen Multi, Ukur Lahan, dan
+                  Kalkulator Pupuk</strong> tidak tersedia di demo
                 </span>
               </li>
               <li className="flex items-start gap-2">
@@ -223,7 +230,7 @@ export function DemoKlien({
               Grafik 10 Tahun
             </div>
             <p className="text-xs text-purple-800">
-              Produksi & produktivitas, filter per komoditas & penggarap
+              Produksi, produktivitas, & tren harga per komoditas
             </p>
           </div>
 
@@ -257,15 +264,60 @@ export function DemoKlien({
             </p>
           </div>
 
-          <div className="bg-red-50 border border-red-200 rounded-xl p-4">
-            <div className="text-2xl mb-2">⚖️</div>
-            <div className="font-bold text-red-900 text-sm mb-1">
-              Semua Fitur Premium
+          <div className="bg-cyan-50 border border-cyan-200 rounded-xl p-4">
+            <div className="text-2xl mb-2">📥</div>
+            <div className="font-bold text-cyan-900 text-sm mb-1">
+              Export Excel & Backup
             </div>
-            <p className="text-xs text-red-800">
-              Gabah, GPS Walking, Export Excel, Import — semua terbuka
+            <p className="text-xs text-cyan-800">
+              Download data demo dalam format Excel atau backup JSON
             </p>
           </div>
+
+          <div className="bg-pink-50 border border-pink-200 rounded-xl p-4">
+            <div className="text-2xl mb-2">📋</div>
+            <div className="font-bold text-pink-900 text-sm mb-1">
+              Log Tanam
+            </div>
+            <p className="text-xs text-pink-800">
+              Riwayat kegiatan pertanian per lahan, per musim tanam
+            </p>
+          </div>
+
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-4">
+            <div className="text-2xl mb-2">🛒</div>
+            <div className="font-bold text-indigo-900 text-sm mb-1">
+              Toko Harvestan
+            </div>
+            <p className="text-xs text-indigo-800">
+              Lihat katalog produk pertanian, alat & mesin, furniture
+            </p>
+          </div>
+        </div>
+
+        {/* INFO STRICT PREMIUM */}
+        <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4">
+          <div className="font-bold text-red-900 text-xs mb-2">
+            🔒 Fitur yang TIDAK tersedia di Demo:
+          </div>
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="bg-white border border-red-200 text-red-800 px-3 py-1 rounded-full font-medium">
+              ⚖️ Penimbangan Gabah
+            </span>
+            <span className="bg-white border border-red-200 text-red-800 px-3 py-1 rounded-full font-medium">
+              🌾 Panen Multi
+            </span>
+            <span className="bg-white border border-red-200 text-red-800 px-3 py-1 rounded-full font-medium">
+              📍 Ukur Lahan
+            </span>
+            <span className="bg-white border border-red-200 text-red-800 px-3 py-1 rounded-full font-medium">
+              🧪 Kalkulator Pupuk
+            </span>
+          </div>
+          <p className="text-[10px] text-red-700 mt-2 italic">
+            Fitur-fitur ini butuh input data aktif & perhitungan khusus —
+            hanya tersedia untuk pengguna Premium.
+          </p>
         </div>
       </div>
 
@@ -349,11 +401,11 @@ export function DemoKlien({
         <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-gray-300 rounded-2xl p-8 text-center">
           <div className="text-5xl mb-4">🎬</div>
           <div className="font-bold text-gray-900 text-xl md:text-2xl mb-3">
-            Siap Lihat Demo Premium?
+            Siap Lihat Demo?
           </div>
           <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto leading-relaxed">
-            Mulai demo sekarang dan rasakan pengalaman Harvestan Premium
-            dengan data 470+ panen 10 tahun. Gratis, tanpa batas waktu!
+            Mulai demo sekarang dan lihat data 470+ panen 10 tahun, grafik,
+            laporan, dan export — gratis, tanpa perlu input.
           </p>
           <button
             onClick={handleStart}

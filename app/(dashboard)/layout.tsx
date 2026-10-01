@@ -31,7 +31,7 @@ const MENU_ITEMS = [
   },
   { href: "/ukur-lahan", label: "Ukur", icon: "📍", premium: true },
   { href: "/log-tanam", label: "Log Tanam", icon: "📋", premium: false },
-  { href: "/kalkulator", label: "Kalkulator", icon: "🧪", premium: false },
+  { href: "/kalkulator", label: "Kalkulator", icon: "🧪", premium: true },
   { href: "/keuangan", label: "Keuangan", icon: "💰", premium: false },
   { href: "/grafik", label: "Grafik", icon: "📈", premium: false },
   { href: "/laporan", label: "Laporan", icon: "📄", premium: true },
@@ -65,7 +65,6 @@ export default async function DashboardLayout({
 
   const isAdmin = user?.email === ADMIN_EMAIL;
 
-  // Query admin-only — dijalankan paralel
   let unreadCount = 0;
   let pendingInvoiceCount = 0;
 
@@ -89,6 +88,7 @@ export default async function DashboardLayout({
 
   const demoStatus = user ? await getDemoStatus(user.id) : null;
 
+  // Untuk NavLink: pakai effectivePremium (demo tetap dianggap "bisa akses" dari navbar)
   const isPremiumActive = premiumStatus.effectivePremium;
   const isDemoActive = premiumStatus.isDemoActive;
 
@@ -107,7 +107,6 @@ export default async function DashboardLayout({
         />
       )}
 
-      {/* ===== TOP BAR ===== */}
       <nav className="bg-[#faf9f5]/80 backdrop-blur-2xl border-b border-[#2c5e2e]/10 px-3 md:px-6 py-0 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between h-16 md:h-20">
           <Link
@@ -160,7 +159,6 @@ export default async function DashboardLayout({
               </Link>
             )}
 
-            {/* 🌐 TOMBOL LANDING */}
             <Link
               href="/"
               className="inline-flex items-center gap-1 text-[10px] md:text-xs font-bold text-[#2c5e2e]/70 hover:text-[#2c5e2e] px-2.5 md:px-3 py-1.5 rounded-full hover:bg-[#2c5e2e]/5 transition-all border border-[#2c5e2e]/15 hover:border-[#2c5e2e]/30"
@@ -181,7 +179,6 @@ export default async function DashboardLayout({
         </div>
       </nav>
 
-      {/* ===== KONTEN ===== */}
       <div className="max-w-7xl mx-auto flex gap-6 px-3 md:px-6 py-4 md:py-6">
         <aside className="hidden md:block w-64 flex-shrink-0">
           <div className="bg-white rounded-2xl border border-[#2c5e2e]/10 p-3 sticky top-24 shadow-sm">
