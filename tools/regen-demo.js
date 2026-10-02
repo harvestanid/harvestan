@@ -139,7 +139,6 @@ let hId = 1;
 
 const HASIL_DASAR = { padi: 6000, jagung: 5500, cabai: 8000 };
 
-// ✅ Map musim: key = musimId, value = { penggarap_id, komoditas, tahun, panenList[] }
 const musimMap = {};
 
 function faktorVariasiCabai() {
@@ -270,7 +269,7 @@ PENGGARAP.forEach((p, pIdx) => {
 harvests.sort((a, b) => a.tanggal.localeCompare(b.tanggal));
 
 // =============================================================
-// STEP 2: HUTANG + POTONG (FIX: PASTI LUNAS di panen terakhir)
+// STEP 2: HUTANG + POTONG
 // =============================================================
 const debts = [];
 let dId = 1;
@@ -354,17 +353,12 @@ Object.entries(musimMap).forEach(([musimId, musim]) => {
     debtObjects.push(debt);
   });
 
-  // ============================================================
-  // ✅ POTONG HUTANG — PASTI LUNAS
-  // ============================================================
   if (musim.komoditas === "cabai") {
-    // Cabai: potong dibagi 12 panen, panen terakhir LUNAS
     const panenList = musim.panenList;
     const jumlahPanen = panenList.length;
     const totalHutangDebts = debtObjects.reduce((s, d) => s + d.jumlah, 0);
     const potonganPerPanen = Math.round(totalHutangDebts / jumlahPanen);
 
-    // Buat "sisa" tracking dari semua debt
     let sisaHutangTotal = totalHutangDebts;
 
     panenList.forEach((panen, i) => {
@@ -405,7 +399,6 @@ Object.entries(musimMap).forEach(([musimId, musim]) => {
       panen.profit_penggarap -= potongAktual;
     });
   } else {
-    // Padi/Jagung: LUNAS di panen itu
     const panenTarget = musim.panenList[0];
     let totalPotong = 0;
     const potonganLog = [];

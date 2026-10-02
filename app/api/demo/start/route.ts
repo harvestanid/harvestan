@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import fs from "fs";
 import path from "path";
 
@@ -21,7 +22,6 @@ function genUUID(): string {
   });
 }
 
-// Cache file supaya gak baca tiap request
 let cachedRaw: string | null = null;
 function loadDemoJSON(): DemoData {
   if (!cachedRaw) {
@@ -59,14 +59,17 @@ export async function POST() {
       }
     }
 
-    // Hapus data demo lama — PARALEL
+    // Admin client — bypass RLS untuk delete & insert massal
+    const admin = createAdminClient();
+
+    // Hapus SEMUA data demo lama (pakai admin client biar gak kena RLS)
     await Promise.all([
-      supabase.from("harvests").delete().eq("user_id", user.id).eq("is_demo", true),
-      supabase.from("debts").delete().eq("user_id", user.id).eq("is_demo", true),
-      supabase.from("musim_cabai").delete().eq("user_id", user.id).eq("is_demo", true),
-      supabase.from("lands").delete().eq("user_id", user.id).eq("is_demo", true),
-      supabase.from("penggaraps").delete().eq("user_id", user.id).eq("is_demo", true),
-      supabase.from("categories").delete().eq("user_id", user.id).eq("is_demo", true),
+      admin.from("harvests").delete().eq("user_id", user.id).eq("is_demo", true),
+      admin.from("debts").delete().eq("user_id", user.id).eq("is_demo", true),
+      admin.from("musim_cabai").delete().eq("user_id", user.id).eq("is_demo", true),
+      admin.from("lands").delete().eq("user_id", user.id).eq("is_demo", true),
+      admin.from("penggaraps").delete().eq("user_id", user.id).eq("is_demo", true),
+      admin.from("categories").delete().eq("user_id", user.id).eq("is_demo", true),
     ]);
 
     const demoData = loadDemoJSON();
@@ -75,7 +78,7 @@ export async function POST() {
     const mapLahan: Record<string, string> = {};
     const mapDebt: Record<string, string> = {};
 
-    // ===== PENGARAP — bulk insert =====
+    // ===== PENGGARAP — bulk insert =====
     const penggarapBatch = demoData.penggarap.map((p) => {
       const newId = genUUID();
       mapPenggarap[p.id] = newId;
@@ -91,7 +94,7 @@ export async function POST() {
     });
 
     if (penggarapBatch.length > 0) {
-      const { error: errP } = await supabase
+      const { error: errP } = await admin
         .from("penggaraps")
         .insert(penggarapBatch);
       if (errP) {
@@ -100,7 +103,7 @@ export async function POST() {
       }
     }
 
-    // ===== LAHAN — bulk insert =====
+    // ===== LAHAN — bulk insert (dengan tipe_garap) =====
     const lahanBatch = demoData.lahan.map((l) => {
       const newId = genUUID();
       mapLahan[l.id] = newId;
@@ -112,12 +115,16 @@ export async function POST() {
         luas: l.luas,
         lokasi_koordinat: l.lokasi_koordinat || null,
         polygon: l.polygon || null,
+        tipe_garap: l.tipe_garap || "mandiri",
+        nama_owner_external: l.nama_owner_external || null,
+        persen_owner_default: l.persen_owner_default || 50,
+        persen_penggarap_default: l.persen_penggarap_default || 50,
         is_demo: true,
       };
     });
 
     if (lahanBatch.length > 0) {
-      const { error: errL } = await supabase.from("lands").insert(lahanBatch);
+      const { error: errL } = await admin.from("lands").insert(lahanBatch);
       if (errL) {
         console.error("Insert lands error:", errL);
         throw new Error("Gagal insert lahan: " + errL.message);
@@ -135,7 +142,7 @@ export async function POST() {
         is_demo: true,
       }));
 
-      const { error: errC } = await supabase
+      const { error: errC } = await admin
         .from("categories")
         .insert(catBatch);
       if (errC) {
@@ -162,7 +169,7 @@ export async function POST() {
     });
 
     if (debtBatch.length > 0) {
-      const { error: errD } = await supabase.from("debts").insert(debtBatch);
+      const { error: errD } = await admin.from("debts").insert(debtBatch);
       if (errD) {
         console.error("Insert debts error:", errD);
         throw new Error("Gagal insert hutang: " + errD.message);
@@ -221,7 +228,6 @@ export async function POST() {
       };
     });
 
-    // Bagi jadi chunk 100, insert PARALEL
     const CHUNK = 100;
     const chunks: any[][] = [];
     for (let i = 0; i < harvestsBatch.length; i += CHUNK) {
@@ -230,9 +236,7 @@ export async function POST() {
 
     if (chunks.length > 0) {
       const results = await Promise.all(
-        chunks.map((chunk) =>
-          supabase.from("harvests").insert(chunk)
-        )
+        chunks.map((chunk) => admin.from("harvests").insert(chunk))
       );
       const failed = results.find((r) => r.error);
       if (failed?.error) {
@@ -252,7 +256,7 @@ export async function POST() {
         is_demo: true,
       }));
 
-      const { error: errM } = await supabase
+      const { error: errM } = await admin
         .from("musim_cabai")
         .insert(musimBatch);
       if (errM) {
@@ -265,7 +269,7 @@ export async function POST() {
     expiresAt.setDate(expiresAt.getDate() + 7);
 
     if (existingSession) {
-      await supabase
+      await admin
         .from("demo_sessions")
         .update({
           is_active: true,
@@ -276,7 +280,7 @@ export async function POST() {
         })
         .eq("user_id", user.id);
     } else {
-      await supabase.from("demo_sessions").insert({
+      await admin.from("demo_sessions").insert({
         user_id: user.id,
         is_active: true,
         expires_at: expiresAt.toISOString(),
