@@ -6,6 +6,7 @@ import { TombolAksiLahan } from "./tombol-aksi";
 import PetaMiniWrapper from "@/components/peta-mini-wrapper";
 import { CtaThreshold } from "@/components/cta-threshold";
 import { BadgeTipeGarap } from "@/components/badge-tipe-garap";
+import { RiwayatPanen } from "./riwayat-panen";
 import {
   getKategoriList,
   hitungProduktivitasPerKomoditas,
@@ -143,7 +144,6 @@ export default async function DetailLahanPage({
 
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
-      {/* Header */}
       <div className="mb-6">
         <Link
           href={`/penggarap/${id}`}
@@ -181,7 +181,6 @@ export default async function DetailLahanPage({
         </p>
       </div>
 
-      {/* Info box untuk mode penggarap */}
       {isPenggarap && namaOwnerExternal && (
         <div className="bg-orange-50 border-2 border-orange-300 rounded-2xl p-4 mb-6">
           <div className="flex items-start gap-3">
@@ -195,7 +194,6 @@ export default async function DetailLahanPage({
         </div>
       )}
 
-      {/* Info box untuk mode mandiri */}
       {isMandiri && (
         <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-4 mb-6">
           <div className="flex items-start gap-3">
@@ -208,7 +206,6 @@ export default async function DetailLahanPage({
         </div>
       )}
 
-      {/* Mini-map */}
       {tampilkanPeta && (
         <div className="mb-6 relative z-0">
           <PetaMiniWrapper
@@ -219,7 +216,6 @@ export default async function DetailLahanPage({
         </div>
       )}
 
-      {/* Tombol Aksi */}
       <div className="mb-6">
         <TombolAksiLahan
           landId={lahan.id}
@@ -229,7 +225,6 @@ export default async function DetailLahanPage({
         />
       </div>
 
-      {/* Ringkasan */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
           <div className="text-[10px] text-gray-500 uppercase">Total Panen</div>
@@ -274,7 +269,6 @@ export default async function DetailLahanPage({
         )}
       </div>
 
-      {/* Produktivitas per Komoditas */}
       {produktivitas.length > 0 && (
         <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6">
           <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
@@ -334,7 +328,6 @@ export default async function DetailLahanPage({
         </div>
       )}
 
-      {/* Breakdown per Musim Cabai */}
       {breakdownMusim.length > 0 && (
         <div className="bg-gradient-to-br from-red-50 to-orange-50 border-2 border-orange-300 rounded-xl p-5 mb-6">
           <h2 className="font-bold text-orange-900 mb-4">
@@ -375,110 +368,13 @@ export default async function DetailLahanPage({
         </div>
       )}
 
-      {/* Riwayat Panen */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-          <h2 className="font-bold text-gray-900">
-            📜 Riwayat Panen ({(harvests || []).length})
-          </h2>
-          <Link
-            href={`/penggarap/${id}/lahan/${landId}/panen/baru`}
-            className="bg-green-700 hover:bg-green-800 text-white text-xs font-bold px-3 py-2 rounded-lg transition"
-          >
-            + Input Panen
-          </Link>
-        </div>
-
-        {(harvests || []).length === 0 ? (
-          <div className="text-center py-8 text-gray-400 italic text-sm">
-            Belum ada riwayat panen di lahan ini
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {(harvests || []).map((h) => {
-              const prod = Number(h.hasil_kg) / Number(lahan.luas);
-              const adaPotongan = Number(h.potongan_hutang || 0) > 0;
-              return (
-                <Link
-                  key={h.id}
-                  href={`/penggarap/${id}/lahan/${landId}/panen/${h.id}`}
-                  className="block bg-gray-50 hover:bg-green-50 rounded-lg p-3 border border-gray-200 transition"
-                >
-                  <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-xs font-bold text-gray-800">
-                        {KOMODITAS_LABEL[h.komoditas] || h.komoditas}
-                      </span>
-                      {h.musim && (
-                        <span className="text-[10px] bg-purple-100 text-purple-800 px-2 py-0.5 rounded-full font-bold">
-                          🗓️ {h.musim}
-                        </span>
-                      )}
-                      {adaPotongan && (
-                        <span className="text-[10px] bg-red-100 text-red-800 px-2 py-0.5 rounded-full font-bold">
-                          💸 Potong Hutang
-                        </span>
-                      )}
-                      {isMandiri && (
-                        <span className="text-[10px] bg-[#2c5e2e]/10 text-[#2c5e2e] px-2 py-0.5 rounded-full font-bold">
-                          🌱 Full Penggarap
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[10px] text-gray-500">
-                      {new Date(h.tanggal).toLocaleDateString("id-ID", {
-                        day: "numeric",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </div>
-                  <div className={`grid ${isMandiri ? "grid-cols-3" : "grid-cols-4"} gap-2 text-xs`}>
-                    <div>
-                      <div className="text-gray-500 text-[10px]">Hasil</div>
-                      <div className="font-bold text-gray-800">
-                        {Number(h.hasil_kg).toLocaleString("id-ID")} Kg
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-gray-500 text-[10px]">
-                        Produktivitas
-                      </div>
-                      <div className="font-bold text-green-700">
-                        {prod.toFixed(0)} Kg/Ha
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-gray-500 text-[10px]">
-                        Profit Bersih
-                      </div>
-                      <div className="font-bold text-blue-700 break-words">
-                        {formatRp(Number(h.profit_bersih || 0))}
-                      </div>
-                    </div>
-                    {!isMandiri && (
-                      <div>
-                        <div className="text-gray-500 text-[10px]">
-                          Bagi Hasil
-                        </div>
-                        <div className="text-[10px] font-bold">
-                          <span className="text-green-700">
-                            👤 {formatRp(Number(h.profit_owner || 0))}
-                          </span>
-                          {" · "}
-                          <span className="text-orange-700">
-                            👨‍🌾 {formatRp(Number(h.profit_penggarap || 0))}
-                          </span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      <RiwayatPanen
+        penggarapId={id}
+        landId={landId}
+        luas={Number(lahan.luas)}
+        harvests={(harvests || []) as any}
+        isMandiri={isMandiri}
+      />
     </div>
   );
 }

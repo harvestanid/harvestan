@@ -2,10 +2,10 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { FormPanenFields } from "./form-client";
+import { TombolSubmitPanen } from "./tombol-submit";
 
 async function tambahPanen(formData: FormData) {
   "use server";
-
   const supabase = await createClient();
   const {
     data: { user },
@@ -330,7 +330,6 @@ export default async function TambahPanenPage({
         </p>
       </div>
 
-      {/* Info tipe garap */}
       {isMandiri && (
         <div className="bg-green-50 border-2 border-green-200 rounded-2xl p-4 mb-4">
           <div className="flex items-start gap-3">
@@ -397,20 +396,7 @@ export default async function TambahPanenPage({
           persenPenggarapDefault={persenPenggarapDefault}
         />
 
-        <div className="flex gap-3 pt-2">
-          <button
-            type="submit"
-            className="bg-green-700 hover:bg-green-800 text-white font-medium px-6 py-3 rounded-lg transition flex-1"
-          >
-            💾 Simpan Panen
-          </button>
-          <Link
-            href={`/penggarap/${id}/lahan/${landId}`}
-            className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-6 py-3 rounded-lg transition"
-          >
-            Batal
-          </Link>
-        </div>
+        <TombolSubmitPanen hrefBatal={`/penggarap/${id}/lahan/${landId}`} />
       </form>
     </div>
   );
