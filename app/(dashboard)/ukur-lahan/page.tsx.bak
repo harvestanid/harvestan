@@ -10,11 +10,7 @@ export const metadata = {
   title: "Ukur Lahan",
 };
 
-export default async function UkurLahanPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ edit?: string }>;
-}) {
+export default async function UkurLahanPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -121,41 +117,10 @@ export default async function UkurLahanPage({
     );
   }
 
-  const { edit } = await searchParams;
-  const editLandId = edit || null;
-
-  // Kalau mode edit, ambil data lahan lama
-  let editData: {
-    id: string;
-    penggarap_id: string;
-    nama: string;
-    luas: number;
-    lokasi_koordinat: string | null;
-  } | null = null;
-
-  if (editLandId) {
-    const { data: lahan } = await supabase
-      .from("lands")
-      .select("id, penggarap_id, nama, luas, lokasi_koordinat")
-      .eq("id", editLandId)
-      .eq("user_id", user.id)
-      .single();
-
-    if (lahan) {
-      editData = {
-        id: lahan.id,
-        penggarap_id: lahan.penggarap_id,
-        nama: lahan.nama,
-        luas: Number(lahan.luas),
-        lokasi_koordinat: lahan.lokasi_koordinat,
-      };
-    }
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f5f7f3] via-white to-[#f5f7f3]">
       <div className="max-w-3xl mx-auto px-3 md:px-6 py-4 md:py-8">
-        <UkurContent editData={editData} />
+        <UkurContent />
       </div>
     </div>
   );

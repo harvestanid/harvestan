@@ -13,29 +13,18 @@ import {
 type Titik = { lat: number; lng: number };
 type Penggarap = { id: string; nama: string };
 
-type EditData = {
-  id: string;
-  penggarap_id: string;
-  nama: string;
-  luas: number;
-  lokasi_koordinat: string | null;
-};
-
 type Props = {
   penggaraps: Penggarap[];
   penggarapId: string;
   setPenggarapId: (id: string) => void;
-  editData?: EditData | null;
 };
 
 export default function PetaPilih({
   penggaraps,
   penggarapId,
   setPenggarapId,
-  editData = null,
 }: Props) {
   const router = useRouter();
-  const isEditMode = !!editData;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<any>(null);
@@ -48,13 +37,14 @@ export default function PetaPilih({
   const [luasM2, setLuasM2] = useState(0);
   const [luasHa, setLuasHa] = useState(0);
   const [kelilingM, setKelilingM] = useState(0);
-  const [namaLahan, setNamaLahan] = useState(editData?.nama || "");
+  const [namaLahan, setNamaLahan] = useState("");
   const [sedangSimpan, setSedangSimpan] = useState(false);
   const [pesanSukses, setPesanSukses] = useState<string | null>(null);
   const [pesanError, setPesanError] = useState<string | null>(null);
   const [infoGPS, setInfoGPS] = useState("");
   const [sedangCariLokasi, setSedangCariLokasi] = useState(false);
 
+  // ===== INIT MAP =====
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (mapRef.current) return;
@@ -67,23 +57,9 @@ export default function PetaPilih({
 
       if (cancelled || !containerRef.current || mapRef.current) return;
 
-      // Kalau edit mode, center ke lahan lama
-      let center: [number, number] = [-6.2, 106.8];
-      let zoom = 18;
-      if (editData?.lokasi_koordinat) {
-        const parts = editData.lokasi_koordinat.split(",");
-        if (parts.length === 2) {
-          const lat = parseFloat(parts[0]);
-          const lng = parseFloat(parts[1]);
-          if (!isNaN(lat) && !isNaN(lng)) {
-            center = [lat, lng];
-          }
-        }
-      }
-
       const map = L.map(containerRef.current, {
-        center,
-        zoom,
+        center: [-6.2, 106.8],
+        zoom: 18,
         zoomControl: true,
         maxZoom: 22,
       });
@@ -116,6 +92,7 @@ export default function PetaPilih({
         weight: 3,
       }).addTo(map);
 
+      // Klik peta = tambah titik
       map.on("click", (e: any) => {
         const { lat, lng } = e.latlng;
         setTitik((prev) => [...prev, { lat, lng }]);
@@ -142,6 +119,7 @@ export default function PetaPilih({
     };
   }, []);
 
+  // ===== SYNC TITIK KE MAP =====
   useEffect(() => {
     const map = mapRef.current;
     const L = leafletRef.current;
@@ -152,6 +130,7 @@ export default function PetaPilih({
     polylineRef.current?.setLatLngs(latlngs);
     polygonRef.current?.setLatLngs(latlngs.length >= 3 ? latlngs : []);
 
+    // Rebuild marker (jumlah titik bisa berubah karena undo/reset)
     if (markersRef.current.length !== titik.length) {
       markersRef.current.forEach((m) => map.removeLayer(m));
       markersRef.current = [];
@@ -171,6 +150,7 @@ export default function PetaPilih({
     setLuasM2(area);
     setLuasHa(area / 10000);
 
+    // Keliling
     let kel = 0;
     if (titik.length >= 2) {
       const R = 6378137;
@@ -196,7 +176,7 @@ export default function PetaPilih({
 
   function reset() {
     setTitik([]);
-    setNamaLahan(editData?.nama || "");
+    setNamaLahan("");
     setPesanSukses(null);
     setPesanError(null);
     setInfoGPS("");
@@ -238,7 +218,7 @@ export default function PetaPilih({
       setPesanError("❌ Pilih penggarap dulu");
       return;
     }
-    if (!isEditMode && !namaLahan.trim()) {
+    if (!namaLahan.trim()) {
       setPesanError("❌ Isi nama lahan dulu");
       return;
     }
@@ -251,27 +231,11 @@ export default function PetaPilih({
       return;
     }
 
-    // Konfirmasi khusus mode edit
-    if (isEditMode && editData) {
-      const pesan =
-        `⚠️ Update lahan "${editData.nama}"?\n\n` +
-        `Luas lama: ${editData.luas.toFixed(3)} Ha\n` +
-        `Luas baru: ${luasHa.toFixed(3)} Ha\n` +
-        `Titik: ${titik.length}\n\n` +
-        `Ketik "UPDATE" untuk konfirmasi:`;
-      const konfirmasi = prompt(pesan);
-      if (konfirmasi === null) return;
-      if (konfirmasi.trim().toUpperCase() !== "UPDATE") {
-        setPesanError("❌ Konfirmasi tidak cocok. Batal.");
-        return;
-      }
-    } else {
-      const uuidRe =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRe.test(penggarapId)) {
-        setPesanError("❌ ID penggarap tidak valid");
-        return;
-      }
+    const uuidRe =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRe.test(penggarapId)) {
+      setPesanError("❌ ID penggarap tidak valid");
+      return;
     }
 
     const polygon = keGeoJSONPolygon(titik);
@@ -285,74 +249,34 @@ export default function PetaPilih({
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Sesi login habis — login ulang");
 
-      if (isEditMode && editData) {
-        // UPDATE
-        const { error: errUpdate } = await supabase
-          .from("lands")
-          .update({
-            luas: parseFloat(luasHa.toFixed(3)),
-            lokasi_koordinat: koordinatStr,
-            polygon,
-          })
-          .eq("id", editData.id)
-          .eq("user_id", user.id);
+      const payload = {
+        user_id: user.id,
+        penggarap_id: penggarapId,
+        nama: namaLahan.trim(),
+        luas: parseFloat(luasHa.toFixed(3)),
+        lokasi_koordinat: koordinatStr,
+        polygon,
+      };
 
-        if (errUpdate) {
-          const detail = [errUpdate.code, errUpdate.details, errUpdate.hint]
-            .filter(Boolean)
-            .join(" | ");
-          throw new Error(
-            `${errUpdate.message}${detail ? ` [${detail}]` : ""}`
-          );
-        }
+      const { error: errInsert } = await supabase.from("lands").insert(payload);
 
-        setPesanSukses(
-          `✅ Lahan "${editData.nama}" berhasil diupdate! Luas: ${luasHa.toFixed(
-            3
-          )} Ha`
-        );
-
-        setTimeout(() => {
-          router.push(
-            `/penggarap/${editData.penggarap_id}/lahan/${editData.id}`
-          );
-          router.refresh();
-        }, 1200);
-      } else {
-        // INSERT
-        const payload = {
-          user_id: user.id,
-          penggarap_id: penggarapId,
-          nama: namaLahan.trim(),
-          luas: parseFloat(luasHa.toFixed(3)),
-          lokasi_koordinat: koordinatStr,
-          polygon,
-        };
-
-        const { error: errInsert } = await supabase
-          .from("lands")
-          .insert(payload);
-
-        if (errInsert) {
-          const detail = [errInsert.code, errInsert.details, errInsert.hint]
-            .filter(Boolean)
-            .join(" | ");
-          throw new Error(
-            `${errInsert.message}${detail ? ` [${detail}]` : ""}`
-          );
-        }
-
-        setPesanSukses(
-          `✅ Lahan "${namaLahan}" berhasil disimpan! Luas: ${luasHa.toFixed(
-            3
-          )} Ha`
-        );
-
-        setTimeout(() => {
-          router.push(`/penggarap/${penggarapId}`);
-          router.refresh();
-        }, 1200);
+      if (errInsert) {
+        const detail = [errInsert.code, errInsert.details, errInsert.hint]
+          .filter(Boolean)
+          .join(" | ");
+        throw new Error(`${errInsert.message}${detail ? ` [${detail}]` : ""}`);
       }
+
+      setPesanSukses(
+        `✅ Lahan "${namaLahan}" berhasil disimpan! Luas: ${luasHa.toFixed(
+          3
+        )} Ha · ${titik.length} titik`
+      );
+
+      setTimeout(() => {
+        router.push(`/penggarap/${penggarapId}`);
+        router.refresh();
+      }, 1200);
     } catch (err: any) {
       setPesanError("❌ Gagal simpan: " + (err.message || "Unknown error"));
     } finally {
@@ -361,62 +285,46 @@ export default function PetaPilih({
   }
 
   const bisaSimpan =
-    titik.length >= 3 &&
-    luasM2 >= 100 &&
-    (isEditMode || namaLahan.trim().length > 0);
+    titik.length >= 3 && luasM2 >= 100 && namaLahan.trim().length > 0;
 
   return (
     <div className="space-y-4">
-      {/* INFO EDIT */}
-      {isEditMode && editData && (
-        <div className="bg-amber-50 border-2 border-amber-300 rounded-3xl p-4">
-          <p className="text-xs text-amber-900 leading-relaxed">
-            ✏️ <strong>Mode Edit:</strong> Tap ulang batas lahan{" "}
-            <strong>{editData.nama}</strong>. Setelah selesai, koordinat &
-            polygon lama akan <strong>ditimpa</strong>.
-          </p>
-        </div>
-      )}
+      {/* INFO */}
+      <div className="bg-blue-50 border-2 border-blue-200 rounded-3xl p-4">
+        <p className="text-xs text-blue-900 leading-relaxed">
+          👆 <strong>Tap peta</strong> di setiap sudut batas lahan (minimal 3
+          titik). Luas otomatis terhitung. Cocok untuk lahan luas atau
+          memperkirakan dulu sebelum ke lapangan.
+        </p>
+      </div>
 
-      {!isEditMode && (
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-3xl p-4">
-          <p className="text-xs text-blue-900 leading-relaxed">
-            👆 <strong>Tap peta</strong> di setiap sudut batas lahan (minimal 3
-            titik). Luas otomatis terhitung. Cocok untuk lahan luas atau
-            memperkirakan dulu sebelum ke lapangan.
-          </p>
-        </div>
-      )}
-
-      {/* PILIH PENGGARAP — sembunyikan di mode edit */}
-      {!isEditMode && (
-        <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-4 shadow-sm">
-          <label className="block text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
-            👨‍🌾 Pilih Penggarap <span className="text-red-500">*</span>
-          </label>
-          {penggaraps.length === 0 ? (
-            <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-3 text-xs text-[#2c5e2e]">
-              Belum ada penggarap.{" "}
-              <Link href="/penggarap/baru" className="font-bold underline">
-                Tambah penggarap dulu
-              </Link>
-            </div>
-          ) : (
-            <select
-              value={penggarapId}
-              onChange={(e) => setPenggarapId(e.target.value)}
-              className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium"
-            >
-              <option value="">-- Pilih Penggarap --</option>
-              {penggaraps.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.nama}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-      )}
+      {/* PILIH PENGGARAP */}
+      <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-4 shadow-sm">
+        <label className="block text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
+          👨‍🌾 Pilih Penggarap <span className="text-red-500">*</span>
+        </label>
+        {penggaraps.length === 0 ? (
+          <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-3 text-xs text-[#2c5e2e]">
+            Belum ada penggarap.{" "}
+            <Link href="/penggarap/baru" className="font-bold underline">
+              Tambah penggarap dulu
+            </Link>
+          </div>
+        ) : (
+          <select
+            value={penggarapId}
+            onChange={(e) => setPenggarapId(e.target.value)}
+            className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium"
+          >
+            <option value="">-- Pilih Penggarap --</option>
+            {penggaraps.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nama}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
 
       {/* STATS */}
       <div className="grid grid-cols-3 gap-2 md:gap-3">
@@ -451,6 +359,7 @@ export default function PetaPilih({
         </div>
       </div>
 
+      {/* INFO GPS */}
       {infoGPS && (
         <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-3">
           <p className="text-[11px] text-[#2c5e2e] font-semibold">{infoGPS}</p>
@@ -504,7 +413,7 @@ export default function PetaPilih({
             </div>
             <div className="min-w-0">
               <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest">
-                {isEditMode ? "Update Lahan" : "Simpan Lahan"}
+                Simpan Lahan
               </div>
               <div className="text-[10px] text-[#2c5e2e]/60">
                 {luasHa.toFixed(3)} Ha · {titik.length} titik
@@ -512,34 +421,16 @@ export default function PetaPilih({
             </div>
           </div>
 
-          {!isEditMode && (
-            <>
-              <label className="block text-xs font-medium text-[#2c5e2e] mb-1">
-                Nama Lahan <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={namaLahan}
-                onChange={(e) => setNamaLahan(e.target.value)}
-                placeholder="Contoh: Sawah Utama"
-                className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium"
-              />
-            </>
-          )}
-
-          {isEditMode && editData && (
-            <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3 mb-2">
-              <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">
-                Lahan yang diupdate
-              </div>
-              <div className="text-sm font-bold text-[#2c5e2e]">
-                {editData.nama}
-              </div>
-              <div className="text-[11px] text-gray-500">
-                Luas lama: {editData.luas.toFixed(3)} Ha
-              </div>
-            </div>
-          )}
+          <label className="block text-xs font-medium text-[#2c5e2e] mb-1">
+            Nama Lahan <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={namaLahan}
+            onChange={(e) => setNamaLahan(e.target.value)}
+            placeholder="Contoh: Sawah Utama"
+            className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium"
+          />
 
           {pesanError && (
             <div className="mt-2 bg-red-50 border-2 border-red-200 rounded-xl p-2.5">
@@ -562,11 +453,7 @@ export default function PetaPilih({
             disabled={sedangSimpan || !bisaSimpan}
             className="w-full mt-3 bg-[#2c5e2e] hover:bg-[#1f4521] text-white font-bold py-3.5 rounded-full transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 shadow-md"
           >
-            {sedangSimpan
-              ? "⏳ Menyimpan..."
-              : isEditMode
-              ? "💾 Update Lahan Ini"
-              : "💾 Simpan ke Penggarap"}
+            {sedangSimpan ? "⏳ Menyimpan..." : "💾 Simpan ke Penggarap"}
           </button>
         </div>
       )}
@@ -579,6 +466,7 @@ export default function PetaPilih({
         </div>
       )}
 
+      {/* TIPS */}
       <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-3xl p-4">
         <div className="text-xs font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
           💡 Tips Pilih di Peta

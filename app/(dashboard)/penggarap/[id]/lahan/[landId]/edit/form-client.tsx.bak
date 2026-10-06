@@ -173,18 +173,6 @@ export function FormEditLahan({
           📍 Format: latitude,longitude (jangan lupa tanda minus untuk lintang
           selatan)
         </p>
-
-        {/* TOMBOL UKUR ULANG GPS */}
-        <Link
-          href={`/ukur-lahan?edit=${landId}`}
-          className="mt-3 w-full inline-flex items-center justify-center gap-2 bg-gradient-to-br from-[#f0b429] to-[#e6a617] hover:from-[#e6a617] hover:to-[#d99b0f] text-[#2c5e2e] font-bold px-4 py-3 rounded-2xl shadow-md transition-all hover:scale-[1.02]"
-        >
-          📍 Ukur Ulang dengan GPS
-        </Link>
-        <p className="text-[10px] text-gray-500 mt-2 leading-relaxed">
-          💡 Ukur ulang lahan dengan jalan keliling (GPS walking) atau pilih
-          titik di peta. Luas, koordinat, dan polygon akan otomatis ter-update.
-        </p>
       </div>
 
       {/* Pembatas + TipeGarapPicker konteks "semua" untuk edit */}

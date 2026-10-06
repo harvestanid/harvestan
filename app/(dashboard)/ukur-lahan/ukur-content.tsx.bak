@@ -16,23 +16,13 @@ type Point = { lat: number; lng: number; acc: number };
 type Penggarap = { id: string; nama: string };
 type Mode = "gps" | "peta";
 
-type EditData = {
-  id: string;
-  penggarap_id: string;
-  nama: string;
-  luas: number;
-  lokasi_koordinat: string | null;
-};
-
-type Props = {
-  editData?: EditData | null;
-};
-
-const JARAK_MIN_METER = 10;
-const AKURASI_MAKS_METER = 40;
-const GLITCH_LONCAT_METER = 40;
-const MIN_FIX_SEBELUM_TITIK = 3;
-const Q_PROSES = 1.5;
+// ===================== KONFIGURASI =====================
+const JARAK_MIN_METER = 10;      // titik ungu baru tiap 10 m jalan
+const AKURASI_MAKS_METER = 40;   // >40m ditolak, sisanya ditahan Kalman
+const GLITCH_LONCAT_METER = 40;  // loncatan >40m diabaikan (anti-glitch)
+const MIN_FIX_SEBELUM_TITIK = 3; // tunggu 3 fix stabil utk titik pertama
+const Q_PROSES = 1.5;            // process noise Kalman (m/s^2)^2
+// =======================================================
 
 const M_PER_DEG_LAT = 111320;
 
@@ -115,14 +105,11 @@ class KalmanGPS {
   }
 }
 
-export default function UkurContent({ editData = null }: Props) {
+export default function UkurContent() {
   const router = useRouter();
-  const isEditMode = !!editData;
 
   const [mode, setMode] = useState<Mode>("gps");
-  const [penggarapId, setPenggarapId] = useState(
-    editData?.penggarap_id || ""
-  );
+  const [penggarapId, setPenggarapId] = useState("");
   const [penggaraps, setPenggaraps] = useState<Penggarap[]>([]);
   const [loadingPenggaraps, setLoadingPenggaraps] = useState(false);
 
@@ -136,7 +123,7 @@ export default function UkurContent({ editData = null }: Props) {
   const [infoGPS, setInfoGPS] = useState("");
   const [sedangSimpan, setSedangSimpan] = useState(false);
 
-  const [namaLahan, setNamaLahan] = useState(editData?.nama || "");
+  const [namaLahan, setNamaLahan] = useState("");
   const [pesanSukses, setPesanSukses] = useState<string | null>(null);
   const [pesanErrorSimpan, setPesanErrorSimpan] = useState<string | null>(null);
 
@@ -186,6 +173,7 @@ export default function UkurContent({ editData = null }: Props) {
     setKelilingM(hitungKeliling(pts));
   }
 
+  // ===================== LOAD PENGGARAP =====================
   useEffect(() => {
     async function load() {
       setLoadingPenggaraps(true);
@@ -208,6 +196,7 @@ export default function UkurContent({ editData = null }: Props) {
     load();
   }, [router]);
 
+  // ===================== INIT MAP (sekali) =====================
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (mode !== "gps") return;
@@ -284,6 +273,7 @@ export default function UkurContent({ editData = null }: Props) {
     };
   }, [mode]);
 
+  // ===================== SYNC VISUAL TITIK UNGU =====================
   useEffect(() => {
     if (mode !== "gps") return;
     const map = mapRef.current;
@@ -318,6 +308,7 @@ export default function UkurContent({ editData = null }: Props) {
     }
   }, [points, mode]);
 
+  // ===================== GPS: START =====================
   function startTracking() {
     if (!penggarapId) {
       setError("❌ Pilih penggarap dulu");
@@ -517,7 +508,7 @@ export default function UkurContent({ editData = null }: Props) {
     setAkurasiNow(null);
     setError(null);
     setInfoGPS("");
-    setNamaLahan(editData?.nama || "");
+    setNamaLahan("");
     setPesanSukses(null);
     setPesanErrorSimpan(null);
     setIsTracking(false);
@@ -547,6 +538,7 @@ export default function UkurContent({ editData = null }: Props) {
     }
   }
 
+  // ===================== SIMPAN LAHAN (GPS MODE) =====================
   async function handleSimpan() {
     setPesanErrorSimpan(null);
     setPesanSukses(null);
@@ -568,32 +560,13 @@ export default function UkurContent({ editData = null }: Props) {
       return;
     }
 
-    // Konfirmasi khusus mode edit
-    if (isEditMode && editData) {
-      const luasLama = editData.luas;
-      const luasBaru = parseFloat(luasHa.toFixed(3));
-      const pesan =
-        `⚠️ Update lahan "${editData.nama}"?\n\n` +
-        `Luas lama: ${luasLama.toFixed(3)} Ha\n` +
-        `Luas baru: ${luasBaru.toFixed(3)} Ha\n` +
-        `Titik GPS: ${points.length}\n\n` +
-        `Koordinat & polygon lama akan DITIMPA.\n\n` +
-        `Ketik "UPDATE" untuk konfirmasi:`;
-      const konfirmasi = prompt(pesan);
-      if (konfirmasi === null) return;
-      if (konfirmasi.trim().toUpperCase() !== "UPDATE") {
-        setPesanErrorSimpan("❌ Konfirmasi tidak cocok. Batal.");
-        return;
-      }
-    } else {
-      const uuidRe =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!uuidRe.test(penggarapId)) {
-        setPesanErrorSimpan(
-          "❌ ID penggarap tidak valid. Muat ulang halaman lalu pilih ulang penggarap."
-        );
-        return;
-      }
+    const uuidRe =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRe.test(penggarapId)) {
+      setPesanErrorSimpan(
+        "❌ ID penggarap tidak valid. Muat ulang halaman lalu pilih ulang penggarap."
+      );
+      return;
     }
 
     const polygon = keGeoJSONPolygon(points);
@@ -607,76 +580,37 @@ export default function UkurContent({ editData = null }: Props) {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Sesi login habis — silakan login ulang");
 
-      if (isEditMode && editData) {
-        // ===== MODE EDIT: UPDATE =====
-        const { error: errUpdate } = await supabase
-          .from("lands")
-          .update({
-            luas: parseFloat(luasHa.toFixed(3)),
-            lokasi_koordinat: koordinatStr,
-            polygon,
-          })
-          .eq("id", editData.id)
-          .eq("user_id", user.id);
+      const payload = {
+        user_id: user.id,
+        penggarap_id: penggarapId,
+        nama: namaLahan.trim(),
+        luas: parseFloat(luasHa.toFixed(3)),
+        lokasi_koordinat: koordinatStr,
+        polygon,
+      };
 
-        if (errUpdate) {
-          console.error("Update lahan error:", JSON.stringify(errUpdate));
-          const detail = [errUpdate.code, errUpdate.details, errUpdate.hint]
-            .filter(Boolean)
-            .join(" | ");
-          throw new Error(
-            `${errUpdate.message}${detail ? ` [${detail}]` : ""}`
-          );
-        }
+      const { error: errInsert } = await supabase.from("lands").insert(payload);
 
-        setPesanSukses(
-          `✅ Lahan "${editData.nama}" berhasil diupdate! Luas baru: ${luasHa.toFixed(
-            3
-          )} Ha · ${points.length} titik`
+      if (errInsert) {
+        console.error("Supabase insert error:", JSON.stringify(errInsert));
+        const detail = [errInsert.code, errInsert.details, errInsert.hint]
+          .filter(Boolean)
+          .join(" | ");
+        throw new Error(
+          `${errInsert.message}${detail ? ` [${detail}]` : ""}`
         );
-
-        setTimeout(() => {
-          router.push(
-            `/penggarap/${editData.penggarap_id}/lahan/${editData.id}`
-          );
-          router.refresh();
-        }, 1200);
-      } else {
-        // ===== MODE BARU: INSERT =====
-        const payload = {
-          user_id: user.id,
-          penggarap_id: penggarapId,
-          nama: namaLahan.trim(),
-          luas: parseFloat(luasHa.toFixed(3)),
-          lokasi_koordinat: koordinatStr,
-          polygon,
-        };
-
-        const { error: errInsert } = await supabase
-          .from("lands")
-          .insert(payload);
-
-        if (errInsert) {
-          console.error("Supabase insert error:", JSON.stringify(errInsert));
-          const detail = [errInsert.code, errInsert.details, errInsert.hint]
-            .filter(Boolean)
-            .join(" | ");
-          throw new Error(
-            `${errInsert.message}${detail ? ` [${detail}]` : ""}`
-          );
-        }
-
-        setPesanSukses(
-          `✅ Lahan "${namaLahan}" berhasil disimpan! Luas: ${luasHa.toFixed(
-            3
-          )} Ha · ${points.length} titik`
-        );
-
-        setTimeout(() => {
-          router.push(`/penggarap/${penggarapId}`);
-          router.refresh();
-        }, 1200);
       }
+
+      setPesanSukses(
+        `✅ Lahan "${namaLahan}" berhasil disimpan! Luas: ${luasHa.toFixed(
+          3
+        )} Ha · ${points.length} titik`
+      );
+
+      setTimeout(() => {
+        router.push(`/penggarap/${penggarapId}`);
+        router.refresh();
+      }, 1200);
     } catch (err: any) {
       console.error("Error simpan lahan:", err);
       setPesanErrorSimpan(
@@ -687,6 +621,7 @@ export default function UkurContent({ editData = null }: Props) {
     }
   }
 
+  // ===================== RENDER =====================
   return (
     <div className="space-y-4">
       {/* HEADER */}
@@ -694,35 +629,17 @@ export default function UkurContent({ editData = null }: Props) {
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#f0b429]/20 rounded-full blur-3xl pointer-events-none" />
         <div className="relative flex items-center gap-4 mb-4">
           <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-[#f0b429] flex items-center justify-center text-2xl md:text-3xl flex-shrink-0 shadow-md">
-            {isEditMode ? "✏️" : "📍"}
+            📍
           </div>
           <div className="min-w-0">
             <h1 className="text-lg md:text-xl font-bold text-white tracking-tight leading-tight">
-              {isEditMode ? "Ukur Ulang Lahan" : "Ukur Lahan"}
+              Ukur Lahan
             </h1>
             <p className="text-[10px] md:text-xs text-[#f0b429] font-bold uppercase tracking-widest mt-0.5">
-              {mode === "gps"
-                ? "Jalan Keliling Batas Lahan"
-                : "Pilih Titik di Peta"}
+              {mode === "gps" ? "Jalan Keliling Batas Lahan" : "Pilih Titik di Peta"}
             </p>
-            {isEditMode && editData && (
-              <p className="text-[10px] text-white/70 mt-1">
-                Edit: <strong>{editData.nama}</strong> · {editData.luas.toFixed(3)} Ha
-              </p>
-            )}
           </div>
         </div>
-
-        {/* INFO EDIT */}
-        {isEditMode && (
-          <div className="relative bg-amber-400/20 border-2 border-amber-300/60 rounded-2xl p-3 mb-4">
-            <p className="text-[11px] text-white/95 leading-relaxed">
-              ✏️ <strong>Mode Edit:</strong> Ukur ulang lahan ini. Setelah
-              selesai, koordinat & polygon lama akan{" "}
-              <strong>ditimpa</strong>. Data panen tidak terpengaruh.
-            </p>
-          </div>
-        )}
 
         {/* TAB SWITCHER */}
         <div className="relative grid grid-cols-2 gap-2 bg-black/20 backdrop-blur rounded-full p-1 mb-4">
@@ -797,49 +714,38 @@ export default function UkurContent({ editData = null }: Props) {
 
       {/* ============ MODE GPS ============ */}
       <div hidden={mode !== "gps"} className="space-y-4">
-        {/* PILIH PENGGARAP — sembunyikan di mode edit */}
-        {!isEditMode && (
-          <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-4 shadow-sm">
-            <label className="block text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
-              👨‍🌾 Pilih Penggarap <span className="text-red-500">*</span>
-            </label>
-            {loadingPenggaraps ? (
-              <div className="text-xs text-[#2c5e2e]/60 italic">Memuat...</div>
-            ) : penggaraps.length === 0 ? (
-              <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-3 text-xs text-[#2c5e2e]">
-                Belum ada penggarap.{" "}
-                <Link href="/penggarap/baru" className="font-bold underline">
-                  Tambah penggarap dulu
-                </Link>
-              </div>
-            ) : (
-              <select
-                value={penggarapId}
-                onChange={(e) => setPenggarapId(e.target.value)}
-                disabled={isTracking}
-                className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium disabled:opacity-60"
-              >
-                <option value="">-- Pilih Penggarap --</option>
-                {penggaraps.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nama}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-        )}
+        {/* PILIH PENGGARAP */}
+        <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-4 shadow-sm">
+          <label className="block text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
+            👨‍🌾 Pilih Penggarap <span className="text-red-500">*</span>
+          </label>
+          {loadingPenggaraps ? (
+            <div className="text-xs text-[#2c5e2e]/60 italic">Memuat...</div>
+          ) : penggaraps.length === 0 ? (
+            <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-3 text-xs text-[#2c5e2e]">
+              Belum ada penggarap.{" "}
+              <Link href="/penggarap/baru" className="font-bold underline">
+                Tambah penggarap dulu
+              </Link>
+            </div>
+          ) : (
+            <select
+              value={penggarapId}
+              onChange={(e) => setPenggarapId(e.target.value)}
+              disabled={isTracking}
+              className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium disabled:opacity-60"
+            >
+              <option value="">-- Pilih Penggarap --</option>
+              {penggaraps.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.nama}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
 
-        {/* INFO EDIT MODE — penggarap sudah terkunci */}
-        {isEditMode && (
-          <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-3">
-            <p className="text-[11px] text-blue-800 leading-relaxed">
-              🔒 Penggarap & nama lahan sudah terkunci. Yang diupdate hanya
-              <strong> luas, koordinat, dan polygon</strong>.
-            </p>
-          </div>
-        )}
-
+        {/* ERROR GPS */}
         {error && (
           <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-3.5">
             <p className="text-xs text-red-700 font-semibold leading-relaxed">
@@ -848,6 +754,7 @@ export default function UkurContent({ editData = null }: Props) {
           </div>
         )}
 
+        {/* INFO GPS */}
         {infoGPS && (
           <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-3">
             <p className="text-[11px] text-[#2c5e2e] font-semibold leading-relaxed">
@@ -856,6 +763,7 @@ export default function UkurContent({ editData = null }: Props) {
           </div>
         )}
 
+        {/* MAP + tombol ikuti */}
         <div className="relative bg-white border-2 border-[#2c5e2e]/10 rounded-3xl overflow-hidden shadow-sm">
           <div
             ref={containerRef}
@@ -871,6 +779,7 @@ export default function UkurContent({ editData = null }: Props) {
           </button>
         </div>
 
+        {/* TOMBOL AKSI */}
         <div className="flex flex-wrap gap-2">
           {!isTracking ? (
             <button
@@ -904,6 +813,7 @@ export default function UkurContent({ editData = null }: Props) {
           </button>
         </div>
 
+        {/* TITIK TERAKHIR */}
         {points.length > 0 && (
           <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-4">
             <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
@@ -943,42 +853,24 @@ export default function UkurContent({ editData = null }: Props) {
               </div>
               <div className="min-w-0">
                 <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest">
-                  {isEditMode ? "Update Lahan" : "Simpan Lahan"}
+                  Simpan Lahan
                 </div>
                 <div className="text-[10px] text-[#2c5e2e]/60">
-                  {luasHa.toFixed(3)} Ha · {points.length} titik
+                  {luasHa.toFixed(3)} Ha · {points.length} titik · siap disimpan
                 </div>
               </div>
             </div>
 
-            {!isEditMode && (
-              <>
-                <label className="block text-xs font-medium text-[#2c5e2e] mb-1">
-                  Nama Lahan <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={namaLahan}
-                  onChange={(e) => setNamaLahan(e.target.value)}
-                  placeholder="Contoh: Sawah Utama"
-                  className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium"
-                />
-              </>
-            )}
-
-            {isEditMode && editData && (
-              <div className="bg-gray-50 border border-gray-200 rounded-2xl p-3 mb-2">
-                <div className="text-[10px] text-gray-500 uppercase tracking-widest mb-1">
-                  Lahan yang diupdate
-                </div>
-                <div className="text-sm font-bold text-[#2c5e2e]">
-                  {editData.nama}
-                </div>
-                <div className="text-[11px] text-gray-500">
-                  Luas lama: {editData.luas.toFixed(3)} Ha
-                </div>
-              </div>
-            )}
+            <label className="block text-xs font-medium text-[#2c5e2e] mb-1">
+              Nama Lahan <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={namaLahan}
+              onChange={(e) => setNamaLahan(e.target.value)}
+              placeholder="Contoh: Sawah Utama"
+              className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium"
+            />
 
             {pesanErrorSimpan && (
               <div className="mt-2 bg-red-50 border-2 border-red-200 rounded-xl p-2.5">
@@ -998,20 +890,15 @@ export default function UkurContent({ editData = null }: Props) {
 
             <button
               onClick={handleSimpan}
-              disabled={
-                sedangSimpan || (!isEditMode && !namaLahan.trim())
-              }
+              disabled={sedangSimpan || !namaLahan.trim()}
               className="w-full mt-3 bg-[#2c5e2e] hover:bg-[#1f4521] text-white font-bold py-3.5 rounded-full transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 shadow-md"
             >
-              {sedangSimpan
-                ? "⏳ Menyimpan..."
-                : isEditMode
-                ? "💾 Update Lahan Ini"
-                : "💾 Simpan ke Penggarap"}
+              {sedangSimpan ? "⏳ Menyimpan..." : "💾 Simpan ke Penggarap"}
             </button>
           </div>
         )}
 
+        {/* BELUM BISA SIMPAN */}
         {!isTracking && points.length > 0 && points.length < 3 && (
           <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-3">
             <p className="text-[11px] text-[#2c5e2e] font-semibold">
@@ -1020,6 +907,7 @@ export default function UkurContent({ editData = null }: Props) {
           </div>
         )}
 
+        {/* TIPS */}
         <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-3xl p-4">
           <div className="text-xs font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
             💡 Tips Ukur Akurat
@@ -1040,7 +928,6 @@ export default function UkurContent({ editData = null }: Props) {
           penggaraps={penggaraps}
           penggarapId={penggarapId}
           setPenggarapId={setPenggarapId}
-          editData={isEditMode ? editData : null}
         />
       )}
 
