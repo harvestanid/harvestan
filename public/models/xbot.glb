@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <!-- META  -->
+    <meta charset="UTF-8">
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#ececec" />
+    <meta name="msapplication-navbutton-color" content="#ececec">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+      <script src="https://internetbaik.telkomsel.com/storage/sdk/VmaxAdManager.js"></script>
+	<script src="https://internetbaik.telkomsel.com/storage/sdk/VmaxAdHelper/DisplayVmaxAd.js"></script>
+    <script src="https://internetbaik.telkomsel.com/storage/sdk/VmaxAdHelper/VmaxGoogleAdDisplay.js"></script>
+    <script src="https://internetbaik.telkomsel.com/storage/sdk/VmaxAdHelper/VmaxGoogleAdsense.js"></script>
+    <script src="https://internetbaik.telkomsel.com/storage/sdk/VmaxAdHelper/VideoBillboardVmaxAd.js"></script>
+    <script src="https://internetbaik.telkomsel.com/storage/sdk/VmaxAdHelper/VmaxGoogleIMA.js"></script>
+    <!-- END META  -->
+    <!-- Global site tag (gtag.js) - Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=UA-153429808-1"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+
+        gtag('config', 'UA-153429808-1');
+    </script>
+    <!-- Google Tag Manager -->
+    <script>
+        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-53KRC3');
+    </script>
+    <!-- End Google Tag Manager -->
+    <title>Internet Baik</title>
+
+    <!--  CSS  -->
+    <link rel="stylesheet" href="asset/css/mobile.css">
+    <script src="/asset/js/jquery-3.6.0.min.js"></script>
+    <script src="/asset/js/main.js"></script>
+    <script src="/asset/js/ads.campaign.js"></script>
+    <script src="/asset/js/ads.campaign-popup.js"></script>
+    <script src="/asset/js/news.js"></script>
+    <script src="/asset/js/splide.js"></script>
+    <link rel="stylesheet" type="text/css" href="asset/css/slick.css"/>
+    <link rel="stylesheet" type="text/css" href="asset/css/slick-theme.css"/>
+    <link rel="stylesheet" type="text/css" href="asset/css/splide.min.css"/>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@100&display=swap');
+    </style>
+    <!--  end CSS  -->
+
+    <!-- configuration -->
+    <script>
+        const TIMER_AUTO_SCROLL=10000; //milliseconds
+        const TITLE_WEB="Internet Baik";// For title web
+        // list images
+        // internet baik
+        // mobile bg-header-360.png
+        // desktop bg-header.png
+        // internet tepat
+        // mobile bg-header-tepat-360.png
+        // desktop bg-header-tepat.png
+    </script>
+    <!-- end configuration -->
+
+    
+
+    <!--
+    <script src="js/jquery-3.6.0.min.js"></script>
+    <script src="js/splide.js"></script>
+    <script src="js/news.js"></script>
+    <script src="js/main.js"></script>
+    <link rel="stylesheet" type="text/css" href="css/slick.css"/>
+    <link rel="stylesheet" type="text/css" href="css/slick-theme.css"/>
+    <link rel="stylesheet" type="text/css" href="css/splide.min.css"/>
+
+    -->
+</head>
+<body onload="loadTselOndeckAds()" >
+
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-53KRC3" height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
+
+<!--Header-->
+<header class="header loading"> 
+    <img alt="" class="img-header" onload="hasloaded(this)">
+</header>
+<!-- 
+<div class="header loading">
+    <img class="img-header" onload="hasloaded(this)" alt="">
+</div>
+-->
+<!--End Header-->
+
+<!-- Main -->
+
+<div class="wrapper">
+<!-- ADS_SLOT_1 -->
+  <div class="el el--1"><div id="1ce70696" class="ads"></div></div>
+<div class="el el--2 breaking-news">
+    <p>Breaking News</p>
+    <div class="container-news"><div id="BREAKING_NEWS"></div></div>
+</div>
+<!-- ADS_SLOT_2 -->
+<div class="el el--3"><div id="e6582d18" class="ads"></div></div>
+<!-- ADS_SLOT_3 -->
+<div class="el el--4"><div id="e15fe0f0" class="ads"></div></div>
+<div class="el el--5"><iframe src="https://internetbaik.telkomsel.com/games/acd19635ac74969cd041/index.html" class="if-games"></iframe></div>
+<!-- ADS_SLOT_4 -->
+<div class="el el--6"><div id="71a086f5" class="ads"></div></div>
+<!--<div class="el el--6">
+    <section id="image-carousel" class="splide" aria-label="Beautiful Images">
+        <div class="splide__track">
+            <ul class="splide__list">
+                <li class="splide__slide"><div id="ADS_SLOT_4" class="ads"></div></li>
+
+                <li class="splide__slide"><div id="ADS_SLOT_5" class="ads"></div></li>
+
+                <li class="splide__slide"><div id="ADS_SLOT_6" class="ads"></div></li>
+            </ul>
+        </div>
+    </section>
+</div>-->
+<!-- ADS_SLOT_7 -->
+<div class="el el--7"><div id="a5be0afe" class="ads"></div></div>
+<!-- ADS_SLOT_8 -->
+<div class="el el--8"><div id="6db50758" class="ads"></div></div>
+<div class="el el--9">
+    <p>Artikel Terbaru</p>
+    <div id="NEWS_SLOT_2"></div>
+</div>
+<!-- ADS_SLOT_9 -->
+<div class="el el--10"><div id="b9a5de70" class="ads"></div></div>
+<!-- ADS_SLOT_10 -->
+<div class="el el--11"><div id="ADS_SLOT_10" class="ads"></div></div>
+<!-- ADS_SLOT_11 -->
+<div class="el el--12"><div id="4f9ac04c" class="ads"></div></div>
+<!-- ADS_SLOT_12 -->
+<div class="el el--13">
+    <p>Update Terbaru</p>
+    <div class="update-terbaru"><div id="ADS_SLOT_12" class="ads"></div></div>
+</div>
+<!-- ADS_SLOT_13 -->
+<div class="el el--14"><div id="d49488d2" class="ads"></div></div>
+<!-- ADS_SLOT_14 -->
+<div class="el el--15"><div id="44900ed1" class="ads"></div></div>
+<!-- ADS_SLOT_15 -->
+<div class="el el--16"><div id="96d7b38d" class="ads"></div></div>
+<div class="el el--17">
+    <p>Artikel Terbaru</p>
+    <div id="NEWS_SLOT_3"></div>
+</div>
+<!-- ADS_SLOT_16 -->
+<div class="el el--18"><div id="ae53064b" class="ads"></div></div>
+<div class="el el--19"><div id="NEWS_SLOT_4"></div></div>
+<!-- ADS_SLOT_17 -->
+<div class="el el--20"><div id="223c9704" class="ads"></div></div>
+<!-- ADS_SLOT_18 -->
+<div class="el el--21"><div id="30c99f7e" class="ads"></div></div>
+</div >
+<!-- End Main -->
+
+
+
+<!--Footer-->
+<footer>
+      <div class="footer">
+        <div class="footer-text"><p>Tetap terhubung<br>dengan kami</p></div>
+      </div>
+      <div class="footer">
+        <div class="footer-text">Layanan Periklanan</div>
+      </div>
+      <div class="footer">
+        <div class="footer-text">Pusat Bantuan</div>
+      </div>
+      <div class="footer-media-social">
+        <a href="https://www.youtube.com/@TelkomselEnterprise">
+          <img src="asset/images/Youtube.png" alt="Youtube" />
+        </a>
+        <a href="https://www.facebook.com/tselenterprise">
+          <img src="asset/images/facebook.png" alt="Facebook" />
+        </a>
+        <a href="https://www.tiktok.com/@telkomselenterprise">
+          <img src="asset/images/Tiktok.png" alt="Tiktok" />
+        </a>
+        <a href="https://x.com/tselenterprise">
+          <img src="asset/images/twitter.png" alt="Twitter" />
+        </a>
+        <a href="https://www.instagram.com/telkomselenterprise/">
+          <img src="asset/images/instagram.png" alt="Instagram" />
+        </a>
+      </div>
+      <div class="footer-digiads">
+        <a
+          href="https://www.telkomsel.com/enterprise/product-list-digital-advertising">
+          <image src="asset/images/digi-ads.png" alt="DigiAds" />
+        </a>
+      </div>
+      <div class="footer-support-center">
+        <a href="https://www.telkomsel.com/enterprise/form/konsultasi-sekarang">
+          <image src="asset/images/phone.png" alt="Pusat Bantuan" />
+        </a>
+      </div>
+    </footer>
+<!--End Footer-->
+<script>
+// list images
+// internet baik
+// mobile bg-header-360.png
+// desktop bg-header.png
+// internet tepat
+// mobile bg-header-tepat-360.png
+// desktop bg-header-tepat.png
+const IMG_HEADER="https://internetbaik.telkomsel.com/asset/images/header-mobile.png"; // for header image
+
+document.title=TITLE_WEB;
+$(".img-header").attr("src",IMG_HEADER)
+
+
+// Splide carousel element 6
+//document.addEventListener( 'DOMContentLoaded', function () {
+//  new Splide( '#image-carousel', {
+//    type   : 'fade',
+//      padding: '35px',
+//    } ).mount();
+//});  
+
+
+function loadTselOndeckAds(){
+console.log("loadTselOndeckAds");
+var odtrace = false;
+var odtrace_req = {};
+CampaignRequestor.setToken('internetbaik');
+CampaignRequestor.setSecret('internetbaik');
+CampaignRequestor.setCmpURL('https://internetbaik.telkomsel.com/adsjson4');
+CampaignRequestor.setClickURL('https://internetbaik.telkomsel.com/adsjson4');
+CampaignRequestor.setViewableURL('https://internetbaik.telkomsel.com/adsjson4');
+var adsReqObj = {};
+CampaignPopup = new CampaignPopup();
+CampaignPopup.setToken('internetbaik');
+CampaignPopup.setSecret('internetbaik');
+CampaignPopup.setCmpURL('https://internetbaik.telkomsel.com/adsjson4');
+CampaignPopup.setClickURL('https://internetbaik.telkomsel.com/adsjson4');
+CampaignPopup.setViewableURL('https://internetbaik.telkomsel.com/adsjson4');
+var adsPopupReqObj = {};
+adsReqObj = {"id":"1791561291265782","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":116,"at":146,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"320x100","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_1', '');
+adsReqObj = {"id":"1791561291580129","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":118,"at":148,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"336x280","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_2', '');
+adsReqObj = {"id":"1791561291401091","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":119,"at":149,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"320x50","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_3', '');
+adsReqObj = {"id":"1791561291133538","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":120,"at":150,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"300x250","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_4', '');
+adsReqObj = {"id":"1791561291389054","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":121,"at":166,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"300x250","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_5', '');
+adsReqObj = {"id":"1791561291731194","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":122,"at":152,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"300x250","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_6', '');
+adsReqObj = {"id":"1791561291890101","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":123,"at":153,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"320x100","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_7', '');
+adsReqObj = {"id":"1791561291793693","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":124,"at":154,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"320x50","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_8', '');
+adsReqObj = {"id":"1791561291683389","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":125,"at":155,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"320x50","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_9', '');
+adsReqObj = {"id":"1791561291123831","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":126,"at":156,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"400x230","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_10', '');
+adsReqObj = {"id":"1791561291235938","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":127,"at":157,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"320x50","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_11', '');
+adsReqObj = {"id":"1791561291710488","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":128,"at":158,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"410x471","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_12', '');
+adsReqObj = {"id":"1791561291759918","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":129,"at":159,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"320x50","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_13', '');
+adsReqObj = {"id":"1791561291459665","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":130,"at":160,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"336x280","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_14', '');
+adsReqObj = {"id":"1791561291864719","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":131,"at":161,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"320x50","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_15', '');
+adsReqObj = {"id":"1791561291706480","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":132,"at":162,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"320x50","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_16', '');
+adsReqObj = {"id":"1791561291161609","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":133,"at":163,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"320x100","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_17', '');
+adsReqObj = {"id":"1791561291164772","mdn":"6285162661397","lac":"37","ci":"999","dmn":1,"lp":134,"at":164,"p":0,"ua":"curl\/8.13.0","t":"0","u":"https:\/\/pub-2534e921bf9c4314addcd4d8a6e98b7b.r2.dev","s":"320x50","c":"","news_id":0,"pi":""};
+CampaignRequestor.request(adsReqObj, 'ADS_SLOT_18', '');
+}
+
+setNewsRSS('https://www.antaranews.com/rss/ekonomi-finansial.xml', 'NEWS_SLOT_3', '1', '1', '00000091009100014e38');
+setNewsRSS('https://www.telkomsel.com/jelajah/jelajah-lifestyle/rss-ibit.xml', 'NEWS_SLOT_4', '1', '2', '0000009200920001388d');
+setNewsRSS('https://www.telkomsel.com/jelajah/jelajah-lifestyle/rss-ibit.xml', 'NEWS_SLOT_2', '1', '1', '0000009000900001499f');
+let data = [{"img":"https:\/\/internetbaik.telkomsel.com\/storage\/news\/20241112054919_1731365359672_small.jpg","title":"Bisnis Telkom Terus Tumbuh, Pendapatan Tembus Rp.72 Triliun","content":"<p><span style=\"font-family:Poppins\"><span style=\"font-size:12px\">PT Telkom Indonesia (Persero) Tbk (Telkom) berhasil mencatatkan pendapatan konsolidasi sebesar Rp72 triliun pada paruh pertama tahun 2022 atau naik 3,6 persen dibanding periode yang sama di tahun lalu.<\/span><\/span><\/p>\r\n","time":"2024-11-12 05:49:19","url":"https:\/\/internetbaik.telkomsel.com\/newsdet?u=0000008f008f00019510&cp=%5BM%7E0%CB%83%11%A1%F5%CB%89%A8%D4%1A%8F%8E%27%E9%16%FD%E6%2C%93%9C%82%FF%7Fu%0AJ%DD%07%1B%97%03%EFg%C7%C2%26%FA%E3%9E%C8%FE%E5%12%80%1C%88%9Eb%25%10%BC%5CS6%D3e%B50%F9%C4%8D%FD%C3%8E%03%F1w%5D%83%B5%18%10%3C%BEAs%CBW%D7%7C+%25%EC%1C%5C%EDi%02E%A6%92%3E%26S32%BA%3C%DCl0%2F%9Ah%15%9B%B5%7B%B1%C1%24%3C%95%02%00%C0%EE%01%D9%EF%60%86%95%60%91%DC-1%8F%D5%E1%A1%1B%3AiX%E7%BD%A4%3E%5Dg%3Ep9%EB%CE%12%D8%C3S%00%0Di%E1%22%8C%0Bz%D9%BE%B3%01%B2%B58l%B5%29%CBq%9A"},{"img":"https:\/\/internetbaik.telkomsel.com\/storage\/news\/20241112052757_1731364077536_small.jpg","title":"Mengenal Qiu Qianren Si Kembar Tapak Besi di Game The Return of Condor Heroes","content":"<p><span style=\"font-size:12px\"><span style=\"font-family:Poppins\">Salah satu pendekar di game RoCH adalah Qiu Qianren. Pendekar ini sempat bertemu dengan Shanguang Jinnan si pendiri asli dari Partai Tapak Besi.<\/span><\/span><\/p>\r\n","time":"2024-11-12 05:34:24","url":"https:\/\/internetbaik.telkomsel.com\/newsdet?u=0000008e008e000166e1&cp=%1F%91%3D%29Oq%FD%11%84o%BEo5o%C3w%10X%E7%F0%DD%0B%04n%DDu%8F%C9u%AA%BD%DE6%E5%DD%EA%EE%2CA%8C%AA%A0%B6%11j%B1%60%F8Eh%C9%29%91%F3%D0%5Bd%7Ewx%BD%60%ED%FE%D0%12%FF%24%B9%92%2C%B8i%BBJ%FC%87%B8%16m%E2fg%04%DD3g8%03%9D7%21%1Fd%28%3E%83%EA%BE%2Ch%07%E3%9F%26%0EU_%FE%D7Zu%D3%15h%DB%EF%05%FF%B6%40%EB%17p%EA%07%84%04%E7%7B%BE%3C%23U%8C%8F%7E%DE%60%DD%B2%E8%A3%19%D3.%D7%E4%F3%F8%BCR%A3%D0%89%B1%F2%22%8Cn%23U%F6mD8%81%A3g%11%EA%DC%F8%B7%8Bb"}];
+
+var news = new News("BREAKING_NEWS",data);
+news.on('success',function (){
+    console.log('success news')
+    var splide = new Splide( '.splide', {
+        type   : 'loop',
+        padding: '0px',
+    });
+    splide.mount();
+});
+news.inisiate();
+
+var _0x34e75c=_0x2df0;(function(_0x1cddf3,_0x138feb){var _0x4bbd62=_0x2df0,_0x1fb930=_0x1cddf3();while(!![]){try{var _0x3a7b8f=-parseInt(_0x4bbd62(0xbd))/0x1+parseInt(_0x4bbd62(0x8d))/0x2+-parseInt(_0x4bbd62(0xa0))/0x3+-parseInt(_0x4bbd62(0x95))/0x4+-parseInt(_0x4bbd62(0xad))/0x5+parseInt(_0x4bbd62(0x9d))/0x6*(parseInt(_0x4bbd62(0xb5))/0x7)+parseInt(_0x4bbd62(0x91))/0x8;if(_0x3a7b8f===_0x138feb)break;else _0x1fb930['push'](_0x1fb930['shift']());}catch(_0x5c5650){_0x1fb930['push'](_0x1fb930['shift']());}}}(_0x340d,0x47b79));typeof VmaxAdManager!==_0x34e75c(0x9c)?(console[_0x34e75c(0xa7)]('VmaxAdManager\x20Loaded'),InitializeSDK()):addEventListener(_0x34e75c(0xb9),InitializeSDK);function InitializeSDK(){var _0x34b613=_0x34e75c;DisplayVmaxAd[_0x34b613(0x9a)](_0x34b613(0x9f)),VmaxAdManager[_0x34b613(0xb6)][_0x34b613(0xba)](DisplayVmaxAd),VmaxAdManager[_0x34b613(0xb6)][_0x34b613(0xba)](VmaxGoogleAdDisplay),VmaxAdManager[_0x34b613(0xb6)]['addVmaxAd'](VmaxGoogleAdsense),VmaxAdManager[_0x34b613(0xb6)]['addVmaxAd'](VideoBillboardVmaxAd),VmaxAdManager[_0x34b613(0xb6)][_0x34b613(0xba)](VmaxGoogleIMA),VmaxAdManager[_0x34b613(0xb0)]()[_0x34b613(0x96)](VmaxAdManager['getDevice']()[_0x34b613(0x97)][_0x34b613(0x93)]),VmaxAdManager[_0x34b613(0xaf)]({'appId':_0x34b613(0xab),'accountKey':_0x34b613(0xa3),'keyId':_0x34b613(0xaa),'privateKey':_0x34b613(0xb4)})[_0x34b613(0x8e)](function(){var _0x462325=_0x34b613;console[_0x462325(0xa7)](_0x462325(0xb2)),RequestAds();});}function _0x340d(){var _0x42877c=['4408976','Ad\x20error\x20occurred:\x20','789445SOaKNI','build','initialize','getDevice','getElementById','SDK\x20Initialized,\x20now\x20creating\x20ad\x20spaces\x20and\x20requesting\x20ads....','44900ed1','O3EgcNmir2hU3zcNjb1B2QqLjYaVzKNXA22YbhMoqT0=','98zqYopa','Registry','createAdspotRequestBuilder','a5be0afe','VmaxAdManagerReady','addVmaxAd','71a086f5','process','196492ZrKPiL','549592xAjUar','then','1ce70696','ae53064b','1060320SLEZcC','createAdSpace','PERSONAL_COMPUTER','addAdSpace','621684smwOOl','setDeviceType','DeviceType','e15fe0f0','adSpace','addCustomSignature','d49488d2','undefined','214968wpgKSI','error','exp-b87ad06ee45a6151','316119mAonzL','addEventListener','AD_READY','telkomsel','AD_ERROR','223c9704','96d7b38d','log','AdEvents','30c99f7e','269454ff72df45a440b7e8054630d6fa3f68b2140e4e1be7f5b21e1ded4fff5e'];_0x340d=function(){return _0x42877c;};return _0x340d();}function RequestAds(){var _0x18481d=_0x34e75c,_0x1813e4=[_0x18481d(0x8f),'e6582d18',_0x18481d(0x98),_0x18481d(0xbb),_0x18481d(0xb8),'6db50758','b9a5de70','4f9ac04c',_0x18481d(0x9b),_0x18481d(0xb3),_0x18481d(0xa6),_0x18481d(0x90),_0x18481d(0xa5),_0x18481d(0xa9)];for(var _0x416f66=0x0;_0x416f66<_0x1813e4['length'];_0x416f66++){CreateIndividualRequest(_0x1813e4[_0x416f66]);}}function _0x2df0(_0x553ed3,_0x7b6fba){var _0x340de3=_0x340d();return _0x2df0=function(_0x2df07d,_0x3368ba){_0x2df07d=_0x2df07d-0x8d;var _0x13eb8c=_0x340de3[_0x2df07d];return _0x13eb8c;},_0x2df0(_0x553ed3,_0x7b6fba);}function CreateIndividualRequest(_0x248252){var _0x2045d5=_0x34e75c;const _0x3417ff=document[_0x2045d5(0xb1)](_0x248252);console[_0x2045d5(0xa7)](_0x3417ff);var _0xd5bdad=VmaxAdManager[_0x2045d5(0x92)]({'tagId':_0x248252,'container':_0x3417ff});_0xd5bdad['addEventListener'](VmaxAdManager['AdEvents'][_0x2045d5(0xa2)],function(_0x11015a){var _0x2c8b2f=_0x2045d5;_0x11015a[_0x2c8b2f(0x99)]['showAd']();}),_0xd5bdad[_0x2045d5(0xa1)](VmaxAdManager[_0x2045d5(0xa8)][_0x2045d5(0xa4)],function(_0x2cc56e){var _0x3dc24d=_0x2045d5;console[_0x3dc24d(0x9e)](_0x3dc24d(0xac),_0x2cc56e);});var _0x44ba1f=VmaxAdManager[_0x2045d5(0xb7)]();_0x44ba1f[_0x2045d5(0x94)](_0xd5bdad)[_0x2045d5(0xae)](),VmaxAdManager[_0x2045d5(0xbc)](_0x44ba1f);}
+
+</script>
+</body>
+</html>

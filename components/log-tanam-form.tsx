@@ -37,6 +37,25 @@ const JENIS_PRESET: { value: string; emoji: string; label: string }[] = [
   { value: "lainnya", emoji: "📝", label: "Lainnya" },
 ];
 
+// ============================================================
+// Helper: format angka jadi "1.234.567" (tanpa Rp)
+// ============================================================
+function formatRibuan(value: string): string {
+  // Hapus semua karakter selain digit
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  // Tambah titik tiap 3 digit dari belakang
+  return Number(digits).toLocaleString("id-ID");
+}
+
+// ============================================================
+// Helper: ambil angka murni dari "1.234.567" → 1234567
+// ============================================================
+function parseRibuan(value: string): number {
+  const digits = value.replace(/\D/g, "");
+  return digits ? parseInt(digits, 10) : 0;
+}
+
 export function LogTanamForm({
   mode,
   logId,
@@ -55,9 +74,12 @@ export function LogTanamForm({
   const [jenisCustom, setJenisCustom] = useState(initial?.jenis_custom || "");
   const [judul, setJudul] = useState(initial?.judul || "");
   const [deskripsi, setDeskripsi] = useState(initial?.deskripsi || "");
+
+  // Biaya: state disimpan sebagai string ter-format (contoh: "150.000")
   const [biaya, setBiaya] = useState(
-    initial?.biaya ? String(initial.biaya) : ""
+    initial?.biaya ? formatRibuan(String(initial.biaya)) : ""
   );
+
   const [keteranganBiaya, setKeteranganBiaya] = useState(
     initial?.keterangan_biaya || ""
   );
@@ -76,6 +98,14 @@ export function LogTanamForm({
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // ============================================================
+  // Handler biaya: auto-format saat user ngetik
+  // ============================================================
+  function handleBiayaChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value;
+    setBiaya(formatRibuan(raw));
+  }
 
   function handlePilihFoto(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
@@ -217,7 +247,8 @@ export function LogTanamForm({
         jenis_custom: jenis === "custom" ? jenisCustom.trim() : null,
         judul: judul.trim(),
         deskripsi: deskripsi.trim() || null,
-        biaya: parseFloat(biaya) || 0,
+        // Biaya: parse dari "150.000" → 150000
+        biaya: parseRibuan(biaya),
         keterangan_biaya: keteranganBiaya.trim() || null,
         foto_url: fotoUrl,
       };
@@ -440,15 +471,19 @@ export function LogTanamForm({
           💰 Biaya (opsional)
         </label>
         <div className="grid grid-cols-2 gap-3">
-          <input
-            type="number"
-            value={biaya}
-            onChange={(e) => setBiaya(e.target.value)}
-            placeholder="Nominal (Rp)"
-            min="0"
-            step="any"
-            className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium"
-          />
+          <div className="relative">
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-[#2c5e2e]/60 pointer-events-none">
+              Rp
+            </span>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={biaya}
+              onChange={handleBiayaChange}
+              placeholder="0"
+              className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl pl-11 pr-4 py-2.5 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium"
+            />
+          </div>
           <input
             type="text"
             value={keteranganBiaya}
@@ -458,6 +493,11 @@ export function LogTanamForm({
             className="w-full border-2 border-[#2c5e2e]/20 rounded-2xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium"
           />
         </div>
+        {biaya && (
+          <p className="text-xs text-[#2c5e2e] font-bold mt-2">
+            💰 Rp {biaya}
+          </p>
+        )}
         <p className="text-[10px] text-[#2c5e2e]/60 mt-1 italic">
           Contoh: Rp 150.000 — Beli Urea 50 Kg
         </p>
