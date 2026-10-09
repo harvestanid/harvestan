@@ -105,6 +105,9 @@ export async function POST(req: NextRequest) {
         provinsi: body.provinsi,
         kode_pos: body.kode_pos || null,
         catatan: body.catatan || null,
+        kurir: body.kurir || null,
+        layanan_kurir: body.layanan_kurir || null,
+        estimasi_hari: body.estimasi_hari || null,
         status: "pending",
         expires_at: expiresAt,
       })
@@ -119,7 +122,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Insert order_items (untuk tracking review)
     await supabase.from("order_items").insert({
       order_id: order.id,
       product_id: product.id,
@@ -129,13 +131,13 @@ export async function POST(req: NextRequest) {
       subtotal,
     });
 
-    // Notif Telegram ke admin
     await sendTelegram(
       `🛒 <b>Pesanan Baru</b>\n\n` +
         `🧾 Kode: <code>${code}</code>\n` +
         `👤 Pembeli: ${userNama}\n` +
         `📦 Produk: ${product.nama}\n` +
         `🔢 Jumlah: ${qty} ${product.satuan}\n` +
+        `🚚 Kurir: ${body.kurir || "-"} ${body.layanan_kurir || ""}\n` +
         `💰 Total: Rp ${total.toLocaleString("id-ID")}\n` +
         `📍 Kirim ke: ${body.kota}, ${body.provinsi}`
     );

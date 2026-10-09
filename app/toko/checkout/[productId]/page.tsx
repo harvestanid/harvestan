@@ -31,12 +31,6 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
     redirect("/toko");
   }
 
-  // Ambil ongkir semua provinsi
-  const { data: shippingRates } = await supabase
-    .from("shipping_rates")
-    .select("*")
-    .order("provinsi");
-
   return (
     <div className="min-h-screen bg-gray-50 py-6 px-4">
       <div className="max-w-3xl mx-auto">
@@ -53,7 +47,6 @@ export default async function CheckoutPage({ params, searchParams }: Props) {
         <CheckoutKlien
           product={product}
           initialQty={qty}
-          shippingRates={shippingRates || []}
           userEmail={user.email || ""}
         />
       </div>
