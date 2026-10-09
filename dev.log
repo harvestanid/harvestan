@@ -1,0 +1,64 @@
+
+> harvestan@0.1.0 dev
+> next dev --webpack
+
+▲ Next.js 16.3.6 (webpack)
+- Local:         http://localhost:3000
+- Network:       http://172.24.143.216:3000
+- Environments: .env.local
+✓ Ready in 1693ms
+✓ Running next.config.ts took 770ms
+  Skipping creating a lockfile at /data/data/com.termux/files/home/projects/harvestan/.next/dev/lock because we're using WASM bindings
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead.
+
+  To migrate automatically, run:
+  npx @next/codemod@canary middleware-to-proxy .
+
+  Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+
+○ Compiling /admin/agents ...
+ GET /admin/agents 200 in 11.3s (next.js: 6.2s, proxy.ts: 805ms, application-code: 4.3s)
+ GET /api/agents/log 200 in 2.9s (next.js: 2.0s, proxy.ts: 204ms, application-code: 689ms)
+ GET /api/agents/log 200 in 747ms (next.js: 12ms, proxy.ts: 174ms, application-code: 561ms)
+ POST /api/agents/run 500 in 5.8s (next.js: 2.2s, proxy.ts: 498ms, application-code: 3.1s)
+⨯ unhandledRejection: Error: Error: invalid type: boolean `false`, expected enum CodeFrameColorMode
+    at ignore-listed frames
+⨯ Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/projects/harvestan/.next/dev/server/vendor-chunks/next.js'
+    at <unknown> (.next/dev/server/app/_not-found/page.js:300:47)
+    at Object.<anonymous> (.next/dev/server/app/_not-found/page.js:303:3) {
+  errno: -2,
+  code: 'ENOENT',
+  syscall: 'open',
+  path: '/data/data/com.termux/files/home/projects/harvestan/.next/dev/server/vendor-chunks/next.js'
+}
+Watchpack Error (watcher): Error: EACCES: permission denied, watch '/data/data'
+Watchpack Error (watcher): Error: EACCES: permission denied, watch '/data'
+Watchpack Error (watcher): Error: EACCES: permission denied, watch '/'
+Watchpack Error (initial scan): Error: EACCES: permission denied, scandir '/data/data'
+Watchpack Error (initial scan): Error: EACCES: permission denied, scandir '/data'
+Watchpack Error (initial scan): Error: EACCES: permission denied, scandir '/'
+○ Compiling /_error ...
+Watchpack Error (watcher): Error: EACCES: permission denied, watch '/data/data'
+Watchpack Error (watcher): Error: EACCES: permission denied, watch '/data'
+Watchpack Error (watcher): Error: EACCES: permission denied, watch '/'
+Watchpack Error (initial scan): Error: EACCES: permission denied, scandir '/data/data'
+Watchpack Error (initial scan): Error: EACCES: permission denied, scandir '/data'
+Watchpack Error (initial scan): Error: EACCES: permission denied, scandir '/'
+Watchpack Error (watcher): Error: EACCES: permission denied, watch '/data/data'
+Watchpack Error (watcher): Error: EACCES: permission denied, watch '/data'
+Watchpack Error (watcher): Error: EACCES: permission denied, watch '/'
+Watchpack Error (initial scan): Error: EACCES: permission denied, scandir '/data/data'
+Watchpack Error (initial scan): Error: EACCES: permission denied, scandir '/data'
+Watchpack Error (initial scan): Error: EACCES: permission denied, scandir '/'
+ GET /admin/agents 500 in 28.8s (next.js: 28.0s, proxy.ts: 356ms, application-code: 451ms)
+ GET /penggarap 200 in 18.4s (next.js: 14.1s, proxy.ts: 2.7s, application-code: 1553ms)
+⨯ Error: The destination stream closed early.
+    at ignore-listed frames {
+  digest: '611944301'
+}
+[browser] Uncaught Error: ENOENT: no such file or directory, open '/data/data/com.termux/files/home/projects/harvestan/.next/dev/server/vendor-chunks/next.js'
+    at <unknown> (.next/dev/server/app/_not-found/page.js:300:47)
+    at Object.<anonymous> (.next/dev/server/app/_not-found/page.js:303:3)
+⨯ The directory at "/data/data/com.termux/files/home/projects/harvestan/.next/dev" was deleted.
+
+Deleting this directory while Next.js is running can lead to undefined behavior. Restarting the server to recover...
