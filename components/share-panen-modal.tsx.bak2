@@ -29,16 +29,6 @@ type Props = {
   };
 };
 
-type SatelitResult = {
-  dataUrl: string;
-  bounds: {
-    north: number;
-    south: number;
-    east: number;
-    west: number;
-  };
-};
-
 const STYLES: {
   id: PostcardStyle;
   label: string;
@@ -65,12 +55,12 @@ export function SharePanenModal({ open, onClose, data }: Props) {
     null
   );
   const [satelitDataUrl, setSatelitDataUrl] = useState<string | null>(null);
-  const [satelitBounds, setSatelitBounds] = useState<SatelitResult["bounds"] | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [loadingSatelit, setLoadingSatelit] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Generate QR
   useEffect(() => {
     if (!open) return;
     QRCode.toDataURL(LANDING_URL, {
@@ -90,6 +80,7 @@ export function SharePanenModal({ open, onClose, data }: Props) {
     };
   }, [open]);
 
+  // Fetch satelit
   useEffect(() => {
     if (!open || style !== "satelitCard") return;
     if (satelitDataUrl) return;
@@ -100,16 +91,15 @@ export function SharePanenModal({ open, onClose, data }: Props) {
       setLoadingSatelit(true);
       setError(null);
       try {
-        const result = await generateSatelitImage(data);
+        const url = await generateSatelitImage(data);
         if (cancelled) return;
-        if (!result) {
+        if (!url) {
           setError(
             "⚠️ Gagal ambil gambar satelit. Cek koneksi internet lalu coba lagi."
           );
           return;
         }
-        setSatelitDataUrl(result.dataUrl);
-        setSatelitBounds(result.bounds);
+        setSatelitDataUrl(url);
       } catch (e: any) {
         if (!cancelled) {
           setError("⚠️ " + (e.message || "Gagal ambil satelit"));
@@ -137,7 +127,10 @@ export function SharePanenModal({ open, onClose, data }: Props) {
 
   async function generateImage(): Promise<string | null> {
     if (!postcardRef.current) return null;
+
+    // Beri waktu render + font loading
     await new Promise((r) => setTimeout(r, 200));
+
     const dataUrl = await toPng(postcardRef.current, {
       width: 1080,
       height: 1920,
@@ -149,6 +142,7 @@ export function SharePanenModal({ open, onClose, data }: Props) {
         transformOrigin: "top left",
       },
     });
+
     return dataUrl;
   }
 
@@ -237,7 +231,6 @@ export function SharePanenModal({ open, onClose, data }: Props) {
     tampilkanProfit,
     fotoCustomDataUrl,
     satelitDataUrl,
-    satelitBounds,
     polygon: data.polygon,
     koordinat: data.koordinat,
     qrDataUrl,
@@ -247,6 +240,7 @@ export function SharePanenModal({ open, onClose, data }: Props) {
   return (
     <div className="fixed inset-0 z-[9999] bg-black/80 flex items-start md:items-center justify-center overflow-y-auto">
       <div className="bg-white w-full max-w-4xl min-h-full md:min-h-0 md:rounded-3xl md:my-6 overflow-hidden shadow-2xl">
+        {/* Header */}
         <div className="sticky top-0 bg-gradient-to-r from-[#2c5e2e] via-[#1f4521] to-[#2c5e2e] px-4 md:px-6 py-3 flex items-center justify-between z-10">
           <div className="flex items-center gap-3">
             <span className="w-9 h-9 rounded-full bg-[#f0b429] flex items-center justify-center text-lg">
@@ -271,6 +265,7 @@ export function SharePanenModal({ open, onClose, data }: Props) {
         </div>
 
         <div className="grid md:grid-cols-2 gap-4 p-4 md:p-6">
+          {/* PREVIEW */}
           <div>
             <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
               Preview
@@ -306,7 +301,9 @@ export function SharePanenModal({ open, onClose, data }: Props) {
             </p>
           </div>
 
+          {/* KONTROL */}
           <div className="space-y-4">
+            {/* Style picker */}
             <div>
               <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
                 🎨 Pilih Style
@@ -335,6 +332,7 @@ export function SharePanenModal({ open, onClose, data }: Props) {
               </div>
             </div>
 
+            {/* Upload foto — untuk style yang butuh foto */}
             {(style === "polaroid" || style === "fullPhoto") && (
               <div className="bg-[#f0b429]/10 border-2 border-[#f0b429]/40 rounded-2xl p-3">
                 <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
@@ -359,12 +357,14 @@ export function SharePanenModal({ open, onClose, data }: Props) {
               </div>
             )}
 
+            {/* Loading satelit */}
             {style === "satelitCard" && loadingSatelit && (
               <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-3 text-xs text-blue-800 font-bold">
                 🛰️ Mengambil gambar satelit...
               </div>
             )}
 
+            {/* Error */}
             {error && (
               <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-3">
                 <p className="text-xs text-red-700 font-semibold leading-relaxed">
@@ -373,6 +373,7 @@ export function SharePanenModal({ open, onClose, data }: Props) {
               </div>
             )}
 
+            {/* Checkbox profit */}
             {(data.profitOwner != null || data.profitPenggarap != null) && (
               <label className="flex items-start gap-3 bg-white border-2 border-[#2c5e2e]/10 rounded-2xl p-3 cursor-pointer">
                 <input
@@ -393,6 +394,7 @@ export function SharePanenModal({ open, onClose, data }: Props) {
               </label>
             )}
 
+            {/* Tombol aksi */}
             <div className="space-y-2 pt-2">
               <button
                 type="button"
@@ -433,25 +435,16 @@ export function SharePanenModal({ open, onClose, data }: Props) {
 }
 
 // ============ Helper: generate gambar satelit ============
-// Approach: hitung center dari polygon, terus pakai zoom manual
-// supaya polygon muat di canvas dengan padding ~20%
-
-const CANVAS_SIZE = 1024;
-const TILE_SIZE = 256;
-
 async function generateSatelitImage(data: {
   polygon?: { type: "Polygon"; coordinates: number[][][] } | null;
   koordinat?: string | null;
-}): Promise<SatelitResult | null> {
-  const polygon = data.polygon;
-  const koordinat = data.koordinat;
-
+}): Promise<string | null> {
   let centerLat = -6.2;
   let centerLng = 106.8;
   let zoom = 17;
 
-  let minLat = 0, maxLat = 0, minLng = 0, maxLng = 0;
-  let hasPolygon = false;
+  const polygon = data.polygon;
+  const koordinat = data.koordinat;
 
   if (
     polygon &&
@@ -462,34 +455,24 @@ async function generateSatelitImage(data: {
     const ring = polygon.coordinates[0];
     const lats = ring.map((c) => c[1]);
     const lngs = ring.map((c) => c[0]);
-    minLat = Math.min(...lats);
-    maxLat = Math.max(...lats);
-    minLng = Math.min(...lngs);
-    maxLng = Math.max(...lngs);
+    const minLat = Math.min(...lats);
+    const maxLat = Math.max(...lats);
+    const minLng = Math.min(...lngs);
+    const maxLng = Math.max(...lngs);
     centerLat = (minLat + maxLat) / 2;
     centerLng = (minLng + maxLng) / 2;
-    hasPolygon = true;
 
-    // Hitung span dalam meter
-    const spanLatM = (maxLat - minLat) * 111320;
-    const spanLngM =
-      (maxLng - minLng) * 111320 * Math.cos((centerLat * Math.PI) / 180);
-    const maxSpanM = Math.max(spanLatM, spanLngM);
-
-    // Padding 20% biar ada ruang di sekeliling
-    const paddedSpanM = maxSpanM * 1.2;
-
-    // Meter per pixel di zoom Z = (156543.03 * cos(lat)) / 2^Z
-    // Kita mau paddedSpanM muat di CANVAS_SIZE pixel
-    // Jadi: paddedSpanM = CANVAS_SIZE * (156543.03 * cos(lat)) / 2^Z
-    // 2^Z = CANVAS_SIZE * 156543.03 * cos(lat) / paddedSpanM
-    const latRad = (centerLat * Math.PI) / 180;
-    const numerator = CANVAS_SIZE * 156543.03 * Math.cos(latRad);
-    const zExact = Math.log2(numerator / paddedSpanM);
-
-    // Round ke bawah (zoom integer) + clamp
-    zoom = Math.floor(zExact);
-    zoom = Math.max(14, Math.min(19, zoom));
+    const spanLat = maxLat - minLat;
+    const spanLng = maxLng - minLng;
+    const spanM = Math.max(spanLat, spanLng) * 111320;
+    if (spanM > 0) {
+      zoom = Math.floor(
+        Math.log2(
+          (156543.03 * Math.cos((centerLat * Math.PI) / 180) * 512) / spanM
+        )
+      );
+      zoom = Math.min(19, Math.max(14, zoom));
+    }
   } else if (koordinat) {
     const parts = koordinat.split(",").map((s) => s.trim());
     if (parts.length === 2) {
@@ -498,117 +481,59 @@ async function generateSatelitImage(data: {
       if (!isNaN(lat) && !isNaN(lng)) {
         centerLat = lat;
         centerLng = lng;
-        // Default span ~200m
-        const defaultSpanM = 200;
-        const latRad = (centerLat * Math.PI) / 180;
-        const zExact = Math.log2(
-          (CANVAS_SIZE * 156543.03 * Math.cos(latRad)) / defaultSpanM
-        );
-        zoom = Math.max(14, Math.min(19, Math.floor(zExact)));
       }
     }
   }
 
-  // Konversi lat/lng center ke pixel global pada zoom
-  const n = Math.pow(2, zoom);
-  const latRadCenter = (centerLat * Math.PI) / 180;
-  const centerPixelX = ((centerLng + 180) / 360) * n * TILE_SIZE;
-  const centerPixelY =
-    ((1 -
-      Math.log(
-        Math.tan(latRadCenter) + 1 / Math.cos(latRadCenter)
-      ) /
-        Math.PI) /
-      2) *
-    n *
-    TILE_SIZE;
-
-  // Top-left pixel dunia
-  const topLeftPixelX = centerPixelX - CANVAS_SIZE / 2;
-  const topLeftPixelY = centerPixelY - CANVAS_SIZE / 2;
-
-  // Tile range
-  const startTileX = Math.floor(topLeftPixelX / TILE_SIZE);
-  const startTileY = Math.floor(topLeftPixelY / TILE_SIZE);
-  const endTileX = Math.floor((topLeftPixelX + CANVAS_SIZE - 1) / TILE_SIZE);
-  const endTileY = Math.floor((topLeftPixelY + CANVAS_SIZE - 1) / TILE_SIZE);
-
-  // Buat canvas
   const canvas = document.createElement("canvas");
-  canvas.width = CANVAS_SIZE;
-  canvas.height = CANVAS_SIZE;
+  canvas.width = 512 * 3;
+  canvas.height = 512 * 3;
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
-  ctx.fillStyle = "#1a3a1c";
-  ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  const n = Math.pow(2, zoom);
+  const latRad = (centerLat * Math.PI) / 180;
+  const centerXTile = ((centerLng + 180) / 360) * n;
+  const centerYTile =
+    ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) *
+    n;
 
-  // Load semua tile
-  const loadTile = (x: number, y: number) =>
+  const baseX = Math.floor(centerXTile);
+  const baseY = Math.floor(centerYTile);
+
+  const loadTile = (x: number, y: number, px: number, py: number) =>
     new Promise<void>((resolve) => {
-      const maxTile = Math.pow(2, zoom);
-      if (x < 0 || y < 0 || x >= maxTile || y >= maxTile) {
-        resolve();
-        return;
-      }
-
       const img = new Image();
       img.crossOrigin = "anonymous";
-      const timeout = setTimeout(() => resolve(), 6000);
-
+      const timeout = setTimeout(() => resolve(), 5000);
       img.onload = () => {
         clearTimeout(timeout);
         try {
-          const px = x * TILE_SIZE - topLeftPixelX;
-          const py = y * TILE_SIZE - topLeftPixelY;
-          ctx.drawImage(img, px, py, TILE_SIZE, TILE_SIZE);
+          ctx.drawImage(img, px, py, 512, 512);
         } catch (e) {
           console.error("drawImage error:", e);
         }
         resolve();
       };
-
       img.onerror = () => {
         clearTimeout(timeout);
         resolve();
       };
-
       img.src = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${y}/${x}`;
     });
 
   const promises: Promise<void>[] = [];
-  for (let tx = startTileX; tx <= endTileX; tx++) {
-    for (let ty = startTileY; ty <= endTileY; ty++) {
-      promises.push(loadTile(tx, ty));
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      promises.push(
+        loadTile(baseX + dx, baseY + dy, (dx + 1) * 512, (dy + 1) * 512)
+      );
     }
   }
   await Promise.all(promises);
 
-  // Hitung bounds dari area yang ke-cover
-  const topLeftLng = (topLeftPixelX / (n * TILE_SIZE)) * 360 - 180;
-  const topLeftLatRad = Math.atan(
-    Math.sinh(Math.PI * (1 - (2 * topLeftPixelY) / (n * TILE_SIZE)))
-  );
-  const topLeftLat = (topLeftLatRad * 180) / Math.PI;
-
-  const bottomRightPixelX = topLeftPixelX + CANVAS_SIZE;
-  const bottomRightPixelY = topLeftPixelY + CANVAS_SIZE;
-  const bottomRightLng = (bottomRightPixelX / (n * TILE_SIZE)) * 360 - 180;
-  const bottomRightLatRad = Math.atan(
-    Math.sinh(Math.PI * (1 - (2 * bottomRightPixelY) / (n * TILE_SIZE)))
-  );
-  const bottomRightLat = (bottomRightLatRad * 180) / Math.PI;
-
-  const bounds = {
-    north: topLeftLat,
-    west: topLeftLng,
-    south: bottomRightLat,
-    east: bottomRightLng,
-  };
-
   try {
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
-    return { dataUrl, bounds };
+    return canvas.toDataURL("image/jpeg", 0.85);
   } catch (e) {
     console.error("toDataURL error:", e);
     return null;

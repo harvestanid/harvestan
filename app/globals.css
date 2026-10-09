@@ -25,14 +25,6 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-/* ===================================================
-   EFEK KLIK UNTUK TOMBOL & LINK (Opsi C — Hybrid)
-   - Semua tombol & link: efek halus
-   - Bottom nav & fixed: tidak goyang
-   - Tombol disabled: tidak ada efek
-   =================================================== */
-
-/* Transisi dasar untuk semua elemen interaktif */
 button,
 a,
 [role="button"],
@@ -45,12 +37,10 @@ input[type="button"] {
     color 0.15s ease,
     border-color 0.15s ease,
     opacity 0.15s ease;
-  /* Anti-flicker di mobile */
   -webkit-tap-highlight-color: transparent;
   will-change: transform;
 }
 
-/* ===== HOVER (desktop): naik sedikit + shadow ===== */
 @media (hover: hover) {
   button:hover:not(:disabled):not([aria-disabled="true"]),
   a:hover:not([aria-disabled="true"]),
@@ -59,7 +49,6 @@ input[type="button"] {
   }
 }
 
-/* ===== ACTIVE (klik): turun + scale kecil ===== */
 button:active:not(:disabled):not([aria-disabled="true"]),
 a:active:not([aria-disabled="true"]),
 [role="button"]:active:not(:disabled):not([aria-disabled="true"]),
@@ -69,7 +58,6 @@ input[type="button"]:active {
   transition: transform 0.05s ease;
 }
 
-/* ===== DISABLED: tidak ada efek, cursor not-allowed ===== */
 button:disabled,
 input[type="submit"]:disabled,
 input[type="button"]:disabled,
@@ -83,11 +71,6 @@ input[type="submit"]:disabled:active {
   transform: none;
 }
 
-/* ===================================================
-   PENGECUALIAN — Elemen yang TIDAK boleh goyang
-   =================================================== */
-
-/* Bottom nav (fixed) — cukup highlight saja */
 nav.fixed button,
 nav.fixed a,
 nav[class*="fixed"] button,
@@ -101,18 +84,15 @@ nav.fixed a:active {
   transform: none !important;
 }
 
-/* Elemen dengan class .no-press-animation */
 .no-press-animation,
 .no-press-animation * {
   transform: none !important;
 }
 
-/* Elemen dengan class .press-strong (efek lebih tegas) */
 .press-strong:active:not(:disabled) {
   transform: translateY(2px) scale(0.95) !important;
 }
 
-/* Link di dalam teks paragraf (<p>, <span>) — hanya color change, no move */
 p a,
 span a,
 li a,
@@ -127,7 +107,6 @@ li a:hover {
   text-decoration: underline;
 }
 
-/* Input, select, textarea — tidak perlu efek klik */
 input:not([type="submit"]):not([type="button"]),
 select,
 textarea {
@@ -144,16 +123,10 @@ textarea:active {
   transform: none !important;
 }
 
-/* ===================================================
-   SMOOTH SCROLL untuk anchor link
-   =================================================== */
 html {
   scroll-behavior: smooth;
 }
 
-/* ===================================================
-   FOCUS VISIBLE — outline ramah keyboard user
-   =================================================== */
 button:focus-visible,
 a:focus-visible,
 [role="button"]:focus-visible {
@@ -161,9 +134,6 @@ a:focus-visible,
   outline-offset: 2px;
 }
 
-/* ===================================================
-   LOADING SPINNER — pakai di button kalau perlu
-   =================================================== */
 @keyframes spin {
   from {
     transform: rotate(0deg);
@@ -177,9 +147,6 @@ a:focus-visible,
   animation: spin 1s linear infinite;
 }
 
-/* ===================================================
-   CARD HOVER — opsional untuk card interaktif
-   =================================================== */
 .card-interactive {
   transition:
     transform 0.2s ease,
@@ -193,4 +160,291 @@ a:focus-visible,
 
 .card-interactive:active {
   transform: translateY(0) scale(0.99);
+}
+
+/* ===================================================
+   MARKDOWN CONTENT — untuk AI Agents output
+   =================================================== */
+
+.markdown-content {
+  color: #1f2937;
+  line-height: 1.7;
+  font-size: 0.875rem;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.markdown-content * {
+  max-width: 100%;
+}
+
+.markdown-content h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #2c5e2e;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #f0b429;
+  word-wrap: break-word;
+}
+
+.markdown-content h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #2c5e2e;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  padding-left: 0.5rem;
+  border-left: 4px solid #f0b429;
+  word-wrap: break-word;
+}
+
+.markdown-content h3 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #2c5e2e;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  word-wrap: break-word;
+}
+
+.markdown-content h4 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #2c5e2e;
+  margin-top: 1rem;
+  margin-bottom: 0.4rem;
+}
+
+.markdown-content p {
+  margin-bottom: 0.75rem;
+  color: #374151;
+  word-wrap: break-word;
+}
+
+.markdown-content strong {
+  font-weight: 700;
+  color: #2c5e2e;
+}
+
+.markdown-content em {
+  font-style: italic;
+  color: #4b5563;
+}
+
+.markdown-content ul {
+  list-style-type: none;
+  padding-left: 0;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-content ul li {
+  position: relative;
+  padding-left: 1.5rem;
+  margin-bottom: 0.35rem;
+  color: #374151;
+  word-wrap: break-word;
+}
+
+.markdown-content ul li::before {
+  content: "•";
+  position: absolute;
+  left: 0.5rem;
+  color: #f0b429;
+  font-weight: 900;
+  font-size: 1.1rem;
+  line-height: 1.4;
+}
+
+.markdown-content ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.markdown-content ol li {
+  margin-bottom: 0.35rem;
+  color: #374151;
+  padding-left: 0.25rem;
+  word-wrap: break-word;
+}
+
+.markdown-content ol li::marker {
+  color: #2c5e2e;
+  font-weight: 700;
+}
+
+.markdown-content blockquote {
+  border-left: 4px solid #2c5e2e;
+  background: rgba(240, 180, 41, 0.08);
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+  border-radius: 0 0.5rem 0.5rem 0;
+  color: #2c5e2e;
+  font-style: italic;
+  word-wrap: break-word;
+}
+
+.markdown-content code {
+  background: #f3f4f6;
+  color: #2c5e2e;
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.25rem;
+  font-size: 0.8rem;
+  font-family: ui-monospace, SFMono-Regular, monospace;
+  border: 1px solid #e5e7eb;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: normal;
+}
+
+.markdown-content pre {
+  background: #1f2937;
+  color: #f9fafb;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  margin: 1rem 0;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.markdown-content pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  border: none;
+  font-size: 0.75rem;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.markdown-content a {
+  color: #2c5e2e;
+  text-decoration: underline;
+  font-weight: 600;
+  word-wrap: break-word;
+}
+
+.markdown-content a:hover {
+  color: #f0b429;
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 2px solid #e5e7eb;
+  margin: 1.5rem 0;
+}
+
+.markdown-content .table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 1rem 0;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+}
+
+.markdown-content table {
+  width: 100%;
+  min-width: 500px;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.markdown-content thead {
+  background: #2c5e2e;
+  color: white;
+}
+
+.markdown-content th {
+  padding: 0.5rem 0.75rem;
+  text-align: left;
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.markdown-content td {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid #e5e7eb;
+  color: #374151;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.markdown-content tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+.markdown-content tbody tr:hover {
+  background: rgba(240, 180, 41, 0.08);
+}
+
+.markdown-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.75rem;
+  margin: 0.5rem 0;
+}
+
+@media (max-width: 640px) {
+  .markdown-content {
+    font-size: 0.8rem;
+  }
+
+  .markdown-content h1 {
+    font-size: 1.25rem;
+  }
+
+  .markdown-content h2 {
+    font-size: 1.1rem;
+  }
+
+  .markdown-content h3 {
+    font-size: 0.95rem;
+  }
+
+  .markdown-content pre {
+    font-size: 0.7rem;
+    padding: 0.75rem;
+  }
+
+  .markdown-content table {
+    font-size: 0.7rem;
+    min-width: 400px;
+  }
+
+  .markdown-content th,
+  .markdown-content td {
+    padding: 0.4rem 0.5rem;
+  }
+}
+
+/* ===================================================
+   EXPORT MODE — buat export PNG tanpa scroll
+   =================================================== */
+
+.export-mode .table-wrapper {
+  overflow: visible !important;
+  -webkit-overflow-scrolling: auto;
+}
+
+.export-mode .markdown-content table {
+  min-width: 100% !important;
+  width: 100% !important;
+}
+
+.export-mode {
+  overflow: visible !important;
+}
+
+.export-mode * {
+  overflow: visible !important;
 }

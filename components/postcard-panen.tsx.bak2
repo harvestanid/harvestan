@@ -12,13 +12,6 @@ export type PostcardStyle =
   | "neonModern"
   | "earthTone";
 
-export type SatelitBounds = {
-  north: number;
-  south: number;
-  east: number;
-  west: number;
-};
-
 export type PostcardData = {
   komoditas: string;
   komoditasLabel: string;
@@ -34,7 +27,6 @@ export type PostcardData = {
   tampilkanProfit: boolean;
   fotoCustomDataUrl?: string | null;
   satelitDataUrl?: string | null;
-  satelitBounds?: SatelitBounds | null;
   polygon?: { type: "Polygon"; coordinates: number[][][] } | null;
   koordinat?: string | null;
   qrDataUrl: string;
@@ -81,89 +73,7 @@ function safeTanggal(iso: any, short = false): string {
 
 function safeLabel(v: any): string {
   const s = safeStr(v, "Padi");
-  return (
-    s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\s*/gu, "").trim() ||
-    "Padi"
-  );
-}
-
-// ============ POLYGON OVERLAY ============
-// Warna sama seperti preview detail lahan: #10b981 + border putih
-function PolygonOverlay({
-  polygon,
-  bounds,
-  imgWidth,
-  imgHeight,
-  containerWidth,
-  containerHeight,
-}: {
-  polygon: { type: "Polygon"; coordinates: number[][][] } | null | undefined;
-  bounds: SatelitBounds | null | undefined;
-  imgWidth: number;
-  imgHeight: number;
-  containerWidth: number;
-  containerHeight: number;
-}) {
-  if (!polygon || !bounds) return null;
-  if (!polygon.coordinates || !polygon.coordinates[0]) return null;
-  if (polygon.coordinates[0].length < 3) return null;
-
-  const ring = polygon.coordinates[0];
-
-  const pointsInImage = ring.map(([lng, lat]) => {
-    const x = ((lng - bounds.west) / (bounds.east - bounds.west)) * imgWidth;
-    const y =
-      ((bounds.north - lat) / (bounds.north - bounds.south)) * imgHeight;
-    return { x, y };
-  });
-
-  const scaleX = containerWidth / imgWidth;
-  const scaleY = containerHeight / imgHeight;
-  const scale = Math.max(scaleX, scaleY);
-
-  const scaledW = imgWidth * scale;
-  const scaledH = imgHeight * scale;
-
-  const offsetX = (containerWidth - scaledW) / 2;
-  const offsetY = (containerHeight - scaledH) / 2;
-
-  const points = pointsInImage.map((p) => {
-    const x = p.x * scale + offsetX;
-    const y = p.y * scale + offsetY;
-    return `${x},${y}`;
-  });
-
-  return (
-    <svg
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        pointerEvents: "none",
-        zIndex: 3,
-      }}
-      viewBox={`0 0 ${containerWidth} ${containerHeight}`}
-      preserveAspectRatio="none"
-    >
-      <polygon
-        points={points.join(" ")}
-        fill="rgba(16, 185, 129, 0.35)"
-        stroke="#10b981"
-        strokeWidth={10}
-        strokeLinejoin="round"
-      />
-      <polygon
-        points={points.join(" ")}
-        fill="none"
-        stroke="#ffffff"
-        strokeWidth={3}
-        strokeLinejoin="round"
-        strokeDasharray="10 10"
-      />
-    </svg>
-  );
+  return s.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]\s*/gu, "").trim() || "Padi";
 }
 
 class StyleBoundary extends Component<
@@ -201,19 +111,10 @@ class StyleBoundary extends Component<
           }}
         >
           <div style={{ fontSize: "80px", marginBottom: "20px" }}>⚠️</div>
-          <div
-            style={{
-              fontSize: "36px",
-              color: "#900",
-              fontWeight: 700,
-              marginBottom: "20px",
-            }}
-          >
+          <div style={{ fontSize: "36px", color: "#900", fontWeight: 700, marginBottom: "20px" }}>
             Style error: {this.props.name}
           </div>
-          <div style={{ fontSize: "24px", color: "#600" }}>
-            {this.state.errorMessage}
-          </div>
+          <div style={{ fontSize: "24px", color: "#600" }}>{this.state.errorMessage}</div>
         </div>
       );
     }
@@ -746,48 +647,16 @@ function StyleSatelitCard({ data }: { data: PostcardData }) {
   const harga = safeNum(data.hargaJual);
   const profit = data.profitOwner != null ? safeNum(data.profitOwner) : null;
 
-  const adaPolygon =
-    data.polygon &&
-    data.polygon.coordinates &&
-    data.polygon.coordinates[0] &&
-    data.polygon.coordinates[0].length >= 3;
-
-  const POSTCARD_W = 1080;
-  const POSTCARD_H = 1920;
-
   return (
-    <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden", background: "#1a1a1a", fontFamily: FONT_SANS }}>
+    <div style={{ width: "100%", height: "100%", position: "relative", overflow: "hidden", background: "#1a3a1c", fontFamily: FONT_SANS }}>
       {data.satelitDataUrl ? (
-        <div style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}>
-          <img
-            src={data.satelitDataUrl}
-            alt="Peta satelit"
-            style={{
-              position: "absolute",
-              inset: 0,
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-            }}
-          />
-          {adaPolygon && data.satelitBounds && (
-            <PolygonOverlay
-              polygon={data.polygon}
-              bounds={data.satelitBounds}
-              imgWidth={1024}
-              imgHeight={1024}
-              containerWidth={POSTCARD_W}
-              containerHeight={POSTCARD_H}
-            />
-          )}
-        </div>
+        <img src={data.satelitDataUrl} alt="Peta satelit" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
       ) : (
         <div
           style={{
             position: "absolute",
             inset: 0,
-            background:
-              "repeating-linear-gradient(45deg, #3a7d44 0px, #3a7d44 40px, #2c5e2e 40px, #2c5e2e 80px)",
+            background: "repeating-linear-gradient(45deg, #3a7d44 0px, #3a7d44 40px, #2c5e2e 40px, #2c5e2e 80px)",
           }}
         />
       )}
@@ -797,61 +666,85 @@ function StyleSatelitCard({ data }: { data: PostcardData }) {
           position: "absolute",
           inset: 0,
           background:
-            "linear-gradient(180deg, rgba(0,0,0,0.75) 0%, rgba(0,0,0,0.1) 30%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.95) 100%)",
-          pointerEvents: "none",
+            "linear-gradient(180deg, rgba(26,58,28,0.85) 0%, rgba(26,58,28,0.3) 25%, rgba(26,58,28,0.3) 45%, rgba(26,58,28,0.98) 100%)",
         }}
       />
 
-      <div style={{ position: "absolute", top: "80px", left: "80px", right: "80px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 4 }}>
+      <div style={{ position: "absolute", top: "80px", left: "80px", right: "80px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 2 }}>
         <img src={LOGO_URL} alt="Harvestan" style={{ height: "60px", width: "auto" }} />
-        <div style={{ color: "#ffffff", fontSize: "22px", letterSpacing: "4px", textTransform: "uppercase", background: "rgba(0,0,0,0.4)", padding: "12px 24px", borderRadius: "999px" }}>
-          {safeTanggal(data.tanggal, true)}
+        <div style={{ background: "rgba(240,180,41,0.95)", color: "#1a3a1c", padding: "12px 24px", borderRadius: "999px", fontSize: "22px", fontWeight: 900, letterSpacing: "3px" }}>
+          🛰️ SATELIT
         </div>
       </div>
 
-      <div style={{ position: "absolute", top: "280px", left: 0, right: 0, textAlign: "center", zIndex: 4 }}>
-        <div
-          style={{
-            display: "inline-block",
-            color: "#f0b429",
-            fontSize: "38px",
-            fontWeight: 900,
-            letterSpacing: "6px",
-            textShadow: "0 2px 12px rgba(0,0,0,0.6)",
-          }}
-        >
-          {emoji} {safeLabel(data.komoditasLabel).toUpperCase()}
+      <div
+        style={{
+          position: "absolute",
+          top: "240px",
+          left: "80px",
+          right: "80px",
+          background: "rgba(255, 255, 255, 0.97)",
+          borderRadius: "40px",
+          padding: "50px",
+          zIndex: 2,
+          boxShadow: "0 30px 80px rgba(0,0,0,0.4)",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "20px", marginBottom: "30px" }}>
+          <div style={{ fontSize: "80px", lineHeight: 1 }}>{emoji}</div>
+          <div>
+            <div style={{ fontSize: "18px", color: "#8b6f47", fontWeight: 700, letterSpacing: "4px", marginBottom: "6px" }}>HASIL PANEN</div>
+            <div style={{ fontSize: "48px", color: "#2c5e2e", fontWeight: 900, textTransform: "uppercase", lineHeight: 1 }}>
+              {safeLabel(data.komoditasLabel)}
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div style={{ position: "absolute", bottom: 0, left: "80px", right: "80px", paddingBottom: "200px", zIndex: 4 }}>
-        <div style={{ color: "#f0b429", fontSize: "30px", fontWeight: 800, letterSpacing: "6px", textTransform: "uppercase", marginBottom: "20px" }}>
-          🌾 HASIL PANEN
-        </div>
+        <div style={{ height: "3px", background: "#2c5e2e", width: "100%", marginBottom: "40px" }} />
 
-        <div style={{ color: "#ffffff", fontSize: "220px", fontWeight: 900, lineHeight: 0.9, letterSpacing: "-8px", fontFamily: FONT_DISPLAY }}>
+        <div style={{ fontSize: "200px", color: "#2c5e2e", fontWeight: 900, lineHeight: 0.9, letterSpacing: "-8px", fontFamily: FONT_DISPLAY }}>
           {Math.round(hasil).toLocaleString("id-ID")}
         </div>
-
-        <div style={{ color: "#f0b429", fontSize: "56px", fontWeight: 900, letterSpacing: "10px", marginBottom: "50px", fontFamily: FONT_DISPLAY }}>
+        <div style={{ fontSize: "36px", color: "#8b6f47", fontWeight: 900, letterSpacing: "8px", marginBottom: "40px", fontFamily: FONT_DISPLAY }}>
           KILOGRAM
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "24px", marginBottom: data.tampilkanProfit && profit != null ? "40px" : "0" }}>
-          <GlassStat label="LUAS" value={`${luas.toFixed(2)} Ha`} />
-          <GlassStat label="PRODUKTIVITAS" value={`${Math.round(prod).toLocaleString("id-ID")} Kg/Ha`} />
-          <GlassStat label="HARGA JUAL" value={`${safeRp(harga)}/Kg`} />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px 30px" }}>
+          <SatelitRow label="Luas Lahan" value={`${luas.toFixed(2)} Ha`} />
+          <SatelitRow label="Produktivitas" value={`${Math.round(prod).toLocaleString("id-ID")} Kg/Ha`} />
+          <SatelitRow label="Harga Jual" value={`${safeRp(harga)}/Kg`} />
+          <SatelitRow label="Tanggal" value={safeTanggal(data.tanggal, true)} />
         </div>
 
         {data.tampilkanProfit && profit != null && (
-          <div style={{ background: "rgba(240, 180, 41, 0.95)", color: "#2c5e2e", padding: "28px 40px", borderRadius: "24px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: "24px", fontWeight: 800, letterSpacing: "3px" }}>💵 PROFIT OWNER</span>
-            <span style={{ fontSize: "52px", fontWeight: 900 }}>{safeRp(profit)}</span>
+          <div style={{ marginTop: "40px", paddingTop: "30px", borderTop: "2px dashed #2c5e2e", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span style={{ color: "#8b6f47", fontSize: "20px", fontWeight: 800, letterSpacing: "2px" }}>💵 PROFIT OWNER</span>
+            <span style={{ color: "#2c5e2e", fontSize: "42px", fontWeight: 900 }}>{safeRp(profit)}</span>
           </div>
         )}
       </div>
 
-      <FooterBar data={data} theme="dark" />
+      <div style={{ position: "absolute", bottom: "80px", left: "80px", right: "80px", display: "flex", justifyContent: "space-between", alignItems: "center", zIndex: 2 }}>
+        <div>
+          {data.namaPenggarap && (
+            <div style={{ color: "#ffffff", fontSize: "32px", fontWeight: 800, marginBottom: "8px" }}>
+              👨‍🌾 {safeStr(data.namaPenggarap)}
+            </div>
+          )}
+          {data.namaLahan && (
+            <div style={{ color: "#f0b429", fontSize: "22px", fontWeight: 700, letterSpacing: "2px" }}>
+              📍 {safeStr(data.namaLahan)}
+            </div>
+          )}
+          <div style={{ color: "rgba(255,255,255,0.5)", fontSize: "18px", marginTop: "14px" }}>
+            Made with <strong style={{ color: "#f0b429" }}>Harvestan</strong>
+          </div>
+        </div>
+
+        <div style={{ background: "#ffffff", padding: "14px", borderRadius: "20px" }}>
+          <img src={data.qrDataUrl} alt="QR" style={{ width: "140px", height: "140px", display: "block", borderRadius: "8px" }} />
+        </div>
+      </div>
     </div>
   );
 }
@@ -1188,6 +1081,15 @@ function SatelitRow({ label, value }: { label: string; value: string }) {
     <div>
       <div style={{ fontSize: "16px", color: "#8b6f47", fontWeight: 700, letterSpacing: "2px", marginBottom: "6px" }}>{label}</div>
       <div style={{ fontSize: "26px", color: "#2c5e2e", fontWeight: 900 }}>{value}</div>
+    </div>
+  );
+}
+
+function NeonBox({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ background: "rgba(0, 255, 200, 0.05)", border: "2px solid #00ffc8", borderRadius: "16px", padding: "20px", boxShadow: "0 0 20px rgba(0, 255, 200, 0.3)" }}>
+      <div style={{ fontFamily: FONT_MONO, fontSize: "16px", color: "#00ffc8", letterSpacing: "3px", marginBottom: "8px" }}>{label}</div>
+      <div style={{ fontFamily: FONT_DISPLAY, fontSize: "28px", color: "#ffffff", letterSpacing: "1px" }}>{value}</div>
     </div>
   );
 }

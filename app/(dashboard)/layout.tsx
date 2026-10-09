@@ -29,9 +29,21 @@ const MENU_ITEMS = [
     premium: false,
     strictPremium: true,
   },
-  { href: "/ukur-lahan", label: "Ukur", icon: "📍", premium: true },
+  {
+    href: "/ukur-lahan",
+    label: "Ukur",
+    icon: "📍",
+    premium: false,
+    strictPremium: true,
+  },
   { href: "/log-tanam", label: "Log Tanam", icon: "📋", premium: false },
-  { href: "/kalkulator", label: "Kalkulator", icon: "🧪", premium: true },
+  {
+    href: "/kalkulator",
+    label: "Kalkulator",
+    icon: "🧪",
+    premium: false,
+    strictPremium: true,
+  },
   { href: "/keuangan", label: "Keuangan", icon: "💰", premium: false },
   { href: "/grafik", label: "Grafik", icon: "📈", premium: false },
   { href: "/laporan", label: "Laporan", icon: "📄", premium: true },
@@ -88,7 +100,6 @@ export default async function DashboardLayout({
 
   const demoStatus = user ? await getDemoStatus(user.id) : null;
 
-  // Untuk NavLink: pakai effectivePremium (demo tetap dianggap "bisa akses" dari navbar)
   const isPremiumActive = premiumStatus.effectivePremium;
   const isDemoActive = premiumStatus.isDemoActive;
 
@@ -201,6 +212,12 @@ export default async function DashboardLayout({
                   <div className="text-[10px] font-bold text-[#2c5e2e]/40 uppercase tracking-widest px-4 mb-1">
                     Admin Only
                   </div>
+                  <NavLink
+                    href="/admin/agents"
+                    icon="🤖"
+                    label="AI Agents"
+                    variant="admin"
+                  />
                   <NavLink
                     href="/admin/feedback"
                     icon="🔐"
@@ -321,6 +338,12 @@ export default async function DashboardLayout({
           ))}
           {isAdmin && (
             <>
+              <NavLink
+                href="/admin/agents"
+                icon="🤖"
+                label="AI Agents"
+                variant="mobile"
+              />
               <NavLink
                 href="/admin/feedback"
                 icon="🔐"
