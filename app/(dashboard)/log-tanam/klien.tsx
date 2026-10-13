@@ -86,12 +86,24 @@ function labelJenis(j: ActivityLog, jenisCustom: Props["jenisCustom"]) {
   return JENIS_PRESET[j.jenis] || JENIS_PRESET.lainnya;
 }
 
+// Format tanggal untuk date input (YYYY-MM-DD)
+function toDateInputValue(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
   const router = useRouter();
 
   const [filterJenis, setFilterJenis] = useState<string>("");
   const [filterBulan, setFilterBulan] = useState<string>("");
   const [searchJudul, setSearchJudul] = useState<string>("");
+
+  // ===== FILTER TANGGAL (BARU) =====
+  const [tanggalDari, setTanggalDari] = useState<string>("");
+  const [tanggalSampai, setTanggalSampai] = useState<string>("");
 
   // ===== STATE PILIH MASSAL =====
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -110,10 +122,33 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
     return Array.from(set).sort().reverse();
   }, [logs]);
 
+  // ===== HELPER FILTER TANGGAL =====
+  // Kalau tanggal diisi, bulan otomatis di-override (diabaikan)
+  const adaFilterTanggal = tanggalDari !== "" || tanggalSampai !== "";
+
   const filteredLogs = useMemo(() => {
     return logs.filter((l) => {
+      // Filter jenis
       if (filterJenis && l.jenis !== filterJenis) return false;
-      if (filterBulan) {
+
+      // Filter tanggal (override filter bulan)
+      if (adaFilterTanggal) {
+        const tglLog = new Date(l.tanggal);
+        tglLog.setHours(0, 0, 0, 0);
+
+        if (tanggalDari) {
+          const dari = new Date(tanggalDari);
+          dari.setHours(0, 0, 0, 0);
+          if (tglLog < dari) return false;
+        }
+
+        if (tanggalSampai) {
+          const sampai = new Date(tanggalSampai);
+          sampai.setHours(23, 59, 59, 999);
+          if (tglLog > sampai) return false;
+        }
+      } else if (filterBulan) {
+        // Filter bulan (kalau filter tanggal gak aktif)
         const d = new Date(l.tanggal);
         const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
           2,
@@ -121,6 +156,8 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
         )}`;
         if (key !== filterBulan) return false;
       }
+
+      // Filter search
       if (searchJudul) {
         const q = searchJudul.toLowerCase();
         if (
@@ -130,11 +167,20 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
           return false;
         }
       }
+
       return true;
     });
-  }, [logs, filterJenis, filterBulan, searchJudul]);
+  }, [
+    logs,
+    filterJenis,
+    filterBulan,
+    searchJudul,
+    tanggalDari,
+    tanggalSampai,
+    adaFilterTanggal,
+  ]);
 
-  // Statistik bulan ini
+  // Statistik bulan ini (tetap pakai semua logs, gak terpengaruh filter)
   const stats = useMemo(() => {
     const now = new Date();
     const bulanIni = logs.filter((l) => {
@@ -151,12 +197,57 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
     };
   }, [logs]);
 
-  const adaFilterAktif = filterJenis || filterBulan || searchJudul;
+  const adaFilterAktif =
+    filterJenis ||
+    filterBulan ||
+    searchJudul ||
+    tanggalDari ||
+    tanggalSampai;
 
   function resetFilter() {
     setFilterJenis("");
     setFilterBulan("");
     setSearchJudul("");
+    setTanggalDari("");
+    setTanggalSampai("");
+  }
+
+  // ===== HANDLER FILTER TANGGAL =====
+  function handleTanggalDariChange(value: string) {
+    setTanggalDari(value);
+    // Kalau user isi tanggal, reset filter bulan biar gak konflik
+    if (value) setFilterBulan("");
+  }
+
+  function handleTanggalSampaiChange(value: string) {
+    setTanggalSampai(value);
+    if (value) setFilterBulan("");
+  }
+
+  function handleResetTanggal() {
+    setTanggalDari("");
+    setTanggalSampai("");
+  }
+
+  // ===== PRESET RENTANG CEPAT =====
+  function presetRentang(hari: number) {
+    const today = new Date();
+    const dari = new Date();
+    dari.setDate(today.getDate() - hari);
+
+    setTanggalDari(toDateInputValue(dari));
+    setTanggalSampai(toDateInputValue(today));
+    setFilterBulan("");
+  }
+
+  function presetBulanIni() {
+    const now = new Date();
+    const pertama = new Date(now.getFullYear(), now.getMonth(), 1);
+    const terakhir = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
+    setTanggalDari(toDateInputValue(pertama));
+    setTanggalSampai(toDateInputValue(terakhir));
+    setFilterBulan("");
   }
 
   // ===== HANDLER PILIH MASSAL =====
@@ -179,10 +270,8 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
     setSelectedIds((prev) => {
       const next = new Set(prev);
       if (semuaTerpilih) {
-        // Hapus semua dari selection
         filteredIds.forEach((id) => next.delete(id));
       } else {
-        // Tambah semua
         filteredIds.forEach((id) => next.add(id));
       }
       return next;
@@ -243,7 +332,6 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
     }
   }
 
-  // Cek status "pilih semua" di filtered
   const filteredIds = filteredLogs.map((l) => l.id);
   const semuaTerpilih =
     filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id));
@@ -275,7 +363,7 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
         </div>
       </div>
 
-      {/* FILTER BAR */}
+      {/* FILTER BAR (LAMA) */}
       <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-4 shadow-lg shadow-[#2c5e2e]/5">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1 flex-1 min-w-[140px]">
@@ -325,7 +413,8 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
             <select
               value={filterBulan}
               onChange={(e) => setFilterBulan(e.target.value)}
-              className="border-2 border-[#2c5e2e]/20 rounded-2xl px-3 py-2 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium"
+              disabled={adaFilterTanggal}
+              className="border-2 border-[#2c5e2e]/20 rounded-2xl px-3 py-2 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <option value="">Semua</option>
               {bulanTersedia.map((b) => {
@@ -351,7 +440,7 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
               onClick={resetFilter}
               className="bg-[#2c5e2e]/10 hover:bg-[#2c5e2e]/20 text-[#2c5e2e] text-xs font-bold px-4 py-2.5 rounded-full transition-all"
             >
-              🔄 Reset
+              🔄 Reset Semua
             </button>
           )}
 
@@ -359,6 +448,91 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
             {filteredLogs.length} dari {logs.length} log
           </div>
         </div>
+      </div>
+
+      {/* FILTER TANGGAL (BARU) */}
+      <div className="bg-white border-2 border-[#f0b429]/30 rounded-3xl p-4 shadow-lg shadow-[#f0b429]/5">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+          <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest">
+            📅 Filter Tanggal
+          </div>
+          {adaFilterTanggal && (
+            <button
+              onClick={handleResetTanggal}
+              className="text-[10px] font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded-full transition"
+            >
+              ✕ Reset Tanggal
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 mb-3">
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest">
+              Dari Tanggal
+            </label>
+            <input
+              type="date"
+              value={tanggalDari}
+              onChange={(e) => handleTanggalDariChange(e.target.value)}
+              max={tanggalSampai || undefined}
+              className="border-2 border-[#2c5e2e]/20 rounded-2xl px-3 py-2 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium"
+            />
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest">
+              Sampai Tanggal
+            </label>
+            <input
+              type="date"
+              value={tanggalSampai}
+              onChange={(e) => handleTanggalSampaiChange(e.target.value)}
+              min={tanggalDari || undefined}
+              className="border-2 border-[#2c5e2e]/20 rounded-2xl px-3 py-2 text-sm focus:outline-none focus:border-[#f0b429] bg-white text-[#2c5e2e] font-medium"
+            />
+          </div>
+        </div>
+
+        {/* PRESET CEPAT */}
+        <div className="flex flex-wrap gap-2">
+          <span className="text-[10px] font-bold text-[#2c5e2e]/60 uppercase tracking-widest self-center mr-1">
+            Cepat:
+          </span>
+          <button
+            type="button"
+            onClick={() => presetRentang(7)}
+            className="text-[10px] font-bold bg-[#f0b429]/20 hover:bg-[#f0b429]/40 text-[#2c5e2e] px-3 py-1.5 rounded-full transition"
+          >
+            7 Hari Terakhir
+          </button>
+          <button
+            type="button"
+            onClick={() => presetRentang(30)}
+            className="text-[10px] font-bold bg-[#f0b429]/20 hover:bg-[#f0b429]/40 text-[#2c5e2e] px-3 py-1.5 rounded-full transition"
+          >
+            30 Hari Terakhir
+          </button>
+          <button
+            type="button"
+            onClick={presetBulanIni}
+            className="text-[10px] font-bold bg-[#f0b429]/20 hover:bg-[#f0b429]/40 text-[#2c5e2e] px-3 py-1.5 rounded-full transition"
+          >
+            Bulan Ini
+          </button>
+          <button
+            type="button"
+            onClick={() => presetRentang(365)}
+            className="text-[10px] font-bold bg-[#f0b429]/20 hover:bg-[#f0b429]/40 text-[#2c5e2e] px-3 py-1.5 rounded-full transition"
+          >
+            1 Tahun
+          </button>
+        </div>
+
+        {adaFilterTanggal && (
+          <div className="mt-3 text-[11px] text-[#2c5e2e] bg-[#f0b429]/10 border border-[#f0b429]/30 rounded-xl px-3 py-2">
+            📌 Filter bulan dinonaktifkan otomatis saat filter tanggal aktif
+          </div>
+        )}
       </div>
 
       {/* BAR PILIH MASSAL */}
@@ -451,7 +625,6 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
                     : "border-[#2c5e2e]/10 hover:border-[#f0b429]/50 hover:shadow-lg hover:shadow-[#f0b429]/10"
                 }`}
               >
-                {/* Checkbox overlay */}
                 <div className="absolute top-4 right-4 z-10">
                   <input
                     type="checkbox"
