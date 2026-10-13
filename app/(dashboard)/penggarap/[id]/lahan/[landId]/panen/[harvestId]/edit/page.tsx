@@ -266,6 +266,15 @@ function formatRp(n: number) {
   return "Rp " + Math.round(n).toLocaleString("id-ID");
 }
 
+// Label komoditas untuk field "bawa pulang"
+const LABEL_BAWA_PULANG: Record<string, string> = {
+  padi: "🌾 Gabah Bawa Pulang (Kg)",
+  jagung: "🌽 Jagung Bawa Pulang (Kg)",
+  kacang_tanah: "🥜 Kacang Tanah Bawa Pulang (Kg)",
+  bawang_merah: "🧅 Bawang Merah Bawa Pulang (Kg)",
+  cabai_rawit: "🌶️ Cabai Bawa Pulang (Kg)",
+};
+
 export default async function EditPanenPage({
   params,
   searchParams,
@@ -368,6 +377,10 @@ export default async function EditPanenPage({
 
   const potonganHutangLama = Number(panen.potongan_hutang || 0);
   const wasPotongHutang = potonganHutangLama > 0;
+
+  const labelBawaPulang =
+    LABEL_BAWA_PULANG[(panen.komoditas as string) || "padi"] ||
+    "🌾 Hasil Panen Bawa Pulang (Kg)";
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto">
@@ -584,46 +597,60 @@ export default async function EditPanenPage({
           </div>
         )}
 
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              🌾 Penggarap bawa (Kg)
-            </label>
-            <input
-              type="number"
-              name="bawa_penggarap"
-              step="any"
-              min="0"
-              defaultValue={panen.bawa_penggarap || 0}
-              className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
-            />
+        {/* ===== BAWA PULANG — LABEL DINAMIS + PENJELASAN ===== */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            🏠 {labelBawaPulang}
+          </label>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                👨‍🌾 Penggarap
+              </label>
+              <input
+                type="number"
+                name="bawa_penggarap"
+                step="any"
+                min="0"
+                defaultValue={panen.bawa_penggarap || 0}
+                className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                🏠 Owner
+              </label>
+              <input
+                type="number"
+                name="bawa_owner"
+                step="any"
+                min="0"
+                defaultValue={panen.bawa_owner || 0}
+                className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                📦 Lainnya
+              </label>
+              <input
+                type="number"
+                name="bawa_lain"
+                step="any"
+                min="0"
+                defaultValue={panen.bawa_lain || 0}
+                className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              🏠 Owner bawa (Kg)
-            </label>
-            <input
-              type="number"
-              name="bawa_owner"
-              step="any"
-              min="0"
-              defaultValue={panen.bawa_owner || 0}
-              className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1">
-              📦 Lainnya (Kg)
-            </label>
-            <input
-              type="number"
-              name="bawa_lain"
-              step="any"
-              min="0"
-              defaultValue={panen.bawa_lain || 0}
-              className="w-full border border-gray-300 rounded-lg px-2 py-2 text-sm"
-            />
-          </div>
+          <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+            💡 Isi kalau ada hasil panen yang <strong>dibawa pulang</strong> dan
+            tidak dijual. Contoh: untuk konsumsi sendiri, disimpan jadi{" "}
+            <strong>benih/bibit</strong> musim depan, dibagi ke keluarga, atau
+            keperluan lain. Jumlah ini{" "}
+            <strong>tidak masuk ke profit penjualan</strong>, tapi tetap
+            dicatat biar stok panen Anda akurat.
+          </p>
         </div>
 
         {/* Potong hutang — sembunyiin kalau mandiri */}

@@ -25,6 +25,15 @@ function formatRp(n: number) {
   return "Rp " + Math.round(n).toLocaleString("id-ID");
 }
 
+// Label komoditas untuk field "bawa pulang"
+const LABEL_BAWA_PULANG: Record<string, string> = {
+  padi: "🌾 Gabah Bawa Pulang (Kg)",
+  jagung: "🌽 Jagung Bawa Pulang (Kg)",
+  kacang_tanah: "🥜 Kacang Tanah Bawa Pulang (Kg)",
+  bawang_merah: "🧅 Bawang Merah Bawa Pulang (Kg)",
+  cabai_rawit: "🌶️ Cabai Bawa Pulang (Kg)",
+};
+
 export function FormPanenFields({
   hargaDefault,
   biayaDefault,
@@ -56,6 +65,10 @@ export function FormPanenFields({
   const [errorMusim, setErrorMusim] = useState("");
 
   const persenPenggarap = 100 - persenOwner;
+
+  // Label dinamis untuk field bawa pulang
+  const labelBawaPulang =
+    LABEL_BAWA_PULANG[komoditas] || "🌾 Hasil Panen Bawa Pulang (Kg)";
 
   async function handleSimpanMusimClick() {
     if (!namaMusimBaru.trim()) {
@@ -341,10 +354,10 @@ export function FormPanenFields({
         </div>
       )}
 
-      {/* ===== BAWA PULANG ===== */}
+      {/* ===== BAWA PULANG — LABEL DINAMIS + PENJELASAN ===== */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          🏠 Gabah Bawa Pulang (Kg)
+          🏠 {labelBawaPulang}
         </label>
         <div className="grid grid-cols-3 gap-3">
           <div>
@@ -387,8 +400,12 @@ export function FormPanenFields({
             />
           </div>
         </div>
-        <p className="text-xs text-gray-500 mt-1 italic">
-          Isi kalau ada gabah yang dibawa pulang (tidak dijual).
+        <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+          💡 Isi kalau ada hasil panen yang <strong>dibawa pulang</strong> dan
+          tidak dijual. Contoh: untuk konsumsi sendiri, disimpan jadi{" "}
+          <strong>benih/bibit</strong> musim depan, dibagi ke keluarga, atau
+          keperluan lain. Jumlah ini <strong>tidak masuk ke profit penjualan</strong>
+          , tapi tetap dicatat biar stok panen Anda akurat.
         </p>
       </div>
 
