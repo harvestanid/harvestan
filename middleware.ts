@@ -47,6 +47,12 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // ===== REDIRECT USER LOGIN DARI LANDING =====
+  // User yang udah login + buka landing page → auto-redirect ke dashboard
+  if (user && pathname === "/") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   // ===== ROUTE PUBLIK =====
   const isPublicRoute =
     pathname === "/" ||
@@ -77,6 +83,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp|ico)$).*)",
   ],
 };
