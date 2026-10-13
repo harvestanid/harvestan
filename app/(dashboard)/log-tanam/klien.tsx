@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type ActivityLog = {
   id: string;
@@ -86,9 +87,15 @@ function labelJenis(j: ActivityLog, jenisCustom: Props["jenisCustom"]) {
 }
 
 export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
+  const router = useRouter();
+
   const [filterJenis, setFilterJenis] = useState<string>("");
   const [filterBulan, setFilterBulan] = useState<string>("");
   const [searchJudul, setSearchJudul] = useState<string>("");
+
+  // ===== STATE PILIH MASSAL =====
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
 
   const bulanTersedia = useMemo(() => {
     const set = new Set<string>();
@@ -151,6 +158,98 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
     setFilterBulan("");
     setSearchJudul("");
   }
+
+  // ===== HANDLER PILIH MASSAL =====
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    const filteredIds = filteredLogs.map((l) => l.id);
+    const semuaTerpilih = filteredIds.every((id) => selectedIds.has(id));
+
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (semuaTerpilih) {
+        // Hapus semua dari selection
+        filteredIds.forEach((id) => next.delete(id));
+      } else {
+        // Tambah semua
+        filteredIds.forEach((id) => next.add(id));
+      }
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+  }
+
+  async function handleDeleteBulk() {
+    if (isDemo) {
+      alert("🔒 Tidak bisa hapus di mode demo");
+      return;
+    }
+
+    const jumlah = selectedIds.size;
+    if (jumlah === 0) return;
+
+    if (
+      !confirm(
+        `Hapus ${jumlah} log?\n\n` +
+          `Data dan foto akan dihapus permanen.\n\n` +
+          `Aksi ini tidak bisa dibatalkan.`
+      )
+    )
+      return;
+
+    setDeleting(true);
+
+    try {
+      const res = await fetch("/api/activity-log/delete-bulk", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: Array.from(selectedIds) }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        alert("❌ " + (json.error || "Gagal hapus"));
+        return;
+      }
+
+      alert(
+        `✅ ${json.jumlah_dihapus} log berhasil dihapus` +
+          (json.jumlah_foto_dihapus > 0
+            ? `\n${json.jumlah_foto_dihapus} foto ikut dihapus`
+            : "")
+      );
+
+      clearSelection();
+      router.refresh();
+    } catch (err: any) {
+      alert("❌ " + (err.message || "Unknown error"));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  // Cek status "pilih semua" di filtered
+  const filteredIds = filteredLogs.map((l) => l.id);
+  const semuaTerpilih =
+    filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id));
+  const sebagianTerpilih =
+    !semuaTerpilih && filteredIds.some((id) => selectedIds.has(id));
+  const adaYangDipilih = selectedIds.size > 0;
 
   return (
     <div className="space-y-4">
@@ -262,6 +361,58 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
         </div>
       </div>
 
+      {/* BAR PILIH MASSAL */}
+      {filteredLogs.length > 0 && (
+        <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-3 shadow-lg shadow-[#2c5e2e]/5">
+          <div className="flex items-center gap-3 flex-wrap">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={semuaTerpilih}
+                ref={(el) => {
+                  if (el) el.indeterminate = sebagianTerpilih;
+                }}
+                onChange={toggleSelectAll}
+                className="w-5 h-5 accent-[#2c5e2e] cursor-pointer"
+              />
+              <span className="text-xs font-bold text-[#2c5e2e]">
+                {semuaTerpilih
+                  ? "Batal Pilih Semua"
+                  : `Pilih Semua (${filteredLogs.length})`}
+              </span>
+            </label>
+
+            {adaYangDipilih && (
+              <>
+                <div className="flex-1" />
+
+                <span className="text-xs font-bold text-[#2c5e2e] bg-[#f0b429]/20 px-3 py-1 rounded-full">
+                  {selectedIds.size} terpilih
+                </span>
+
+                <button
+                  onClick={clearSelection}
+                  disabled={deleting}
+                  className="text-xs font-bold bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-full transition disabled:opacity-50"
+                >
+                  Batal
+                </button>
+
+                <button
+                  onClick={handleDeleteBulk}
+                  disabled={deleting || isDemo}
+                  className="text-xs font-bold bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-full transition disabled:opacity-50 disabled:hover:bg-red-500"
+                >
+                  {deleting
+                    ? "⏳ Menghapus..."
+                    : `🗑️ Hapus (${selectedIds.size})`}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* LIST LOGS */}
       {logs.length === 0 ? (
         <div className="bg-white border-2 border-dashed border-[#2c5e2e]/20 rounded-3xl p-12 text-center">
@@ -289,58 +440,79 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
         <div className="space-y-3">
           {filteredLogs.map((l) => {
             const jenis = labelJenis(l, jenisCustom);
+            const isSelected = selectedIds.has(l.id);
+
             return (
-              <Link
+              <div
                 key={l.id}
-                href={`/log-tanam/${l.id}`}
-                className="block bg-white border-2 border-[#2c5e2e]/10 hover:border-[#f0b429]/50 rounded-3xl p-4 transition-all hover:shadow-lg hover:shadow-[#f0b429]/10 group"
+                className={`relative bg-white border-2 rounded-3xl transition-all ${
+                  isSelected
+                    ? "border-[#f0b429] shadow-lg shadow-[#f0b429]/20"
+                    : "border-[#2c5e2e]/10 hover:border-[#f0b429]/50 hover:shadow-lg hover:shadow-[#f0b429]/10"
+                }`}
               >
-                <div className="flex items-start gap-3 flex-wrap">
-                  {l.foto_url && (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={l.foto_url}
-                      alt={l.judul}
-                      className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-2xl flex-shrink-0 group-hover:scale-[1.03] transition-transform"
-                    />
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap mb-2">
-                      <span
-                        className={`text-[10px] px-2.5 py-1 rounded-full font-bold border-2 uppercase tracking-widest ${jenis.warna}`}
-                      >
-                        {jenis.emoji} {jenis.label}
-                      </span>
-                      <span className="text-[10px] text-[#2c5e2e]/60 font-medium">
-                        📅 {formatTanggal(l.tanggal)}
-                      </span>
-                    </div>
-                    <div className="font-bold text-[#2c5e2e] text-base mb-1 leading-tight">
-                      {l.judul}
-                    </div>
-                    {l.deskripsi && (
-                      <p className="text-xs text-[#2c5e2e]/70 leading-relaxed line-clamp-2 mb-2">
-                        {l.deskripsi}
-                      </p>
-                    )}
-                    {Number(l.biaya) > 0 && (
-                      <div className="flex items-center gap-2 text-xs flex-wrap">
-                        <span className="font-bold text-[#2c5e2e]">
-                          💰 {formatRp(Number(l.biaya))}
-                        </span>
-                        {l.keterangan_biaya && (
-                          <span className="text-[#2c5e2e]/60">
-                            — {l.keterangan_biaya}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                  <span className="text-[#2c5e2e]/30 group-hover:text-[#f0b429] group-hover:translate-x-1 transition-all text-xl flex-shrink-0">
-                    →
-                  </span>
+                {/* Checkbox overlay */}
+                <div className="absolute top-4 right-4 z-10">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={() => toggleSelect(l.id)}
+                    className="w-5 h-5 accent-[#2c5e2e] cursor-pointer"
+                    aria-label={`Pilih ${l.judul}`}
+                  />
                 </div>
-              </Link>
+
+                <Link
+                  href={`/log-tanam/${l.id}`}
+                  className="block p-4 group"
+                >
+                  <div className="flex items-start gap-3 flex-wrap pr-8">
+                    {l.foto_url && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={l.foto_url}
+                        alt={l.judul}
+                        className="w-20 h-20 md:w-24 md:h-24 object-cover rounded-2xl flex-shrink-0 group-hover:scale-[1.03] transition-transform"
+                      />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                        <span
+                          className={`text-[10px] px-2.5 py-1 rounded-full font-bold border-2 uppercase tracking-widest ${jenis.warna}`}
+                        >
+                          {jenis.emoji} {jenis.label}
+                        </span>
+                        <span className="text-[10px] text-[#2c5e2e]/60 font-medium">
+                          📅 {formatTanggal(l.tanggal)}
+                        </span>
+                      </div>
+                      <div className="font-bold text-[#2c5e2e] text-base mb-1 leading-tight">
+                        {l.judul}
+                      </div>
+                      {l.deskripsi && (
+                        <p className="text-xs text-[#2c5e2e]/70 leading-relaxed line-clamp-2 mb-2">
+                          {l.deskripsi}
+                        </p>
+                      )}
+                      {Number(l.biaya) > 0 && (
+                        <div className="flex items-center gap-2 text-xs flex-wrap">
+                          <span className="font-bold text-[#2c5e2e]">
+                            💰 {formatRp(Number(l.biaya))}
+                          </span>
+                          {l.keterangan_biaya && (
+                            <span className="text-[#2c5e2e]/60">
+                              — {l.keterangan_biaya}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <span className="text-[#2c5e2e]/30 group-hover:text-[#f0b429] group-hover:translate-x-1 transition-all text-xl flex-shrink-0">
+                      →
+                    </span>
+                  </div>
+                </Link>
+              </div>
             );
           })}
         </div>
