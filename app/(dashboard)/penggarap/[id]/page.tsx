@@ -142,19 +142,19 @@ export default async function DetailPenggarapPage({ params }: Props) {
             {harvests.length}x
           </div>
         </div>
-        <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 min-w-0">
           <div className="text-[10px] text-green-700 font-bold uppercase">
             Profit Owner
           </div>
-          <div className="text-base font-bold text-green-900 mt-1 break-all">
+          <div className="text-base font-bold text-green-900 mt-1 angka-fit">
             {formatRp(totalProfitOwner)}
           </div>
         </div>
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4">
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 min-w-0">
           <div className="text-[10px] text-orange-700 font-bold uppercase">
             Profit Penggarap
           </div>
-          <div className="text-base font-bold text-orange-900 mt-1 break-all">
+          <div className="text-base font-bold text-orange-900 mt-1 angka-fit">
             {formatRp(totalProfitPenggarap)}
           </div>
         </div>
@@ -162,11 +162,11 @@ export default async function DetailPenggarapPage({ params }: Props) {
 
       {/* Hutang Aktif */}
       {hutangAktif.length > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 min-w-0">
           <div className="text-xs font-bold text-red-700 uppercase mb-1">
             🔴 Hutang Aktif ({hutangAktif.length})
           </div>
-          <div className="text-2xl font-bold text-red-900">
+          <div className="text-2xl font-bold text-red-900 angka-fit">
             {formatRp(totalHutangAktif)}
           </div>
         </div>

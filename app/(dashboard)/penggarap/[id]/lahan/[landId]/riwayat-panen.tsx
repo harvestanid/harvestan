@@ -265,8 +265,8 @@ export function RiwayatPanen({
                     <div className="text-gray-500 text-[10px]">
                       Profit Bersih
                     </div>
-                    <div className="font-bold text-blue-700 break-words">
-                      {formatRp(Number(h.profit_bersih || 0))}
+                    <div className="font-bold text-blue-700">
+                      <span className="angka-fit">{formatRp(Number(h.profit_bersih || 0))}</span>
                     </div>
                   </div>
                   {!isMandiri && (
@@ -274,14 +274,13 @@ export function RiwayatPanen({
                       <div className="text-gray-500 text-[10px]">
                         Bagi Hasil
                       </div>
-                      <div className="text-[10px] font-bold">
-                        <span className="text-green-700">
+                      <div className="text-[10px] font-bold mt-0.5">
+                        <div className="text-green-700 whitespace-nowrap">
                           👤 {formatRp(Number(h.profit_owner || 0))}
-                        </span>
-                        {" · "}
-                        <span className="text-orange-700">
+                        </div>
+                        <div className="text-orange-700 whitespace-nowrap">
                           👨‍🌾 {formatRp(Number(h.profit_penggarap || 0))}
-                        </span>
+                        </div>
                       </div>
                     </div>
                   )}

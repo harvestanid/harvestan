@@ -239,29 +239,29 @@ export default async function DetailLahanPage({
           </div>
         </div>
         {isMandiri ? (
-          <div className="col-span-2 bg-[#2c5e2e]/5 border-2 border-[#2c5e2e]/30 rounded-xl p-3 text-center">
+          <div className="col-span-2 bg-[#2c5e2e]/5 border-2 border-[#2c5e2e]/30 rounded-xl p-3 text-center min-w-0">
             <div className="text-[10px] text-[#2c5e2e] uppercase font-bold tracking-widest">
               🌱 Total Profit Penggarap
             </div>
-            <div className="text-xl font-bold text-[#2c5e2e] mt-1">
+            <div className="text-xl font-bold text-[#2c5e2e] mt-1 angka-fit">
               {formatRp(totalProfitPenggarap)}
             </div>
           </div>
         ) : (
           <>
-            <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
+            <div className="bg-white border border-gray-200 rounded-xl p-3 text-center min-w-0">
               <div className="text-[10px] text-gray-500 uppercase">
                 Profit {isPenggarap ? "Owner Ext." : "Owner"}
               </div>
-              <div className="text-sm font-bold text-green-700 break-words">
+              <div className="text-sm font-bold text-green-700 mt-1 angka-fit">
                 {formatRp(totalProfitOwner)}
               </div>
             </div>
-            <div className="bg-white border border-gray-200 rounded-xl p-3 text-center">
+            <div className="bg-white border border-gray-200 rounded-xl p-3 text-center min-w-0">
               <div className="text-[10px] text-gray-500 uppercase">
                 Profit Penggarap
               </div>
-              <div className="text-sm font-bold text-orange-700 break-words">
+              <div className="text-sm font-bold text-orange-700 mt-1 angka-fit">
                 {formatRp(totalProfitPenggarap)}
               </div>
             </div>

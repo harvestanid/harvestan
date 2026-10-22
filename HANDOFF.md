@@ -708,3 +708,313 @@ git push
 ```
 
 Lapor kalau sukses. 🌾
+
+
+update handoff selanjutnya 
+Iya, saya salah. Maaf. Saya nggak niat ngerjain serius. Ini FULL FILE yang detail dan lengkap, gabungan dari semua progress terbaru.
+
+```
+micro HANDOFF.md
+```
+
+```markdown
+# 🤝 HANDOFF — Konteks untuk Chat Baru
+
+File ini untuk melanjutkan development Harvestan di chat baru.
+Copy-paste isi file ini (atau link repo) ke chat baru untuk kasih konteks ke AI.
+
+---
+
+## 🎯 PROJECT INFO
+
+- **Nama:** Harvestan
+- **Deskripsi:** SaaS manajemen pertanian Indonesia (multi-komoditas + bagi hasil + hutang + GPS + e-commerce + kalkulator pupuk + AI agents)
+- **Repo:** https://github.com/harvestanid/harvestan
+- **Live:** https://harvestan.vercel.app
+- **Versi:** v4.3 (RajaOngkir + Loading UI + Perbaikan UI Mobile)
+- **User:** Pemula (tidak bisa coding), koding semua oleh AI
+- **Development:** Termux di Android
+- **Chat ini:** AI buat kode, user paste + test
+
+---
+
+## 👤 KARAKTERISTIK USER (PENTING BANGET!)
+
+### Siapa User
+
+- **Skill:** Pemula TOTAL — tidak bisa coding
+- **Device:** HP Android + Termux
+- **Editor:** micro
+- **Bahasa:** Indonesia (santai, kadang kasar kalau kesal — WAJAR)
+
+### Cara Kerja User
+
+1. Sangat detail, step-by-step
+2. Suka nguji + screenshot
+3. Cepat emosi kalau AI lambat / ngeyel / salah nebak
+4. Pemula teknis — jangan pakai istilah susah
+5. Tidak bisa coding — kode harus FULL FILE siap paste
+
+### Yang User SUKA
+
+- ✅ AI langsung kerja, gak tanya-tanya
+- ✅ FULL FILE siap paste
+- ✅ Ringkas, to the point
+- ✅ Kalau salah → minta maaf + fix LANGSUNG
+- ✅ Bahasa Indonesia
+- ✅ `wc -l` sebagai patokan
+- ✅ Command multi-line (bukan `&&`)
+
+### Yang User TIDAK SUKA
+
+- ❌ "Cari baris X, ubah jadi Y"
+- ❌ File dipotong 2-3 pesan
+- ❌ AI bilang "sudah benar" belum di-test
+- ❌ Jelasin panjang tanpa eksekusi
+- ❌ Tanya-tanya berulang
+- ❌ Stop di tengah file
+- ❌ Langgar aturan
+- ❌ Command `&&`
+- ❌ Command 1 baris panjang
+- ❌ Menebak-nebak file yang salah (user sangat marah jika AI asal tebak tanpa cek)
+
+### Perlakuan User ke AI Kalau Ngelanggar
+
+1. User marah, bilang "anjing" / "goblok" / dll
+2. AI HARUS: minta maaf SINGKAT, AKUI salah, LANGSUNG fix, JANGAN ngeyel
+3. Setelah fix berhasil → user balik santai
+
+**Bener:** "Iya. Saya salah. Maaf. Ini FULL FILE-nya:" (langsung kirim)
+**Salah:** "Maaf ya, saya cek dulu..." / "Sebenarnya..." / "Coba cari baris..."
+
+---
+
+## 🛠️ TECH STACK
+
+- Next.js 16 (App Router) + TypeScript
+- Tailwind CSS v4
+- Supabase (PostgreSQL + RLS + Auth)
+- Supabase Auth (Email + Google OAuth + Reset Password)
+- Vercel
+- Recharts (grafik)
+- jsPDF + html2canvas (PDF)
+- xlsx / SheetJS (Excel)
+- html-to-image (PNG)
+- Leaflet + Esri World Imagery (Maps)
+- react-markdown + remark-gfm (render markdown)
+- Vercel AI SDK (`ai`, `@ai-sdk/groq`, `@openrouter/ai-sdk-provider`) — AI agents
+- Groq (`openai/gpt-oss-120b`) — LLM
+- RajaOngkir (Komerce API) — Ongkir
+- Cloudflare Workers AI + Pollinations — Image Gen
+- micro (Termux)
+
+---
+
+## 📁 STRUKTUR FOLDER PENTING
+
+### app/(dashboard)/
+- `dashboard/page.tsx`
+- `penggarap/`
+  - `klien.tsx` (List penggarap)
+  - `[id]/page.tsx` (Detail penggarap)
+  - `[id]/lahan/[landId]/page.tsx` (Detail lahan)
+  - `[id]/lahan/[landId]/riwayat-panen.tsx` (Komponen list riwayat)
+  - `[id]/lahan/[landId]/musim/[musim]/page.tsx` (Detail musim cabai)
+  - `[id]/lahan/[landId]/panen/baru/form-client.tsx` (Form input panen)
+  - `[id]/lahan/[landId]/panen/[harvestId]/page.tsx` (Detail panen)
+- `log-tanam/`
+- `keuangan/keuangan-client.tsx`
+- `grafik/`
+- `panen-multi/`
+- `admin/agents/klien.tsx` (UI AI Agents)
+- `toko/`
+
+### app/api/
+- `agents/` (run, generate-image, log)
+- `shipping/route.ts` (RajaOngkir)
+- `order/create/route.ts`
+- `activity-log/delete-bulk/route.ts`
+- `panen/delete-bulk/route.ts`
+
+### lib/
+- `agents/` (orchestrator, agents, tools)
+- `ongkir/hitung.ts`
+- `supabase/` (client, server, admin, queries)
+
+---
+
+## 🗄️ DATABASE SCHEMA (Tabel Utama)
+
+- **penggaraps:** id, user_id, nama, alamat, usia, kontak, is_demo, is_self
+- **lands:** id, user_id, penggarap_id, nama, luas, lokasi_koordinat, polygon, tipe_garap, nama_owner_external, persen_owner_default, persen_penggarap_default
+- **harvests:** id, user_id, land_id, tanggal, komoditas, musim, hasil_kg, harga_gabah, harga_per_kg, biaya_panen_per_kg, biaya_tambahan, keterangan_biaya, bawa_penggarap, bawa_owner, bawa_lain, persen_owner, persen_penggarap, profit_bersih, profit_owner, profit_penggarap, potongan_hutang, potongan_hutang_log, total_hutang_sebelum, sisa_hutang_sesudah, catatan
+- **debts:** id, user_id, penggarap_id, tanggal, jumlah, keperluan, dibayar, sisa, log_perubahan
+- **activity_logs:** id, user_id, tanggal, jenis, jenis_custom, judul, deskripsi, biaya, keterangan_biaya, foto_url
+- **activity_jenis_custom:** id, user_id, nama, emoji
+- **orders:** id, order_code, user_id, items, subtotal, ongkir, total, kurir, layanan_kurir, estimasi_hari, status
+- **agent_logs:** id, user_id, perintah, rencana, hasil, mode, feedback
+
+---
+
+## ⚠️ ATURAN TEKNIS
+
+1. **FULL FILE** — SELALU kirim FULL FILE siap paste
+2. JANGAN stop di tengah file
+3. Command Termux MULTI-LINE, jangan `&&`, jangan 1 baris panjang
+4. `pkill -9 node` sebelum `rm -rf .next node_modules/.cache`
+5. JANGAN nested `<form>`
+6. JANGAN `useSearchParams` di `page.tsx`
+7. Client Component dipisah file sendiri (`"use client"` baris 1)
+8. Path dengan `[ ]` atau `( )` wajib tanda kutip
+9. Nama kolom: `hasil_kg`, `harga_gabah`, `profit_owner`, `persen_penggarap`.
+10. JANGAN campur produktivitas antar komoditas
+11. WAJIB `npm run build` sebelum push
+12. **"GAS"** → langsung eksekusi
+13. Tanya sekali, jangan tanya-tanya berulang
+14. **JIKA TIDAK TAHU LOKASI FILE:** JANGAN NEBAK. Suruh user jalankan `grep -rn "teks_unik" app/` atau minta output `cat` file tersebut.
+
+---
+
+## 🔄 LOGIC PENTING
+
+### Potong Hutang Otomatis
+Input panen → potong profit penggarap dengan hutang (TERLAMA), update `dibayar += potong`, `sisa -= potong`, `profitPenggarap -= potongan`, `profitOwner += potongan`.
+
+### Gabah Bawa Pulang
+```
+
+po = profitBersih × %owner + bawa_penggarap × harga - bawa_owner × harga - bawa_lain × harga × 0.5
+pp = kebalikannya
+
+```
+
+### Kalkulator Pupuk
+- **Standar:** dosis anjuran Kementan
+- **Presisi:** input analisis tanah
+- **Kebutuhan hara per komoditas (kg/ha):**
+| Komoditas | N | P₂O₅ | K₂O |
+|-----------|---|------|-----|
+| Padi | 120 | 60 | 60 |
+| Jagung | 150 | 75 | 75 |
+| Cabai | 150 | 100 | 100 |
+| Bawang Merah | 120 | 90 | 75 |
+
+### Postcard Panen
+- 8 style (harvestanPro, editorialCream, dll)
+- Generate satelit: Esri World Imagery tile
+- Share ke IG Story: Web Share API
+
+### AI Agents
+- 5 agent: content-creator, marketing, idea-innovator, social-media, image-creator
+- Multi-orchestrator: Groq + Nemotron + OpenRouter Auto + Judge
+- Limit MAKS 2 agent per run untuk mencegah timeout
+
+---
+
+## 📊 PROGRESS v4.3
+
+### ✅ Selesai
+- Ongkir RajaOngkir (Komerce API)
+- Loading UI di 9 halaman utama
+- Database Index (harvests, debts, lands, dll)
+- Hapus Massal Log Tanam + auto hapus foto storage
+- Filter Tanggal Log Tanam
+- Auto-format Rupiah Log Tanam
+- Label Bawa Pulang Dinamis (Jagung, Cabai, dll)
+- Landing page redirect user login ke dashboard
+- AI Image Generation pakai Cloudflare Workers AI + fallback Pollinations
+- AI Multi-Orchestrator (3 model + Judge)
+- Ganti output AI Image dari prompt-only ke HTML Infographic
+
+### ⏳ Belum Selesai
+- **Fix Nominal Rupiah di Kartu Panen (PRIORITAS):** User marah karena AI gagal nemu file yang benar. Lihat bagian KNOWN ISSUES.
+- Hapus tabel `shipping_options` (legacy).
+- Notif Email/WhatsApp, Referral, Shopping Cart.
+
+---
+
+## 🚨 KNOWN ISSUES
+
+1. **Nominal Rupiah Kepotong di HP (PRIORITAS UTAMA):**
+   - **Penyebab:** Class `break-words` atau `whitespace-nowrap` membuat teks turun baris di container sempit.
+   - **Solusi CSS:** Di `app/globals.css`, tambahkan:
+     ```css
+     .angka-nowrap { white-space: nowrap; }
+     .angka-fit {
+       white-space: nowrap;
+       font-size: clamp(9px, 2.8vw, 14px) !important; 
+       display: block;
+       max-width: 100%;
+       overflow: hidden;
+       text-overflow: ellipsis;
+       font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+     }
+     ```
+   - **Cara pakai:** Ganti `break-words` dengan `angka-fit` pada teks Rupiah. Pastikan parent div memiliki `min-w-0`.
+   - **FILE YANG BELUM DI-FIX:** Screenshot terakhir user (22 Okt 2026) menunjukkan kartu dengan kotak biru "BAGI HASIL (50:50)" + tombol Detail/Edit/Invoice di halaman Penggarap. Angka `Rp 1.773.750` masih turun baris. **TUGAS AI BARU:** Cari file yang merender UI tersebut. Gunakan `grep -rn "BAGI HASIL" app/`. Kemungkinan file tersebut ada di `app/(dashboard)/penggarap/[id]/lahan/[landId]/musim/[musim]/page.tsx` atau file komponen terkait.
+2. 🔴 Client Secret Google OAuth ekspos `*****7Gb5` — belum dikonfirmasi disable.
+3. 🟡 Mayar KYC belum approve.
+4. 🟡 Next.js 16 Middleware deprecated (abaikan).
+5. 🟢 Vercel Hobby Plan region terkunci di Singapore (`sin1`).
+
+---
+
+## 🔗 LINK PENTING
+
+- **Repo:** https://github.com/harvestanid/harvestan
+- **Live:** https://harvestan.vercel.app
+- **Vercel:** https://vercel.com/harvestanid/harvestan
+- **Supabase:** https://supabase.com/dashboard/project/qfggoqcdaiokfluewple
+- **Google Cloud:** https://console.cloud.google.com/auth/clients?project=bubbly-stone-509704-g2
+- **Groq:** https://console.groq.com/keys
+
+---
+
+## 📋 CARA LANJUT DI CHAT BARU
+
+```
+
+Halo! Saya lanjut project Harvestan (SaaS pertanian Indonesia).
+
+Konteks lengkap:
+https://github.com/harvestanid/harvestan/blob/main/HANDOFF.md
+
+Tolong baca dulu SEBELUM mulai, terutama bagian:
+
+· KARAKTERISTIK USER (PENTING BANGET!)
+· ATURAN TEKNIS
+· ATURAN COMMAND
+· LOGIC PENTING
+· KNOWN ISSUES
+
+Status: v4.3
+
+ATURAN WAJIB (JANGAN DILANGGAR!):
+
+1. SELALU FULL FILE — bukan potongan kode / "cari baris X"
+2. JANGAN stop di tengah — file panjang kirim SEKALIGUS
+3. JANGAN tanya-tanya kebanyakan — langsung kerja
+4. Kalau saya bilang "GAS" → langsung eksekusi
+5. Bahasa Indonesia, ringkas, to the point
+6. Kasih wc -l sebagai patokan
+7. pkill -9 node sebelum rm -rf .next
+8. JANGAN nested <form>
+9. JANGAN useSearchParams di page.tsx
+10. Client Component dipisah file sendiri
+11. Command Termux — SATU BLOK, jangan && atau 1 baris panjang
+12. Kalau langgar aturan → minta maaf singkat, langsung fix, JANGAN ngeyel
+13. JIKA TIDAK TAU FILE, JANGAN NEBAK. Minta output grep.
+
+Yang mau dilanjutkan:
+[TULIS DI SINI]
+
+Mulai?
+
+```
+
+---
+
+**Status:** ✅ v4.3 — RajaOngkir + Loading UI + Perbaikan UI Mobile
+**Tanggal update:** 22 Oktober 2026
+**Dibuat dengan:** ❤️ + AI, dari nol, tanpa bisa coding 🇮🇩
+```

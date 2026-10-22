@@ -448,3 +448,107 @@ a:focus-visible,
 .export-mode * {
   overflow: visible !important;
 }
+/* ============================================================
+   FIX ANGKA RUPIAH KEPOTONG / TURUN BARIS
+   ============================================================ */
+
+/* 1. Paksa teks tetap 1 baris & jangan kepotong */
+.angka-nowrap {
+  white-space: nowrap;
+}
+
+/* 2. Auto-shrink untuk container sempit (kayak kotak Owner/Penggarap) */
+.angka-fit {
+  white-space: nowrap;
+  font-size: clamp(10px, 3.5vw, 16px); /* Menyesuaikan lebar layar */
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis; /* Jadi "..." kalau masih kebablasan */
+}
+
+/* 3. Khusus Tabel (Profit Per Lahan) */
+.tabel-horizontal-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.tabel-horizontal-scroll table {
+  min-width: 600px; /* Biar tabel gak gepeng di HP */
+}
+/* ============================================================
+   FIX ANGKA RUPIAH KEPOTONG / TURUN BARIS
+   ============================================================ */
+
+/* 1. Paksa teks tetap 1 baris */
+.angka-nowrap {
+  white-space: nowrap;
+}
+
+/* 2. Auto-shrink untuk container sempit (Detail Panen) */
+.angka-fit {
+  white-space: nowrap;
+  font-size: clamp(9px, 2.8vw, 14px); /* Lebih kecil dari sebelumnya */
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; /* Biar lebar angka konsisten */
+}
+
+/* 3. Khusus Tabel (Profit Per Lahan) */
+.tabel-horizontal-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.tabel-horizontal-scroll table {
+  min-width: 600px;
+}
+
+/* ============================================================
+   PAKSA SEMUA NOMINAL RUPIAH BIAR GAK TURUN BARIS
+   ============================================================ */
+
+/* Trik: kita cari semua text node yang berawalan "Rp" */
+*[class*="text-"] {
+  /* Default fallback */
+  line-height: 1.2;
+}
+
+/* Kita pake font-variant-numeric biar rapi */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Paksa elemen <p> / <div> / <span> yang isinya "Rp" biar gak turun */
+div, p, span {
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+/* Spesifik buat angka */
+.angka-nowrap, 
+[class*="text-green"], 
+[class*="text-orange"], 
+[class*="text-blue"] {
+  /* Jangan pake nowrap global, nanti teks biasa malah panjang */
+}
+
+/* Kita pake selector khusus yg nangkep text "Rp" */
+span:has(> span), p:has(> span) {
+  /* Do nothing */
+}
+.angka-nowrap {
+  white-space: nowrap;
+}
+
+.angka-fit {
+  white-space: nowrap;
+  font-size: clamp(9px, 2.8vw, 14px) !important; 
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace !important;
+}

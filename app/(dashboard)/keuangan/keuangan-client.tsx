@@ -418,7 +418,7 @@ export function KeuanganClient({
         <div className="bg-white border border-gray-200 rounded-xl p-4 min-w-0">
           <div className="text-2xl mb-1">👤</div>
           <div className="text-xs text-gray-500 font-medium">PROFIT OWNER</div>
-          <div className="text-base sm:text-lg font-bold text-green-700 mt-1 leading-tight break-words">
+          <div className="text-base sm:text-lg font-bold text-green-700 mt-1 leading-tight angka-fit">
             {formatRp(totalProfitOwner)}
           </div>
         </div>
@@ -428,7 +428,7 @@ export function KeuanganClient({
           <div className="text-xs text-gray-500 font-medium">
             PROFIT PENGGARAP
           </div>
-          <div className="text-base sm:text-lg font-bold text-orange-600 mt-1 leading-tight break-words">
+          <div className="text-base sm:text-lg font-bold text-orange-600 mt-1 leading-tight angka-fit">
             {formatRp(totalProfitPenggarap)}
           </div>
         </div>
@@ -436,7 +436,7 @@ export function KeuanganClient({
         <div className="bg-white border border-gray-200 rounded-xl p-4 min-w-0">
           <div className="text-2xl mb-1">💰</div>
           <div className="text-xs text-gray-500 font-medium">HUTANG AKTIF</div>
-          <div className="text-base sm:text-lg font-bold text-red-600 mt-1 leading-tight break-words">
+          <div className="text-base sm:text-lg font-bold text-red-600 mt-1 leading-tight angka-fit">
             {formatRp(totalHutangAktif)}
           </div>
           <div className="text-xs text-gray-500 mt-1">
@@ -447,7 +447,7 @@ export function KeuanganClient({
         <div className="bg-white border border-gray-200 rounded-xl p-4 min-w-0">
           <div className="text-2xl mb-1">🌾</div>
           <div className="text-xs text-gray-500 font-medium">TOTAL PANEN</div>
-          <div className="text-base sm:text-lg font-bold text-blue-600 mt-1 leading-tight break-words">
+          <div className="text-base sm:text-lg font-bold text-blue-600 mt-1 leading-tight angka-fit">
             {formatKg(totalHasilKg)}
           </div>
           <div className="text-xs text-gray-500 mt-1">
@@ -528,7 +528,7 @@ export function KeuanganClient({
                       <span className="text-gray-600 shrink-0">
                         Pendapatan Kotor
                       </span>
-                      <span className="font-medium text-gray-800 text-right break-words">
+                      <span className="font-medium text-gray-800 text-right angka-nowrap">
                         {formatRp(k.totalPendapatan)}
                       </span>
                     </div>
@@ -536,7 +536,7 @@ export function KeuanganClient({
                       <span className="text-gray-600 shrink-0">
                         Biaya Panen
                       </span>
-                      <span className="font-medium text-red-600 text-right break-words">
+                      <span className="font-medium text-red-600 text-right angka-nowrap">
                         − {formatRp(k.totalBiayaPanen)}
                       </span>
                     </div>
@@ -545,7 +545,7 @@ export function KeuanganClient({
                         <span className="text-gray-600 shrink-0">
                           Biaya Tambahan
                         </span>
-                        <span className="font-medium text-red-600 text-right break-words">
+                        <span className="font-medium text-red-600 text-right angka-nowrap">
                           − {formatRp(k.totalBiayaTambahan)}
                         </span>
                       </div>
@@ -554,7 +554,7 @@ export function KeuanganClient({
                       <span className="text-green-800 shrink-0">
                         💵 Profit Bersih
                       </span>
-                      <span className="text-green-700 text-right break-words">
+                      <span className="text-green-700 text-right angka-nowrap">
                         {formatRp(k.profitBersih)}
                       </span>
                     </div>
@@ -563,7 +563,7 @@ export function KeuanganClient({
                         <div className="text-green-700 font-medium">
                           👤 Owner
                         </div>
-                        <div className="font-bold text-green-900 text-xs sm:text-sm mt-0.5 leading-tight break-words">
+                        <div className="font-bold text-green-900 text-xs sm:text-sm mt-0.5 angka-fit">
                           {formatRp(k.profitOwner)}
                         </div>
                       </div>
@@ -571,7 +571,7 @@ export function KeuanganClient({
                         <div className="text-orange-700 font-medium">
                           👨‍🌾 Penggarap
                         </div>
-                        <div className="font-bold text-orange-900 text-xs sm:text-sm mt-0.5 leading-tight break-words">
+                        <div className="font-bold text-orange-900 text-xs sm:text-sm mt-0.5 angka-fit">
                           {formatRp(k.profitPenggarap)}
                         </div>
                       </div>
@@ -579,7 +579,7 @@ export function KeuanganClient({
                     {k.potonganHutang > 0 && (
                       <div className="flex justify-between py-1 text-red-700 mt-1 gap-2">
                         <span className="shrink-0">💸 Potongan Hutang</span>
-                        <span className="font-bold text-right break-words">
+                        <span className="font-bold text-right angka-nowrap">
                           − {formatRp(k.potonganHutang)}
                         </span>
                       </div>
@@ -598,7 +598,7 @@ export function KeuanganClient({
             <div className="text-sm font-medium text-blue-800">
               💸 Total potongan hutang dari panen:
             </div>
-            <div className="font-bold text-blue-700 text-lg break-words">
+            <div className="font-bold text-blue-700 text-lg angka-nowrap">
               {formatRp(totalPotonganHutang)}
             </div>
           </div>
@@ -627,7 +627,7 @@ export function KeuanganClient({
                   <div key={label}>
                     <div className="flex justify-between text-xs text-gray-600 mb-1 gap-2">
                       <span className="font-medium">{label}</span>
-                      <span className="font-bold text-gray-700 text-right break-words">
+                      <span className="font-bold text-gray-700 text-right angka-nowrap">
                         {formatRp(total)}
                       </span>
                     </div>
@@ -693,7 +693,7 @@ export function KeuanganClient({
                       {p.nama}
                     </span>
                   </div>
-                  <span className="font-bold text-green-700 text-right break-words shrink-0">
+                  <span className="font-bold text-green-700 text-right angka-nowrap shrink-0">
                     {formatRp(p.profit)}
                   </span>
                 </Link>
@@ -712,7 +712,7 @@ export function KeuanganClient({
             Belum ada data panen
           </p>
         ) : (
-          <div className="overflow-x-auto -mx-5 px-5">
+          <div className="tabel-horizontal-scroll -mx-5 px-5">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b-2 border-gray-200">
@@ -760,10 +760,10 @@ export function KeuanganClient({
                     <td className="py-2 px-2 text-right text-gray-700">
                       {l.totalHasil.toLocaleString("id-ID")}
                     </td>
-                    <td className="py-2 px-2 text-right font-bold text-green-700 break-words">
+                    <td className="py-2 px-2 text-right font-bold text-green-700 angka-nowrap">
                       {formatRp(l.profitOwner)}
                     </td>
-                    <td className="py-2 px-2 text-right font-bold text-orange-600 break-words">
+                    <td className="py-2 px-2 text-right font-bold text-orange-600 angka-nowrap">
                       {formatRp(l.profitPenggarap)}
                     </td>
                   </tr>
