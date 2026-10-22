@@ -30,6 +30,13 @@ const MENU_ITEMS = [
     strictPremium: true,
   },
   {
+    href: "/kalender-tanam",
+    label: "Kalender",
+    icon: "📅",
+    premium: false,
+    strictPremium: true,
+  },
+  {
     href: "/ukur-lahan",
     label: "Ukur",
     icon: "📍",
