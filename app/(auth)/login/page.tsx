@@ -10,7 +10,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const supabase = createClient();
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState(""); // Bisa Email atau Username
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -22,13 +22,19 @@ function LoginForm() {
     setError("");
     setLoading(true);
 
+    // Jika input mengandung "@", berarti user masukin email. 
+    // Jika tidak, berarti user masukin username (kita ubah jadi email bayangan).
+    const emailToSubmit = identifier.includes("@")
+      ? identifier
+      : `${identifier.trim().toLowerCase()}@harvestan.local`;
+
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: emailToSubmit,
       password,
     });
 
     if (error) {
-      setError(error.message);
+      setError(error.message === "Invalid login credentials" ? "Email/Username atau password salah." : error.message);
       setLoading(false);
       return;
     }
@@ -118,13 +124,13 @@ function LoginForm() {
       <form onSubmit={handleLogin} className="space-y-4">
         <div>
           <label className="block text-sm font-semibold text-[#2c5e2e] mb-1.5">
-            Email
+            Email atau Username
           </label>
           <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="nama@email.com"
+            type="text"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            placeholder="nama@email.com atau @username"
             required
             className="w-full px-4 py-3 border border-[#2c5e2e]/15 rounded-2xl focus:ring-2 focus:ring-[#2c5e2e] focus:border-transparent outline-none transition bg-[#faf9f5]/50 text-[#2c5e2e]"
           />

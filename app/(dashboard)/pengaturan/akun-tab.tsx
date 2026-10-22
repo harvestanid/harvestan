@@ -106,19 +106,28 @@ export function AkunTab({ user }: Props) {
 
   async function hapusAkun() {
     const konfirmasi = prompt(
-      "Ketik HAPUS untuk konfirmasi hapus akun. Semua data akan hilang permanen!"
+      "Ketik HAPUS AKUN untuk konfirmasi hapus akun. Semua data akan hilang permanen!"
     );
-    if (konfirmasi !== "HAPUS") return;
+    if (konfirmasi !== "HAPUS AKUN") return;
 
     setLoadingHapus(true);
     setError("");
     try {
-      const res = await fetch("/api/akun", { method: "DELETE" });
+      // FIX: URL diubah dari /api/akun menjadi /api/akun/delete
+      // Dan kirim body { confirm: "HAPUS AKUN" }
+      const res = await fetch("/api/akun/delete", { 
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirm: "HAPUS AKUN" })
+      });
+      
       const json = await res.json();
+      
       if (!res.ok) {
         setError(json.error || "Gagal hapus akun");
         return;
       }
+      
       alert("Akun Anda telah dihapus.");
       window.location.href = "/";
     } catch (err: any) {

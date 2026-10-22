@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
@@ -11,7 +11,6 @@ export default function RegisterPage() {
 
   const [nama, setNama] = useState("");
   const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [konfirmasi, setKonfirmasi] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -19,6 +18,10 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [loadingGoogle, setLoadingGoogle] = useState(false);
   const [error, setError] = useState("");
+
+  // State buat cek ketersediaan username
+  const [cekUsername, setCekUsername] = useState(false);
+  const [usernameTersedia, setUsernameTersedia] = useState<boolean | null>(null);
 
   const usernameRegex = /^[a-z0-9_]{3,20}$/;
   const usernameValid = username.length === 0 || usernameRegex.test(username);
@@ -30,11 +33,42 @@ export default function RegisterPage() {
   const passwordMismatch = konfirmasi.length > 0 && password !== konfirmasi;
   const passwordTooShort = password.length > 0 && password.length < 8;
 
+  // Efek buat cek username otomatis (debounce 500ms)
+  useEffect(() => {
+    if (username.length >= 3 && usernameValid) {
+      setCekUsername(true);
+      setUsernameTersedia(null);
+
+      const timer = setTimeout(async () => {
+        const dummyEmail = `${username.trim().toLowerCase()}@harvestan.local`;
+        
+        // Cek apakah email bayangan ini udah ada di DB (tandanya username udah dipake)
+        const { data } = await supabase
+          .from("profiles") // Kita cek ke tabel profiles (kalau ga ada, fallback ke auth)
+          .select("username")
+          .eq("username", username.trim().toLowerCase())
+          .maybeSingle();
+        
+        // Kalau tabel profiles ga ada, kita cek via RPC atau biarin lolos ke submit
+        // (Untuk aman, kita biarin lolos dan nangkep error di handleRegister)
+        
+        setCekUsername(false);
+        // Karena kita belum punya tabel profiles publik, kita set null (belum tau)
+        // dan biarkan validasi final di handleRegister
+      }, 500);
+
+      return () => clearTimeout(timer);
+    } else {
+      setUsernameTersedia(null);
+      setCekUsername(false);
+    }
+  }, [username, usernameValid, supabase]);
+
   const bisaSubmit =
     nama.trim() &&
     username.trim() &&
     usernameValid &&
-    email.trim() &&
+    usernameTersedia !== false && // Blokir kalau udah pasti dipake
     password.length >= 8 &&
     password === konfirmasi &&
     !loading &&
@@ -70,8 +104,11 @@ export default function RegisterPage() {
 
     setLoading(true);
 
+    // MOCK EMAIL
+    const dummyEmail = `${username.trim().toLowerCase()}@harvestan.local`;
+
     const { error } = await supabase.auth.signUp({
-      email,
+      email: dummyEmail,
       password,
       options: {
         data: {
@@ -82,7 +119,12 @@ export default function RegisterPage() {
     });
 
     if (error) {
-      setError(error.message);
+      // Tangkap error kalau email/username udah dipake
+      if (error.message.toLowerCase().includes("already registered") || error.message.toLowerCase().includes("already exists")) {
+        setError(`Username @${username} sudah digunakan. Silakan ganti dengan yang lain.`);
+      } else {
+        setError(error.message);
+      }
       setLoading(false);
       return;
     }
@@ -137,29 +179,14 @@ export default function RegisterPage() {
         className="w-full flex items-center justify-center gap-3 bg-white border-2 border-[#2c5e2e]/15 text-[#2c5e2e] font-semibold py-3 rounded-full hover:border-[#f0b429]/60 hover:bg-[#f0b429]/5 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
       >
         <svg className="w-5 h-5" viewBox="0 0 24 24">
-          <path
-            fill="#4285F4"
-            d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-          />
-          <path
-            fill="#34A853"
-            d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-          />
-          <path
-            fill="#FBBC05"
-            d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-          />
-          <path
-            fill="#EA4335"
-            d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-          />
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
         </svg>
-        <span>
-          {loadingGoogle ? "Menghubungkan..." : "Daftar dengan Google"}
-        </span>
+        <span>{loadingGoogle ? "Menghubungkan..." : "Daftar dengan Google"}</span>
       </button>
 
-      {/* Divider */}
       <div className="relative my-6">
         <div className="absolute inset-0 flex items-center">
           <div className="w-full border-t border-[#2c5e2e]/10"></div>
@@ -203,7 +230,7 @@ export default function RegisterPage() {
               required
               maxLength={20}
               className={`w-full pl-9 pr-4 py-3 border rounded-2xl focus:ring-2 focus:border-transparent outline-none transition bg-[#faf9f5]/50 text-[#2c5e2e] ${
-                usernameTooShort || usernameHasInvalidChar || usernameTooLong
+                usernameTooShort || usernameHasInvalidChar || usernameTooLong || usernameTersedia === false
                   ? "border-red-300 focus:ring-red-500"
                   : username.length >= 3 && usernameValid
                   ? "border-[#2c5e2e]/40 focus:ring-[#2c5e2e]"
@@ -224,25 +251,16 @@ export default function RegisterPage() {
               ⚠️ Hanya huruf kecil, angka, dan underscore (_)
             </p>
           )}
-          {username.length >= 3 && usernameValid && (
-            <p className="text-xs text-[#2c5e2e] mt-1 font-medium">
-              ✅ Username <strong>@{username}</strong> siap
+          {usernameTersedia === false && (
+            <p className="text-xs text-red-600 mt-1 font-semibold">
+              ⚠️ Username @{username} sudah digunakan, ganti yang lain.
             </p>
           )}
-        </div>
-
-        <div>
-          <label className="block text-sm font-semibold text-[#2c5e2e] mb-1.5">
-            Email
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="nama@email.com"
-            required
-            className="w-full px-4 py-3 border border-[#2c5e2e]/15 rounded-2xl focus:ring-2 focus:ring-[#2c5e2e] focus:border-transparent outline-none transition bg-[#faf9f5]/50 text-[#2c5e2e]"
-          />
+          {username.length >= 3 && usernameValid && usernameTersedia !== false && (
+            <p className="text-xs text-[#2c5e2e] mt-1 font-medium">
+              ✅ Username <strong>@{username}</strong> siap dipakai
+            </p>
+          )}
         </div>
 
         <div>

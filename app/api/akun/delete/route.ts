@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function DELETE(request: Request) {
   try {
@@ -12,8 +13,16 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { confirm } = body;
+    let confirm = "";
+    try {
+      const body = await request.json();
+      confirm = body.confirm || "";
+    } catch (e) {
+      return NextResponse.json(
+        { error: "Format request tidak valid" },
+        { status: 400 }
+      );
+    }
 
     if (confirm !== "HAPUS AKUN") {
       return NextResponse.json(
@@ -22,65 +31,26 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // ===== HAPUS SEMUA DATA USER =====
-    // (urutan penting: anak dulu, induk terakhir)
+    // Hapus data user (pakai supabase client biasa)
+    await supabase.from("harvests").delete().eq("user_id", user.id);
+    await supabase.from("debts").delete().eq("user_id", user.id);
+    await supabase.from("lands").delete().eq("user_id", user.id);
+    await supabase.from("penggaraps").delete().eq("user_id", user.id);
+    await supabase.from("categories").delete().eq("user_id", user.id);
 
-    // 1. Hapus harvests
-    const { error: errHarvests } = await supabase
-      .from("harvests")
-      .delete()
-      .eq("user_id", user.id);
+    // ===== HAPUS USER AUTH PERMANEN (Pakai Admin Client) =====
+    // Ini yang bikin username bisa dipakai lagi
+    const admin = createAdminClient();
+    const { error: errAuth } = await admin.auth.admin.deleteUser(user.id);
 
-    if (errHarvests) {
-      console.error("Error hapus harvests:", errHarvests);
+    if (errAuth) {
+      console.error("Gagal hapus user auth:", errAuth);
+      return NextResponse.json({ error: "Gagal menghapus akun permanen" }, { status: 500 });
     }
-
-    // 2. Hapus debts
-    const { error: errDebts } = await supabase
-      .from("debts")
-      .delete()
-      .eq("user_id", user.id);
-
-    if (errDebts) {
-      console.error("Error hapus debts:", errDebts);
-    }
-
-    // 3. Hapus lands
-    const { error: errLands } = await supabase
-      .from("lands")
-      .delete()
-      .eq("user_id", user.id);
-
-    if (errLands) {
-      console.error("Error hapus lands:", errLands);
-    }
-
-    // 4. Hapus penggaraps
-    const { error: errPenggaraps } = await supabase
-      .from("penggaraps")
-      .delete()
-      .eq("user_id", user.id);
-
-    if (errPenggaraps) {
-      console.error("Error hapus penggaraps:", errPenggaraps);
-    }
-
-    // 5. Hapus categories
-    const { error: errCategories } = await supabase
-      .from("categories")
-      .delete()
-      .eq("user_id", user.id);
-
-    if (errCategories) {
-      console.error("Error hapus categories:", errCategories);
-    }
-
-    // 6. Sign out user (soft delete — data auth masih ada, bisa di-recover admin)
-    await supabase.auth.signOut();
 
     return NextResponse.json({
       success: true,
-      message: "Semua data berhasil dihapus. Akun dinonaktifkan.",
+      message: "Akun dan data berhasil dihapus permanen.",
     });
   } catch (err: any) {
     console.error("Error delete akun:", err);
