@@ -328,7 +328,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
             <div className="text-[10px] text-[#2c5e2e] font-bold">
               👨‍🌾 Profit Bersih
             </div>
-            <div className="font-bold text-[#2c5e2e] text-[12px] break-all leading-tight mt-1">
+            <div className="font-bold text-[#2c5e2e] text-[11px] whitespace-nowrap leading-tight mt-1">
               {formatRp(profitBersih)}
             </div>
           </div>
@@ -345,24 +345,24 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
           <div className="text-[10px] font-bold text-blue-800 uppercase tracking-widest mb-1.5">
             Bagi Hasil ({persenOwner}:{persenPenggarap})
           </div>
-          <div className="text-[10px] text-blue-600 mb-2">
-            Profit Bersih:{" "}
-            <span className="font-bold">{formatRp(profitBersih)}</span>
+          <div className="text-[10px] text-blue-600 mb-2 flex flex-wrap items-center gap-1">
+            <span>Profit Bersih:</span>
+            <span className="font-bold whitespace-nowrap">{formatRp(profitBersih)}</span>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="bg-white border-2 border-[#2c5e2e]/30 rounded-xl p-2 text-center min-w-0">
-              <div className="text-[10px] text-[#2c5e2e] font-bold">
-                👤 {isPenggarap ? "Owner External" : "Owner"} ({persenOwner}%)
+            <div className="bg-white border-2 border-[#2c5e2e]/30 rounded-xl p-1.5 text-center min-w-0 flex flex-col justify-center">
+              <div className="text-[9px] text-[#2c5e2e] font-bold leading-tight mb-1">
+                👤 {isPenggarap ? "Owner Ext." : "Owner"} ({persenOwner}%)
               </div>
-              <div className="font-bold text-[#2c5e2e] text-[11px] break-all leading-tight mt-1">
+              <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight break-all">
                 {formatRp(profitOwnerMurni)}
               </div>
             </div>
-            <div className="bg-white border-2 border-[#f0b429]/50 rounded-xl p-2 text-center min-w-0">
-              <div className="text-[10px] text-[#2c5e2e] font-bold">
+            <div className="bg-white border-2 border-[#f0b429]/50 rounded-xl p-1.5 text-center min-w-0 flex flex-col justify-center">
+              <div className="text-[9px] text-[#2c5e2e] font-bold leading-tight mb-1">
                 👨‍🌾 Penggarap ({persenPenggarap}%)
               </div>
-              <div className="font-bold text-[#2c5e2e] text-[11px] break-all leading-tight mt-1">
+              <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight break-all">
                 {formatRp(profitPenggarapMurni)}
               </div>
             </div>
@@ -377,34 +377,34 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
             <div className="text-[10px] text-red-700 mb-2 flex items-center justify-between flex-wrap gap-1">
               <span>
                 💸 Potong:{" "}
-                <span className="font-bold">
+                <span className="font-bold break-all">
                   − {formatRp(potonganHutang)}
                 </span>
               </span>
               {lunas ? (
-                <span className="bg-[#2c5e2e] text-white px-2 py-0.5 rounded-full font-bold text-[9px]">
+                <span className="bg-[#2c5e2e] text-white px-2 py-0.5 rounded-full font-bold text-[9px] whitespace-nowrap">
                   🎉 LUNAS
                 </span>
               ) : (
-                <span className="bg-[#f0b429] text-[#2c5e2e] px-2 py-0.5 rounded-full font-bold text-[9px]">
+                <span className="bg-[#f0b429] text-[#2c5e2e] px-2 py-0.5 rounded-full font-bold text-[9px] whitespace-nowrap">
                   Sisa: {formatRp(sisaHutangSesudah)}
                 </span>
               )}
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-white border-2 border-[#2c5e2e] rounded-xl p-2 text-center min-w-0">
-                <div className="text-[10px] text-[#2c5e2e] font-bold">
+              <div className="bg-white border-2 border-[#2c5e2e] rounded-xl p-1.5 text-center min-w-0 flex flex-col justify-center">
+                <div className="text-[9px] text-[#2c5e2e] font-bold leading-tight mb-1">
                   👤 Owner
                 </div>
-                <div className="font-bold text-[#2c5e2e] text-[11px] break-all leading-tight mt-1">
+                <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight break-all">
                   {formatRp(profitOwnerFinal)}
                 </div>
               </div>
-              <div className="bg-white border-2 border-[#f0b429] rounded-xl p-2 text-center min-w-0">
-                <div className="text-[10px] text-[#2c5e2e] font-bold">
+              <div className="bg-white border-2 border-[#f0b429] rounded-xl p-1.5 text-center min-w-0 flex flex-col justify-center">
+                <div className="text-[9px] text-[#2c5e2e] font-bold leading-tight mb-1">
                   👨‍🌾 Penggarap
                 </div>
-                <div className="font-bold text-[#2c5e2e] text-[11px] break-all leading-tight mt-1">
+                <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight break-all">
                   {formatRp(profitPenggarapFinal)}
                 </div>
               </div>
@@ -704,7 +704,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                 <div className="flex gap-2 flex-wrap">
                                                   <span className="text-[#2c5e2e]">
                                                     👤{" "}
-                                                    <span className="font-bold">
+                                                    <span className="font-bold whitespace-nowrap">
                                                       {formatRp(
                                                         tr.profitOwner
                                                       )}
@@ -712,7 +712,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                   </span>
                                                   <span className="text-[#f0b429]">
                                                     👨‍🌾{" "}
-                                                    <span className="font-bold">
+                                                    <span className="font-bold whitespace-nowrap">
                                                       {formatRp(
                                                         tr.profitPenggarap
                                                       )}
@@ -812,22 +812,21 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                           </div>
 
                                                           <div className="grid grid-cols-2 gap-2 text-[10px] mt-2 pt-2 border-t border-[#f0b429]/30">
-                                                            <div className="bg-[#2c5e2e]/5 border border-[#2c5e2e]/20 rounded-xl p-2 min-w-0 text-center">
-                                                              <div className="text-[#2c5e2e] font-bold text-[9px]">
+                                                            <div className="bg-[#2c5e2e]/5 border border-[#2c5e2e]/20 rounded-xl p-1.5 min-w-0 text-center flex flex-col justify-center">
+                                                              <div className="text-[#2c5e2e] font-bold text-[9px] leading-tight mb-1">
                                                                 👤 Total Owner
                                                               </div>
-                                                              <div className="font-bold text-[#2c5e2e] text-[11px] break-all leading-tight mt-1">
+                                                              <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight break-all">
                                                                 {formatRp(
                                                                   m.totalProfitOwner
                                                                 )}
                                                               </div>
                                                             </div>
-                                                            <div className="bg-[#f0b429]/15 border border-[#f0b429]/40 rounded-xl p-2 min-w-0 text-center">
-                                                              <div className="text-[#2c5e2e] font-bold text-[9px]">
-                                                                👨‍🌾 Total
-                                                                Penggarap
+                                                            <div className="bg-[#f0b429]/15 border border-[#f0b429]/40 rounded-xl p-1.5 min-w-0 text-center flex flex-col justify-center">
+                                                              <div className="text-[#2c5e2e] font-bold text-[9px] leading-tight mb-1">
+                                                                👨‍🌾 Penggarap
                                                               </div>
-                                                              <div className="font-bold text-[#2c5e2e] text-[11px] break-all leading-tight mt-1">
+                                                              <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight break-all">
                                                                 {formatRp(
                                                                   m.totalProfitPenggarap
                                                                 )}
@@ -838,18 +837,18 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                           <div className="mt-2 text-[10px] flex items-center justify-between flex-wrap gap-1">
                                                             <span className="text-[#2c5e2e]/70">
                                                               Potong Hutang:{" "}
-                                                              <span className="font-bold">
+                                                              <span className="font-bold break-all">
                                                                 {formatRp(
                                                                   m.totalPotongan
                                                                 )}
                                                               </span>
                                                             </span>
                                                             {lunas ? (
-                                                              <span className="bg-[#2c5e2e] text-white px-2 py-0.5 rounded-full font-bold">
+                                                              <span className="bg-[#2c5e2e] text-white px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
                                                                 ✅ LUNAS
                                                               </span>
                                                             ) : (
-                                                              <span className="bg-red-200 text-red-900 px-2 py-0.5 rounded-full font-bold">
+                                                              <span className="bg-red-200 text-red-900 px-2 py-0.5 rounded-full font-bold break-all">
                                                                 ⚠️ Sisa{" "}
                                                                 {formatRp(
                                                                   m.sisaHutangAkhir
@@ -921,7 +920,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
 
                                                                     <div className="grid grid-cols-3 gap-2 text-[10px] mb-2">
                                                                       <div>
-                                                                        <div className="text-[#2c5e2e]/60">
+                                                                        <div className="text-[9px] text-[#2c5e2e]/60">
                                                                           Hasil
                                                                         </div>
                                                                         <div className="font-bold text-[#2c5e2e]">
@@ -932,7 +931,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                                         </div>
                                                                       </div>
                                                                       <div>
-                                                                        <div className="text-[#2c5e2e]/60">
+                                                                        <div className="text-[9px] text-[#2c5e2e]/60">
                                                                           Produktivitas
                                                                         </div>
                                                                         <div className="font-bold text-[#2c5e2e] font-mono">
@@ -943,11 +942,11 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                                         </div>
                                                                       </div>
                                                                       <div>
-                                                                        <div className="text-[#2c5e2e]/60">
+                                                                        <div className="text-[9px] text-[#2c5e2e]/60">
                                                                           Profit
                                                                           Bersih
                                                                         </div>
-                                                                        <div className="font-bold text-blue-700 break-all">
+                                                                        <div className="font-bold text-blue-700 break-all leading-tight">
                                                                           {formatRp(
                                                                             h.profitBersih
                                                                           )}
@@ -1062,7 +1061,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                       </div>
                                                       <div className="grid grid-cols-3 gap-2 text-[10px] mb-2 pb-2 border-b border-[#2c5e2e]/10">
                                                         <div>
-                                                          <div className="text-[#2c5e2e]/60">
+                                                          <div className="text-[9px] text-[#2c5e2e]/60">
                                                             Hasil Panen
                                                           </div>
                                                           <div className="font-bold text-[#2c5e2e]">
@@ -1073,7 +1072,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                           </div>
                                                         </div>
                                                         <div>
-                                                          <div className="text-[#2c5e2e]/60">
+                                                          <div className="text-[9px] text-[#2c5e2e]/60">
                                                             Produktivitas
                                                           </div>
                                                           <div className="font-bold text-[#2c5e2e] font-mono">
@@ -1082,10 +1081,10 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                           </div>
                                                         </div>
                                                         <div className="text-right">
-                                                          <div className="text-[#2c5e2e]/60">
+                                                          <div className="text-[9px] text-[#2c5e2e]/60">
                                                             💵 Profit Bersih
                                                           </div>
-                                                          <div className="font-bold text-blue-700 break-all">
+                                                          <div className="font-bold text-blue-700 break-all leading-tight">
                                                             {formatRp(
                                                               h.profitBersih
                                                             )}

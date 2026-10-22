@@ -186,15 +186,15 @@ export default async function DetailMusimPage({ params }: Props) {
                     </div>
 
                     <div className="grid grid-cols-2 gap-2">
-                      <div className="bg-white rounded-xl p-3 border border-blue-200 text-center min-w-0">
+                      <div className="bg-white rounded-xl p-2 border border-blue-200 text-center min-w-0">
                         <div className="text-[10px] text-blue-800 font-bold mb-1">👤 Owner</div>
-                        <div className="font-bold text-green-700 text-sm angka-fit">
+                        <div className="font-bold text-green-700 text-sm angka-fit whitespace-nowrap">
                           {formatRp(Number(h.profit_owner || 0))}
                         </div>
                       </div>
-                      <div className="bg-white rounded-xl p-3 border border-blue-200 text-center min-w-0">
+                      <div className="bg-white rounded-xl p-2 border border-blue-200 text-center min-w-0">
                         <div className="text-[10px] text-blue-800 font-bold mb-1">👨‍🌾 Penggarap</div>
-                        <div className="font-bold text-orange-600 text-sm angka-fit">
+                        <div className="font-bold text-orange-600 text-sm angka-fit whitespace-nowrap">
                           {formatRp(Number(h.profit_penggarap || 0))}
                         </div>
                       </div>

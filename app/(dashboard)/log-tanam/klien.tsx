@@ -194,7 +194,7 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
     const jumlah = selectedIds.size;
     if (jumlah === 0) return;
     if (!confirm(`Hapus ${jumlah} log?\n\nData dan foto akan dihapus permanen.\n\nAksi ini tidak bisa dibatalkan.`)) return;
-    
+
     setDeleting(true);
     try {
       const res = await fetch("/api/activity-log/delete-bulk", {
@@ -237,8 +237,8 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
           <div className="text-[10px] text-[#2c5e2e]/60 font-bold uppercase tracking-widest">
             Biaya Bulan Ini
           </div>
-          {/* FIX: pakai angka-fit biar gak turun baris */}
-          <div className="text-lg md:text-xl font-bold text-[#2c5e2e] mt-1 angka-fit">
+          {/* FIX: ganti angka-fit ke angka-nowrap biar tebal */}
+          <div className="text-lg md:text-xl font-bold text-[#2c5e2e] mt-1 angka-nowrap">
             {formatRp(stats.totalBiayaBulanIni)}
           </div>
         </div>

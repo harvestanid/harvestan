@@ -261,20 +261,20 @@ export function RiwayatPanen({
                       {prod.toFixed(0)} Kg/Ha
                     </div>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="text-gray-500 text-[10px]">
                       Profit Bersih
                     </div>
                     <div className="font-bold text-blue-700">
-                      <span className="angka-fit">{formatRp(Number(h.profit_bersih || 0))}</span>
+                      <span className="angka-fit whitespace-nowrap">{formatRp(Number(h.profit_bersih || 0))}</span>
                     </div>
                   </div>
                   {!isMandiri && (
-                    <div>
+                    <div className="min-w-0">
                       <div className="text-gray-500 text-[10px]">
                         Bagi Hasil
                       </div>
-                      <div className="text-[10px] font-bold mt-0.5">
+                      <div className="text-[10px] font-bold mt-0.5 flex flex-col gap-0.5">
                         <div className="text-green-700 whitespace-nowrap">
                           👤 {formatRp(Number(h.profit_owner || 0))}
                         </div>

@@ -418,7 +418,7 @@ export function KeuanganClient({
         <div className="bg-white border border-gray-200 rounded-xl p-4 min-w-0">
           <div className="text-2xl mb-1">👤</div>
           <div className="text-xs text-gray-500 font-medium">PROFIT OWNER</div>
-          <div className="text-base sm:text-lg font-bold text-green-700 mt-1 leading-tight angka-fit">
+          <div className="text-base sm:text-lg font-bold text-green-700 mt-1 leading-tight angka-nowrap">
             {formatRp(totalProfitOwner)}
           </div>
         </div>
@@ -428,7 +428,7 @@ export function KeuanganClient({
           <div className="text-xs text-gray-500 font-medium">
             PROFIT PENGGARAP
           </div>
-          <div className="text-base sm:text-lg font-bold text-orange-600 mt-1 leading-tight angka-fit">
+          <div className="text-base sm:text-lg font-bold text-orange-600 mt-1 leading-tight angka-nowrap">
             {formatRp(totalProfitPenggarap)}
           </div>
         </div>
@@ -436,7 +436,7 @@ export function KeuanganClient({
         <div className="bg-white border border-gray-200 rounded-xl p-4 min-w-0">
           <div className="text-2xl mb-1">💰</div>
           <div className="text-xs text-gray-500 font-medium">HUTANG AKTIF</div>
-          <div className="text-base sm:text-lg font-bold text-red-600 mt-1 leading-tight angka-fit">
+          <div className="text-base sm:text-lg font-bold text-red-600 mt-1 leading-tight angka-nowrap">
             {formatRp(totalHutangAktif)}
           </div>
           <div className="text-xs text-gray-500 mt-1">
@@ -447,7 +447,7 @@ export function KeuanganClient({
         <div className="bg-white border border-gray-200 rounded-xl p-4 min-w-0">
           <div className="text-2xl mb-1">🌾</div>
           <div className="text-xs text-gray-500 font-medium">TOTAL PANEN</div>
-          <div className="text-base sm:text-lg font-bold text-blue-600 mt-1 leading-tight angka-fit">
+          <div className="text-base sm:text-lg font-bold text-blue-600 mt-1 leading-tight angka-nowrap">
             {formatKg(totalHasilKg)}
           </div>
           <div className="text-xs text-gray-500 mt-1">
