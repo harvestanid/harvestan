@@ -19,7 +19,6 @@ export default async function ImportPage() {
   const premium = await checkPremiumStatus(user.id);
   const isPremiumActive = premium.isPremium && premium.isActive;
 
-  // Kalau bukan premium → halaman locked
   if (!isPremiumActive) {
     return (
       <div className="p-4 md:p-6 max-w-2xl mx-auto">
@@ -67,9 +66,15 @@ export default async function ImportPage() {
             </Link>
             <Link
               href="/demo"
-              className="bg-blue-50 hover:bg-blue-100 text-blue-800 font-medium px-6 py-3 rounded-xl transition border border-blue-200"
+              className="bg-[#f0b429] hover:bg-[#e6a617] text-[#2c5e2e] font-bold px-6 py-3 rounded-xl transition shadow-md"
             >
-              🎬 Lihat Demo
+              🎬 Coba Mode Demo
+            </Link>
+            <Link
+              href="/dashboard"
+              className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-3 rounded-xl transition"
+            >
+              ← Kembali
             </Link>
           </div>
         </div>

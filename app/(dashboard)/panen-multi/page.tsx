@@ -73,6 +73,12 @@ export default async function PanenMultiPage() {
               💎 Upgrade — Rp 59.000
             </Link>
             <Link
+              href="/demo"
+              className="bg-[#f0b429] hover:bg-[#e6a617] text-[#2c5e2e] font-bold px-6 py-3 rounded-xl transition shadow-md"
+            >
+              🎬 Coba Mode Demo
+            </Link>
+            <Link
               href="/dashboard"
               className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-6 py-3 rounded-xl transition"
             >

@@ -34,7 +34,6 @@ const MENU_ITEMS = [
     label: "Kalender",
     icon: "📅",
     premium: false,
-    strictPremium: true,
   },
   {
     href: "/ukur-lahan",

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getDataFilter } from "@/lib/demo/demo-mode";
 import { LogTanamForm } from "@/components/log-tanam-form";
+import { checkPremiumStatus } from "@/lib/supabase/queries/subscription-server";
 
 export const metadata = {
   title: "Tambah Log Tanam",
@@ -10,13 +11,12 @@ export const metadata = {
 
 export default async function LogTanamBaruPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) redirect("/login");
 
   const filter = await getDataFilter(user.id);
+  const premiumStatus = await checkPremiumStatus(user.id);
 
   const { data: jenisCustom } = await supabase
     .from("activity_jenis_custom")
@@ -45,6 +45,7 @@ export default async function LogTanamBaruPage() {
         mode="create"
         jenisCustom={jenisCustom || []}
         isDemo={filter.is_demo}
+        isPremium={premiumStatus.isPremium || premiumStatus.effectivePremium}
       />
     </div>
   );

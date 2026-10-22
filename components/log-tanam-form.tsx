@@ -15,6 +15,7 @@ type Props = {
   logId?: string;
   jenisCustom: JenisCustom[];
   isDemo?: boolean;
+  isPremium?: boolean;
   initial?: {
     tanggal?: string;
     jenis?: string;
@@ -37,20 +38,12 @@ const JENIS_PRESET: { value: string; emoji: string; label: string }[] = [
   { value: "lainnya", emoji: "📝", label: "Lainnya" },
 ];
 
-// ============================================================
-// Helper: format angka jadi "1.234.567" (tanpa Rp)
-// ============================================================
 function formatRibuan(value: string): string {
-  // Hapus semua karakter selain digit
   const digits = value.replace(/\D/g, "");
   if (!digits) return "";
-  // Tambah titik tiap 3 digit dari belakang
   return Number(digits).toLocaleString("id-ID");
 }
 
-// ============================================================
-// Helper: ambil angka murni dari "1.234.567" → 1234567
-// ============================================================
 function parseRibuan(value: string): number {
   const digits = value.replace(/\D/g, "");
   return digits ? parseInt(digits, 10) : 0;
@@ -61,6 +54,7 @@ export function LogTanamForm({
   logId,
   jenisCustom: initialJenisCustom,
   isDemo = false,
+  isPremium = false,
   initial,
 }: Props) {
   const router = useRouter();
@@ -75,7 +69,6 @@ export function LogTanamForm({
   const [judul, setJudul] = useState(initial?.judul || "");
   const [deskripsi, setDeskripsi] = useState(initial?.deskripsi || "");
 
-  // Biaya: state disimpan sebagai string ter-format (contoh: "150.000")
   const [biaya, setBiaya] = useState(
     initial?.biaya ? formatRibuan(String(initial.biaya)) : ""
   );
@@ -99,9 +92,6 @@ export function LogTanamForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  // ============================================================
-  // Handler biaya: auto-format saat user ngetik
-  // ============================================================
   function handleBiayaChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value;
     setBiaya(formatRibuan(raw));
@@ -195,11 +185,9 @@ export function LogTanamForm({
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Sesi login habis");
 
-      // Upload foto kalau ada
       let fotoUrl = initial?.foto_url || null;
 
       if (hapusFoto && !fotoFile) {
-        // Hapus foto lama dari storage (kalau edit)
         if (initial?.foto_url) {
           try {
             const url = new URL(initial.foto_url);
@@ -217,6 +205,10 @@ export function LogTanamForm({
       }
 
       if (fotoFile) {
+        if (!isPremium) {
+          throw new Error("Fitur upload foto hanya untuk user Premium");
+        }
+
         const ext = fotoFile.name.split(".").pop() || "jpg";
         const fileName = `${user.id}/${Date.now()}-${Math.random()
           .toString(36)
@@ -247,7 +239,6 @@ export function LogTanamForm({
         jenis_custom: jenis === "custom" ? jenisCustom.trim() : null,
         judul: judul.trim(),
         deskripsi: deskripsi.trim() || null,
-        // Biaya: parse dari "150.000" → 150000
         biaya: parseRibuan(biaya),
         keterangan_biaya: keteranganBiaya.trim() || null,
         foto_url: fotoUrl,
@@ -297,7 +288,6 @@ export function LogTanamForm({
         </div>
       )}
 
-      {/* TANGGAL */}
       <div>
         <label className="block text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
           📅 Tanggal <span className="text-red-500">*</span>
@@ -311,7 +301,6 @@ export function LogTanamForm({
         />
       </div>
 
-      {/* JENIS AKTIVITAS */}
       <div>
         <label className="block text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
           🎯 Jenis Aktivitas <span className="text-red-500">*</span>
@@ -338,7 +327,6 @@ export function LogTanamForm({
             );
           })}
 
-          {/* Jenis Custom */}
           {jenisCustomList.map((c) => {
             const aktif = jenis === "custom" && jenisCustom === c.nama;
             return (
@@ -363,7 +351,6 @@ export function LogTanamForm({
             );
           })}
 
-          {/* Tombol tambah jenis custom */}
           <button
             type="button"
             onClick={() => setShowAddJenis(true)}
@@ -376,7 +363,6 @@ export function LogTanamForm({
           </button>
         </div>
 
-        {/* Modal tambah jenis custom */}
         {showAddJenis && (
           <div className="mt-3 bg-orange-50 border-2 border-orange-300 rounded-2xl p-4 space-y-3">
             <div className="text-xs font-bold text-orange-900 uppercase tracking-widest">
@@ -434,7 +420,6 @@ export function LogTanamForm({
         )}
       </div>
 
-      {/* JUDUL */}
       <div>
         <label className="block text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
           📌 Judul <span className="text-red-500">*</span>
@@ -450,7 +435,6 @@ export function LogTanamForm({
         />
       </div>
 
-      {/* DESKRIPSI */}
       <div>
         <label className="block text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
           📝 Deskripsi (opsional)
@@ -465,7 +449,6 @@ export function LogTanamForm({
         />
       </div>
 
-      {/* BIAYA */}
       <div>
         <label className="block text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
           💰 Biaya (opsional)
@@ -503,13 +486,34 @@ export function LogTanamForm({
         </p>
       </div>
 
-      {/* FOTO */}
+      {/* FOTO (PREMIUM ONLY) */}
       <div>
-        <label className="block text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2">
+        <label className="block text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest mb-2 flex items-center gap-2">
           📸 Foto (opsional, max 5 MB)
+          {!isPremium && (
+            <span className="bg-[#f0b429] text-[#2c5e2e] px-2 py-0.5 rounded-full text-[9px] font-bold">
+              💎 PREMIUM
+            </span>
+          )}
         </label>
 
-        {fotoPreview ? (
+        {!isPremium ? (
+          <div className="border-2 border-dashed border-[#f0b429]/40 rounded-2xl p-6 text-center bg-[#f0b429]/5">
+            <div className="text-4xl mb-2 opacity-50">🔒</div>
+            <div className="text-sm font-bold text-[#2c5e2e] mb-1">
+              Fitur Khusus Premium
+            </div>
+            <p className="text-xs text-[#2c5e2e]/60 mb-3">
+              Upgrade ke Premium untuk bisa upload foto di Log Tanam.
+            </p>
+            <a
+              href="/premium"
+              className="inline-block bg-[#2c5e2e] hover:bg-[#1f4521] text-white text-xs font-bold px-4 py-2 rounded-full transition"
+            >
+              💎 Upgrade Sekarang
+            </a>
+          </div>
+        ) : fotoPreview ? (
           <div className="relative">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -545,7 +549,6 @@ export function LogTanamForm({
         )}
       </div>
 
-      {/* TOMBOL */}
       <div className="flex gap-3 pt-2">
         <button
           type="submit"

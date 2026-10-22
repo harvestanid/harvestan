@@ -17,8 +17,6 @@ export default async function GabahPage() {
   if (!user) redirect("/login");
 
   const premium = await checkPremiumStatus(user.id);
-
-  // Gabah HANYA unlock kalau premium asli (demo TIDAK unlock)
   const isPremiumReal = premium.isPremium && premium.isActive;
 
   if (!isPremiumReal) {
@@ -72,6 +70,12 @@ export default async function GabahPage() {
               className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold px-6 py-3 rounded-xl transition shadow-lg"
             >
               💎 Upgrade — Rp 59.000
+            </Link>
+            <Link
+              href="/demo"
+              className="bg-[#f0b429] hover:bg-[#e6a617] text-[#2c5e2e] font-bold px-6 py-3 rounded-xl transition shadow-md"
+            >
+              🎬 Coba Mode Demo
             </Link>
             <Link
               href="/dashboard"

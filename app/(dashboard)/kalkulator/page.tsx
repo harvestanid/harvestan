@@ -16,7 +16,6 @@ export default async function KalkulatorPage() {
 
   if (!user) redirect("/login");
 
-  // Strict premium — demo & user biasa tidak dapat akses
   const status = await checkPremiumStatus(user.id);
   const isPremiumAsli = status.isPremium && status.isActive;
 
@@ -102,6 +101,12 @@ export default async function KalkulatorPage() {
               💎 Upgrade — Rp 59.000
             </Link>
             <Link
+              href="/demo"
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white font-bold px-8 py-3.5 rounded-full transition-all hover:scale-105 shadow-lg"
+            >
+              🎬 Coba Mode Demo
+            </Link>
+            <Link
               href="/dashboard"
               className="inline-flex items-center gap-2 bg-white border-2 border-gray-200 hover:border-gray-300 text-gray-700 font-bold px-8 py-3.5 rounded-full transition-all hover:scale-105"
             >
@@ -113,14 +118,12 @@ export default async function KalkulatorPage() {
     );
   }
 
-  // Ambil SEMUA lahan user
   const { data: lands } = await supabase
     .from("lands")
     .select("id, nama, luas")
     .eq("user_id", user.id)
     .order("nama");
 
-  // Ambil daftar pupuk aktif
   const { data: pupuks } = await supabase
     .from("fertilizers")
     .select("*")
