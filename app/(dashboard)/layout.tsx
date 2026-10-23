@@ -8,6 +8,7 @@ import {
 import { getDemoStatus } from "@/lib/demo/demo-mode";
 import { NavLink } from "./nav-link";
 import { DemoBanner } from "@/components/demo-banner";
+import { MenuBurger } from "@/components/menu-burger";
 
 const ADMIN_EMAIL = "harvestan.id@gmail.com";
 
@@ -126,17 +127,20 @@ export default async function DashboardLayout({
 
       <nav className="bg-[#faf9f5]/80 backdrop-blur-2xl border-b border-[#2c5e2e]/10 px-3 md:px-6 py-0 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between h-16 md:h-20">
-          <Link
-            href="/dashboard"
-            className="flex items-center flex-shrink-0 group"
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/logo-horizontal.png"
-              alt="Harvestan"
-              className="h-12 md:h-16 w-auto transition-transform group-hover:scale-105"
-            />
-          </Link>
+          <div className="flex items-center gap-2 md:gap-4">
+            <MenuBurger />
+            <Link
+              href="/dashboard"
+              className="flex items-center flex-shrink-0 group"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/logo-horizontal.png"
+                alt="Harvestan"
+                className="h-12 md:h-16 w-auto transition-transform group-hover:scale-105"
+              />
+            </Link>
+          </div>
 
           <div className="flex items-center gap-1.5 md:gap-3">
             {user && (
