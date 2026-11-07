@@ -81,7 +81,15 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
 
   const filteredLogs = useMemo(() => {
     return logs.filter((l) => {
-      if (filterJenis && l.jenis !== filterJenis) return false;
+      // Filter Jenis (Preset & Custom)
+      if (filterJenis) {
+        if (filterJenis.startsWith("custom:")) {
+          const namaCustom = filterJenis.replace("custom:", "");
+          if (l.jenis !== "custom" || l.jenis_custom !== namaCustom) return false;
+        } else {
+          if (l.jenis !== filterJenis) return false;
+        }
+      }
 
       if (adaFilterTanggal) {
         const tglLog = new Date(l.tanggal);
@@ -113,14 +121,12 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
   }, [logs, filterJenis, filterBulan, searchJudul, tanggalDari, tanggalSampai, adaFilterTanggal]);
 
   const stats = useMemo(() => {
-    const now = new Date();
-    const bulanIni = logs.filter((l) => {
-      const d = new Date(l.tanggal);
-      return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-    });
-    const totalBiaya = bulanIni.reduce((s, l) => s + Number(l.biaya || 0), 0);
-    return { jmlBulanIni: bulanIni.length, totalBiayaBulanIni: totalBiaya };
-  }, [logs]);
+    const totalBiaya = filteredLogs.reduce((s, l) => s + Number(l.biaya || 0), 0);
+    return {
+      jmlLog: filteredLogs.length,
+      totalBiaya,
+    };
+  }, [filteredLogs]);
 
   const adaFilterAktif = filterJenis || filterBulan || searchJudul || tanggalDari || tanggalSampai;
 
@@ -221,30 +227,27 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* STATISTIK BULAN INI */}
       <div className="grid grid-cols-2 gap-3">
         <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-4 shadow-lg shadow-[#2c5e2e]/5">
           <div className="text-2xl mb-1">📝</div>
           <div className="text-[10px] text-[#2c5e2e]/60 font-bold uppercase tracking-widest">
-            Log Bulan Ini
+            Total Log
           </div>
           <div className="text-2xl font-bold text-[#2c5e2e] mt-1">
-            {stats.jmlBulanIni}
+            {stats.jmlLog}
           </div>
         </div>
         <div className="bg-white border-2 border-[#f0b429]/40 rounded-3xl p-4 shadow-lg shadow-[#f0b429]/10">
           <div className="text-2xl mb-1">💰</div>
           <div className="text-[10px] text-[#2c5e2e]/60 font-bold uppercase tracking-widest">
-            Biaya Bulan Ini
+            Total Biaya
           </div>
-          {/* FIX: ganti angka-fit ke angka-nowrap biar tebal */}
           <div className="text-lg md:text-xl font-bold text-[#2c5e2e] mt-1 angka-nowrap">
-            {formatRp(stats.totalBiayaBulanIni)}
+            {formatRp(stats.totalBiaya)}
           </div>
         </div>
       </div>
 
-      {/* FILTER BAR (LAMA) */}
       <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-4 shadow-lg shadow-[#2c5e2e]/5">
         <div className="flex flex-wrap gap-3 items-end">
           <div className="flex flex-col gap-1 flex-1 min-w-[140px]">
@@ -325,7 +328,6 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
         </div>
       </div>
 
-      {/* FILTER TANGGAL (BARU) */}
       <div className="bg-white border-2 border-[#f0b429]/30 rounded-3xl p-4 shadow-lg shadow-[#f0b429]/5">
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <div className="text-[10px] font-bold text-[#2c5e2e] uppercase tracking-widest">
