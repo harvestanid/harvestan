@@ -152,6 +152,31 @@ export async function checkPremiumStatus(
 ): Promise<SubscriptionStatus> {
   const supabase = await createClient();
 
+  // ============================================================
+  // CEK GLOBAL TOGGLE (ADMIN MODE GRATIS PREMIUM)
+  // ============================================================
+  const { data: globalSettings } = await supabase
+    .from("app_settings")
+    .select("value")
+    .eq("id", "global_premium_on")
+    .single();
+
+  const isGlobalPremiumOn = globalSettings?.value === "true";
+
+  if (isGlobalPremiumOn) {
+    return {
+      isPremium: true,
+      isActive: true,
+      isDemoActive: false,
+      effectivePremium: true,
+      expiresAt: null,
+      type: "global_free",
+      source: "admin_toggle",
+      daysRemaining: null,
+    };
+  }
+  // ============================================================
+
   const { data: demoSession } = await supabase
     .from("demo_sessions")
     .select("*")
