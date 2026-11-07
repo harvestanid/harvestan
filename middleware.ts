@@ -47,12 +47,6 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
-  // ===== REDIRECT USER LOGIN DARI LANDING =====
-  // User yang udah login + buka landing page → auto-redirect ke dashboard
-  if (user && pathname === "/") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
   // ===== ROUTE PUBLIK =====
   const isPublicRoute =
     pathname === "/" ||
@@ -65,6 +59,8 @@ export async function middleware(request: NextRequest) {
       !pathname.startsWith("/toko/pesanan"));
 
   if (isPublicRoute) {
+    // Cuma redirect kalau user buka /login atau /register, 
+    // TAPI TIDAK untuk / (Landing Page)
     if (user && (pathname === "/login" || pathname === "/register")) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }

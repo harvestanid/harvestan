@@ -223,6 +223,12 @@ export default async function DashboardLayout({
                     Admin Only
                   </div>
                   <NavLink
+                    href="/admin/settings"
+                    icon="⚙️"
+                    label="Settings"
+                    variant="admin"
+                  />
+                  <NavLink
                     href="/admin/agents"
                     icon="🤖"
                     label="AI Agents"
@@ -348,6 +354,12 @@ export default async function DashboardLayout({
           ))}
           {isAdmin && (
             <>
+              <NavLink
+                href="/admin/settings"
+                icon="⚙️"
+                label="Admin Set"
+                variant="mobile"
+              />
               <NavLink
                 href="/admin/agents"
                 icon="🤖"

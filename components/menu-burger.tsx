@@ -30,19 +30,20 @@ export function MenuBurger() {
 
       {isOpen && (
         <>
-          {/* Overlay buat nutup kalau klik di luar */}
           <div
             className="fixed inset-0 z-40"
             onClick={() => setIsOpen(false)}
           ></div>
 
-          {/* Dropdown Menu */}
-          <div className="absolute left-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+          <div className="absolute left-0 mt-2 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
             <div className="p-2 space-y-1">
+              <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                Workspace
+              </div>
               <Link
                 href="/dashboard"
                 onClick={() => setIsOpen(false)}
-                className="block px-4 py-3 rounded-lg hover:bg-[#f0b429]/10 transition-colors"
+                className="block px-3 py-2.5 rounded-lg hover:bg-[#f0b429]/10 transition-colors"
               >
                 <div className="font-bold text-[#2c5e2e] text-sm">
                   🌾 Manajemen Pertanian
@@ -55,7 +56,7 @@ export function MenuBurger() {
               <Link
                 href="/peternakan"
                 onClick={() => setIsOpen(false)}
-                className="block px-4 py-3 rounded-lg hover:bg-[#f0b429]/10 transition-colors"
+                className="block px-3 py-2.5 rounded-lg hover:bg-[#f0b429]/10 transition-colors"
               >
                 <div className="font-bold text-[#2c5e2e] text-sm">
                   🐄 Manajemen Peternakan
@@ -63,6 +64,27 @@ export function MenuBurger() {
                 <div className="text-[10px] text-gray-500 mt-0.5">
                   Data sapi & pakan
                 </div>
+              </Link>
+
+              <div className="border-t border-gray-100 my-1"></div>
+              <div className="px-3 py-1 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                Lainnya
+              </div>
+
+              <Link
+                href="/demo"
+                onClick={() => setIsOpen(false)}
+                className="block px-3 py-2 rounded-lg hover:bg-[#f0b429]/10 transition-colors text-sm font-bold text-[#2c5e2e]"
+              >
+                🎬 Coba Mode Demo
+              </Link>
+
+              <Link
+                href="/"
+                onClick={() => setIsOpen(false)}
+                className="block px-3 py-2 rounded-lg hover:bg-[#f0b429]/10 transition-colors text-sm font-bold text-[#2c5e2e]"
+              >
+                🌐 Landing Page
               </Link>
             </div>
           </div>

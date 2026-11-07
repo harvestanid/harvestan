@@ -110,7 +110,6 @@ export default async function DashboardLayout({
   const isPremiumActive = premiumStatus.effectivePremium;
   const isDemoActive = premiumStatus.isDemoActive;
 
-  const showDemoButton = !isPremiumActive && !isDemoActive;
   const showUpgradeButton = !isPremiumActive;
 
   const username = getUsername(user);
@@ -126,8 +125,10 @@ export default async function DashboardLayout({
       )}
 
       <nav className="bg-[#faf9f5]/80 backdrop-blur-2xl border-b border-[#2c5e2e]/10 px-3 md:px-6 py-0 sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto flex items-center justify-between h-16 md:h-20">
-          <div className="flex items-center gap-2 md:gap-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between h-16 md:h-20 gap-2">
+          
+          {/* KIRI: Burger + Logo */}
+          <div className="flex items-center gap-2 md:gap-4 flex-shrink-0">
             <MenuBurger />
             <Link
               href="/dashboard"
@@ -142,21 +143,12 @@ export default async function DashboardLayout({
             </Link>
           </div>
 
-          <div className="flex items-center gap-1.5 md:gap-3">
+          {/* KANAN: Tombol Aksi */}
+          <div className="flex items-center gap-1 md:gap-2 justify-end flex-shrink-0">
             {user && (
-              <span className="hidden md:inline-flex items-center gap-1.5 bg-[#2c5e2e]/5 border border-[#2c5e2e]/15 text-[#2c5e2e] text-xs font-semibold px-3 py-1.5 rounded-full">
+              <span className="hidden lg:inline-flex items-center gap-1.5 bg-[#2c5e2e]/5 border border-[#2c5e2e]/15 text-[#2c5e2e] text-xs font-semibold px-3 py-1.5 rounded-full">
                 👤 @{username}
               </span>
-            )}
-
-            {showDemoButton && (
-              <Link
-                href="/demo"
-                className="inline-flex items-center gap-1 bg-[#f0b429]/20 hover:bg-[#f0b429]/30 border border-[#f0b429]/40 text-[#2c5e2e] text-[10px] md:text-xs font-bold px-2.5 md:px-3 py-1.5 rounded-full transition-all hover:scale-105"
-              >
-                🎬 <span className="hidden sm:inline">Coba Demo</span>
-                <span className="sm:hidden">Demo</span>
-              </Link>
             )}
 
             {isDemoActive && (
@@ -174,24 +166,17 @@ export default async function DashboardLayout({
             {showUpgradeButton && (
               <Link
                 href="/premium"
-                className="inline-flex items-center gap-1 bg-[#2c5e2e] hover:bg-[#1f4521] text-white text-[10px] md:text-xs font-bold px-2.5 md:px-3 py-1.5 rounded-full shadow-md shadow-[#2c5e2e]/20 hover:shadow-[#2c5e2e]/40 transition-all hover:scale-105"
+                className="inline-flex items-center justify-center bg-[#2c5e2e] hover:bg-[#1f4521] text-white text-[10px] md:text-xs font-bold px-3 py-1.5 rounded-full shadow-md shadow-[#2c5e2e]/20 hover:shadow-[#2c5e2e]/40 transition-all hover:scale-105"
+                title="Upgrade Premium"
               >
                 💎 Upgrade
               </Link>
             )}
 
-            <Link
-              href="/"
-              className="inline-flex items-center gap-1 text-[10px] md:text-xs font-bold text-[#2c5e2e]/70 hover:text-[#2c5e2e] px-2.5 md:px-3 py-1.5 rounded-full hover:bg-[#2c5e2e]/5 transition-all border border-[#2c5e2e]/15 hover:border-[#2c5e2e]/30"
-              title="Lihat Landing Page"
-            >
-              🌐 <span className="hidden sm:inline">Landing</span>
-            </Link>
-
-            <form action="/auth/logout" method="post">
+            <form action="/auth/logout" method="post" className="flex-shrink-0 ml-1">
               <button
                 type="submit"
-                className="text-xs md:text-sm text-[#2c5e2e]/70 hover:text-red-600 font-medium transition-colors"
+                className="text-[10px] md:text-sm text-[#2c5e2e]/70 hover:text-red-600 font-medium transition-colors"
               >
                 Keluar
               </button>
