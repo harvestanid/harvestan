@@ -81,7 +81,6 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
 
   const filteredLogs = useMemo(() => {
     return logs.filter((l) => {
-      // Filter Jenis (Preset & Custom)
       if (filterJenis) {
         if (filterJenis.startsWith("custom:")) {
           const namaCustom = filterJenis.replace("custom:", "");
@@ -220,6 +219,15 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
     }
   }
 
+  function handleDownloadPDF() {
+    const params = new URLSearchParams();
+    if (tanggalDari) params.set("dari", tanggalDari);
+    if (tanggalSampai) params.set("sampai", tanggalSampai);
+    if (filterJenis) params.set("jenis", filterJenis);
+    if (searchJudul) params.set("search", searchJudul);
+    window.location.href = `/log-tanam/pdf?${params.toString()}`;
+  }
+
   const filteredIds = filteredLogs.map((l) => l.id);
   const semuaTerpilih = filteredIds.length > 0 && filteredIds.every((id) => selectedIds.has(id));
   const sebagianTerpilih = !semuaTerpilih && filteredIds.some((id) => selectedIds.has(id));
@@ -247,6 +255,13 @@ export function LogTanamKlien({ logs, jenisCustom, isDemo }: Props) {
           </div>
         </div>
       </div>
+
+      <button
+        onClick={handleDownloadPDF}
+        className="w-full bg-[#2c5e2e] hover:bg-[#1f4521] text-white font-bold py-3 rounded-2xl transition shadow-md flex items-center justify-center gap-2"
+      >
+        📄 Download Laporan PDF
+      </button>
 
       <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-4 shadow-lg shadow-[#2c5e2e]/5">
         <div className="flex flex-wrap gap-3 items-end">
