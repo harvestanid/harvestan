@@ -46,20 +46,19 @@ export default async function SapiPublikPage({ params }: { params: Promise<{ tok
 
   return (
     <div className="min-h-screen bg-[#faf9f5] pb-10">
-      {/* Navbar Atas */}
-      <nav className="bg-white border-b border-[#2c5e2e]/10 px-4 py-4 flex justify-center sticky top-0 z-20 shadow-sm">
+      {/* Navbar Fixed (Solid Putih) */}
+      <nav className="fixed top-0 left-0 right-0 bg-white border-b border-[#2c5e2e]/10 h-16 flex items-center justify-center z-50 shadow-sm">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-horizontal.png" alt="Harvestan" className="h-10 w-auto" />
       </nav>
 
-      <div className="max-w-md mx-auto px-4 py-6 space-y-5">
+      {/* Konten dengan Jarak Atas (pt-20) */}
+      <div className="max-w-md mx-auto px-4 pt-20 pb-6 space-y-5">
         
-        {/* KARTU HEADER (FOTO & NAMA) */}
+        {/* KARTU HEADER */}
         <div className="bg-white rounded-3xl border-2 border-[#2c5e2e]/10 p-6 pt-14 text-center relative shadow-lg">
-          {/* Background Hijau di atas */}
           <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-[#2c5e2e] to-[#1f4521] rounded-t-3xl" />
           
-          {/* Foto Profil */}
           <div className="relative z-10 flex justify-center -mt-12 mb-4">
             {sapi.foto_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -75,7 +74,6 @@ export default async function SapiPublikPage({ params }: { params: Promise<{ tok
             )}
           </div>
 
-          {/* Nama & Info */}
           <h1 className="text-2xl font-black text-[#2c5e2e] leading-tight mb-1">
             {sapi.nama_sapi ? sapi.nama_sapi : `Sapi ${sapi.jenis}`}
           </h1>
