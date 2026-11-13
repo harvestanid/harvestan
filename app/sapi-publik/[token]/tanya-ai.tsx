@@ -41,7 +41,7 @@ export function TanyaAIKlien({ dataSapi }: { dataSapi: any }) {
         <span className="text-2xl">🤖</span>
         <div>
           <h3 className="font-bold text-indigo-900 text-sm">Tanya AI tentang {dataSapi.nama}</h3>
-          <p className="text-[10px] text-indigo-600">Tanya kondisi, harga pasar, dll.</p>
+          <p className="text-[10px] text-indigo-600">Tanya kondisi, harga pasar, potensi karkas, dll.</p>
         </div>
       </div>
 
@@ -59,7 +59,7 @@ export function TanyaAIKlien({ dataSapi }: { dataSapi: any }) {
           disabled={loading}
           className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs py-2.5 rounded-xl transition disabled:opacity-50"
         >
-          {loading ? "⏳ Mencari jawaban..." : "✨ Tanya AI"}
+          {loading ? "⏳ Menganalisa..." : "✨ Tanya AI"}
         </button>
       </form>
 
