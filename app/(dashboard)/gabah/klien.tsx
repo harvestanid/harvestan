@@ -20,7 +20,8 @@ type Lahan = {
 type SakInput = {
   bobot: number;
   jumlah: number;
-  pribadi: boolean;
+  // bawaPulang: "" (dijual), "penggarap", atau "owner"
+  bawaPulang: "" | "penggarap" | "owner";
 };
 
 type Sesi = {
@@ -30,7 +31,7 @@ type Sesi = {
 
 type SesiDetail = {
   nomor: number;
-  sakList: { nomor: number; bobot: number; jumlah: number; pribadi: boolean }[];
+  sakList: { nomor: number; bobot: number; jumlah: number; bawaPulang: "" | "penggarap" | "owner" }[];
   subtotalBobot: number;
   subtotalSak: number;
   subtotalDijual: number;
@@ -44,7 +45,7 @@ function formatRp(n: number) {
 function buatSakKosong(): SakInput[] {
   return Array(5)
     .fill(null)
-    .map(() => ({ bobot: 0, jumlah: 0, pribadi: false }));
+    .map(() => ({ bobot: 0, jumlah: 0, bawaPulang: "" }));
 }
 
 const KEY_DEFAULT_SAK = "harvestan_default_jumlah_sak";
@@ -58,25 +59,20 @@ export function GabahKlien() {
   const [loadingData, setLoadingData] = useState(true);
 
   const [penggarapId, setPenggarapId] = useState("");
-  const [landId, setLandId] = useState("");
+  const [selectedLandIds, setSelectedLandIds] = useState<string[]>([]);
   const [tanggal, setTanggal] = useState(
     new Date().toISOString().split("T")[0]
   );
   const [namaPenggarap, setNamaPenggarap] = useState("");
-  const [namaLahan, setNamaLahan] = useState("");
-  const [luasLahan, setLuasLahan] = useState(0);
   const [hargaJual, setHargaJual] = useState(5000);
   const [hargaVendor, setHargaVendor] = useState(400);
   const [persenOwner, setPersenOwner] = useState(50);
 
   const [defaultSak, setDefaultSak] = useState(2);
 
-  const [bawaPenggarap, setBawaPenggarap] = useState(0);
-  const [bawaOwner, setBawaOwner] = useState(0);
-  const [cekPenggarap, setCekPenggarap] = useState(false);
-  const [cekOwner, setCekOwner] = useState(false);
-
-  const [sesi, setSesi] = useState<Sesi[]>([{ id: 1, sak: buatSakKosong() }]);
+  const [sesi, setSesi] = useState<Sesi[]>([
+    { id: 1, sak: buatSakKosong() },
+  ]);
   const [nextSesiId, setNextSesiId] = useState(2);
 
   const [showSesiSummary, setShowSesiSummary] = useState(false);
@@ -95,6 +91,8 @@ export function GabahKlien() {
     profitPenggarapFinal: number;
     nilaiBawaPenggarap: number;
     nilaiBawaOwner: number;
+    bawaPenggarapKg: number;
+    bawaOwnerKg: number;
   } | null>(null);
 
   const [sedangKirim, setSedangKirim] = useState(false);
@@ -141,6 +139,7 @@ export function GabahKlien() {
     async function loadLands() {
       if (!penggarapId) {
         setLands([]);
+        setSelectedLandIds([]);
         return;
       }
       const { data } = await supabase
@@ -149,25 +148,27 @@ export function GabahKlien() {
         .eq("penggarap_id", penggarapId)
         .order("nama");
       setLands(data || []);
+      setSelectedLandIds([]); 
     }
     loadLands();
   }, [penggarapId]);
 
   function handlePenggarapChange(id: string) {
     setPenggarapId(id);
-    setLandId("");
     const p = penggaraps.find((x) => x.id === id);
     setNamaPenggarap(p?.nama || "");
-    setNamaLahan("");
-    setLuasLahan(0);
   }
 
-  function handleLahanChange(id: string) {
-    setLandId(id);
-    const l = lands.find((x) => x.id === id);
-    setNamaLahan(l?.nama || "");
-    setLuasLahan(l?.luas || 0);
+  function toggleLahan(id: string) {
+    setSelectedLandIds((prev) => {
+      if (prev.includes(id)) return prev.filter((x) => x !== id);
+      return [...prev, id];
+    });
   }
+
+  const totalLuas = lands
+    .filter((l) => selectedLandIds.includes(l.id))
+    .reduce((s, l) => s + Number(l.luas), 0);
 
   function tambahSesi() {
     setSesi([...sesi, { id: nextSesiId, sak: buatSakKosong() }]);
@@ -222,6 +223,8 @@ export function GabahKlien() {
     let totalJumlah = 0;
     let bobotDijual = 0;
     let bobotPribadi = 0;
+    let bawaPenggarapKg = 0;
+    let bawaOwnerKg = 0;
     const sesiDetails: SesiDetail[] = [];
 
     sesi.forEach((s, idx) => {
@@ -240,7 +243,7 @@ export function GabahKlien() {
             nomor: sakIdx + 1,
             bobot,
             jumlah,
-            pribadi: sak.pribadi,
+            bawaPulang: sak.bawaPulang,
           });
         }
 
@@ -249,14 +252,19 @@ export function GabahKlien() {
         subBobot += bobot;
         subSak += jumlah;
 
-        if (sak.pribadi) {
-          bobotPribadi += bobot;
+        if (sak.bawaPulang === "penggarap") {
+          bawaPenggarapKg += bobot;
+          subPribadi += bobot; // tetap masuk pribadi (tidak dijual)
+        } else if (sak.bawaPulang === "owner") {
+          bawaOwnerKg += bobot;
           subPribadi += bobot;
         } else {
           bobotDijual += bobot;
           subDijual += bobot;
         }
       });
+
+      bobotPribadi += subPribadi;
 
       sesiDetails.push({
         nomor: idx + 1,
@@ -271,7 +279,7 @@ export function GabahKlien() {
     const totalHarga = bobotDijual * hargaJual;
     const biayaVendor = totalBobot * hargaVendor;
     const profitBersih = totalHarga - biayaVendor;
-    const produktivitas = luasLahan > 0 ? totalBobot / luasLahan : 0;
+    const produktivitas = totalLuas > 0 ? totalBobot / totalLuas : 0;
 
     const persenPenggarap = 100 - persenOwner;
     const harga = hargaJual;
@@ -279,8 +287,8 @@ export function GabahKlien() {
     let po = profitBersih * (persenOwner / 100);
     let pp = profitBersih * (persenPenggarap / 100);
 
-    const nilaiBawaPenggarap = cekPenggarap ? bawaPenggarap * harga : 0;
-    const nilaiBawaOwner = cekOwner ? bawaOwner * harga : 0;
+    const nilaiBawaPenggarap = bawaPenggarapKg * harga;
+    const nilaiBawaOwner = bawaOwnerKg * harga;
 
     po += nilaiBawaPenggarap;
     pp -= nilaiBawaPenggarap;
@@ -301,6 +309,8 @@ export function GabahKlien() {
       profitPenggarapFinal: pp,
       nilaiBawaPenggarap,
       nilaiBawaOwner,
+      bawaPenggarapKg,
+      bawaOwnerKg,
     });
 
     setShowSesiSummary(true);
@@ -313,8 +323,8 @@ export function GabahKlien() {
   }
 
   async function kirimKeDatabase() {
-    if (!penggarapId || !landId) {
-      alert("❌ Pilih penggarap & lahan dulu");
+    if (!penggarapId || selectedLandIds.length === 0) {
+      alert("❌ Pilih penggarap & minimal 1 lahan dulu");
       return;
     }
     if (!hasil || hasil.totalBobot <= 0) {
@@ -324,23 +334,26 @@ export function GabahKlien() {
 
     const persenPenggarap = 100 - persenOwner;
 
+    const selectedLands = lands.filter((l) => selectedLandIds.includes(l.id));
+
     let konfirmasi =
       `Kirim hasil penimbangan ke Database?\n\n` +
       `Penggarap: ${namaPenggarap}\n` +
-      `Lahan: ${namaLahan}\n` +
+      `Lahan (${selectedLands.length}): ${selectedLands.map((l) => l.nama).join(", ")}\n` +
+      `Total Luas: ${totalLuas.toFixed(2)} Ha\n` +
       `Tanggal: ${tanggal}\n` +
       `Total Bobot: ${hasil.totalBobot.toFixed(0)} Kg\n` +
       `Total Sak: ${hasil.totalJumlah}\n` +
       `Skema Bagi Hasil: ${persenOwner}:${persenPenggarap}\n`;
 
     if (hasil.nilaiBawaPenggarap > 0) {
-      konfirmasi += `\n🏠 Penggarap bawa pulang: ${bawaPenggarap} Kg (nilai ${formatRp(hasil.nilaiBawaPenggarap)})`;
+      konfirmasi += `\n🏠 Penggarap bawa pulang: ${hasil.bawaPenggarapKg} Kg (nilai ${formatRp(hasil.nilaiBawaPenggarap)})`;
     }
     if (hasil.nilaiBawaOwner > 0) {
-      konfirmasi += `\n🏠 Owner bawa pulang: ${bawaOwner} Kg (nilai ${formatRp(hasil.nilaiBawaOwner)})`;
+      konfirmasi += `\n🏠 Owner bawa pulang: ${hasil.bawaOwnerKg} Kg (nilai ${formatRp(hasil.nilaiBawaOwner)})`;
     }
 
-    konfirmasi += `\n\nData akan masuk sebagai PANEN PADI.`;
+    konfirmasi += `\n\nData akan masuk sebagai PANEN PADI, dibagi proporsional ke ${selectedLands.length} lahan.`;
 
     if (!confirm(konfirmasi)) return;
 
@@ -362,8 +375,8 @@ export function GabahKlien() {
       let profitOwner = profitBersih * (persenOwner / 100);
       let profitPenggarap = profitBersih * (persenPenggarap / 100);
 
-      const nilaiBawaPenggarap = cekPenggarap ? bawaPenggarap * harga : 0;
-      const nilaiBawaOwner = cekOwner ? bawaOwner * harga : 0;
+      const nilaiBawaPenggarap = hasil.nilaiBawaPenggarap;
+      const nilaiBawaOwner = hasil.nilaiBawaOwner;
 
       profitOwner += nilaiBawaPenggarap - nilaiBawaOwner;
       profitPenggarap += nilaiBawaOwner - nilaiBawaPenggarap;
@@ -443,63 +456,67 @@ export function GabahKlien() {
       );
 
       let keteranganBiaya = "";
-      if (nilaiBawaPenggarap > 0 && nilaiBawaOwner > 0) {
-        keteranganBiaya = `Penggarap bawa pulang ${bawaPenggarap} Kg gabah, Owner bawa pulang ${bawaOwner} Kg gabah`;
-      } else if (nilaiBawaPenggarap > 0) {
-        keteranganBiaya = `Penggarap bawa pulang ${bawaPenggarap} Kg gabah`;
-      } else if (nilaiBawaOwner > 0) {
-        keteranganBiaya = `Owner bawa pulang ${bawaOwner} Kg gabah`;
+      if (hasil.bawaPenggarapKg > 0 && hasil.bawaOwnerKg > 0) {
+        keteranganBiaya = `Penggarap bawa pulang ${hasil.bawaPenggarapKg} Kg gabah, Owner bawa pulang ${hasil.bawaOwnerKg} Kg gabah`;
+      } else if (hasil.bawaPenggarapKg > 0) {
+        keteranganBiaya = `Penggarap bawa pulang ${hasil.bawaPenggarapKg} Kg gabah`;
+      } else if (hasil.bawaOwnerKg > 0) {
+        keteranganBiaya = `Owner bawa pulang ${hasil.bawaOwnerKg} Kg gabah`;
       }
 
-      const { error } = await supabase.from("harvests").insert({
-        user_id: user.id,
-        land_id: landId,
-        tanggal,
-        komoditas: "padi",
-        musim: null,
-        hasil_kg: hasilKg,
-        harga_gabah: harga,
-        harga_per_kg: harga,
-        biaya_panen_per_kg: biayaPanen,
-        biaya_tambahan: 0,
-        keterangan_biaya: keteranganBiaya || null,
-        bawa_penggarap: cekPenggarap ? bawaPenggarap : 0,
-        bawa_owner: cekOwner ? bawaOwner : 0,
-        bawa_lain: 0,
-        persen_owner: persenOwner,
-        persen_penggarap: persenPenggarap,
-        profit_bersih: profitBersih,
-        profit_owner: profitOwnerFinal,
-        profit_penggarap: profitPenggarapFinal,
-        potongan_hutang: potonganHutang,
-        potongan_hutang_log: potonganLog,
-        total_hutang_sebelum: totalHutangSebelum,
-        sisa_hutang_sesudah: totalHutangSesudah,
-        catatan: `[DARI GABAH] ${hasil.totalJumlah} sak, ${sesi.length} sesi timbang, skema ${persenOwner}:${persenPenggarap}${
-          keteranganBiaya ? ` — ${keteranganBiaya}` : ""
-        }`,
-      });
+      for (const lahan of selectedLands) {
+        const proporsi = totalLuas > 0 ? Number(lahan.luas) / totalLuas : 1 / selectedLands.length;
+        
+        const hasilKgLahan = hasilKg * proporsi;
+        const bobotDijualLahan = hasil.bobotDijual * proporsi;
+        const totalHargaJualLahan = bobotDijualLahan * harga;
+        const biayaVendorLahan = hasilKgLahan * biayaPanen;
+        const profitBersihLahan = totalHargaJualLahan - biayaVendorLahan;
+        const profitOwnerLahan = profitOwnerFinal * proporsi;
+        const profitPenggarapLahan = profitPenggarapFinal * proporsi;
+        const potonganHutangLahan = potonganHutang * proporsi;
 
-      if (error) throw error;
+        const { error } = await supabase.from("harvests").insert({
+          user_id: user.id,
+          land_id: lahan.id,
+          tanggal,
+          komoditas: "padi",
+          musim: null,
+          hasil_kg: hasilKgLahan,
+          harga_gabah: harga,
+          harga_per_kg: harga,
+          biaya_panen_per_kg: biayaPanen,
+          biaya_tambahan: 0,
+          keterangan_biaya: keteranganBiaya || null,
+          bawa_penggarap: hasil.bawaPenggarapKg * proporsi,
+          bawa_owner: hasil.bawaOwnerKg * proporsi,
+          bawa_lain: 0,
+          persen_owner: persenOwner,
+          persen_penggarap: persenPenggarap,
+          profit_bersih: profitBersihLahan,
+          profit_owner: profitOwnerLahan,
+          profit_penggarap: profitPenggarapLahan,
+          potongan_hutang: potonganHutangLahan,
+          potongan_hutang_log: potonganLog,
+          total_hutang_sebelum: totalHutangSebelum,
+          sisa_hutang_sesudah: totalHutangSesudah,
+          catatan: `[DARI GABAH] ${hasil.totalJumlah} sak, ${sesi.length} sesi timbang, skema ${persenOwner}:${persenPenggarap}, dibagi proporsional (${(proporsi * 100).toFixed(1)}% = ${lahan.luas} Ha / ${totalLuas.toFixed(2)} Ha)${
+            keteranganBiaya ? ` — ${keteranganBiaya}` : ""
+          }`,
+        });
 
-      let pesanSukses = `✅ Berhasil dikirim ke Database!\n\nTotal: ${hasilKg.toFixed(
+        if (error) throw error;
+      }
+
+      let pesanSukses = `✅ Berhasil dikirim ke ${selectedLands.length} Lahan!\n\nTotal: ${hasilKg.toFixed(
         0
       )} Kg\nSkema: ${persenOwner}:${persenPenggarap}\nProfit Bersih: ${formatRp(
         profitBersih
-      )}`;
+      )}\n\nPembagian per Lahan:\n`;
 
-      if (nilaiBawaPenggarap > 0 || nilaiBawaOwner > 0) {
-        pesanSukses += `\n\n🏠 Penyesuaian Gabah Bawa Pulang:`;
-        if (nilaiBawaPenggarap > 0) {
-          pesanSukses += `\n  Penggarap bawa: ${bawaPenggarap} Kg (Owner +${formatRp(
-            nilaiBawaPenggarap
-          )})`;
-        }
-        if (nilaiBawaOwner > 0) {
-          pesanSukses += `\n  Owner bawa: ${bawaOwner} Kg (Penggarap +${formatRp(
-            nilaiBawaOwner
-          )})`;
-        }
+      for (const lahan of selectedLands) {
+        const proporsi = totalLuas > 0 ? Number(lahan.luas) / totalLuas : 1 / selectedLands.length;
+        pesanSukses += `- ${lahan.nama}: ${(hasilKg * proporsi).toFixed(0)} Kg (${(proporsi * 100).toFixed(1)}%)\n`;
       }
 
       if (potonganHutang > 0) {
@@ -519,13 +536,10 @@ export function GabahKlien() {
       setSesi([{ id: 1, sak: buatSakKosong() }]);
       setNextSesiId(2);
       setPersenOwner(50);
-      setBawaPenggarap(0);
-      setBawaOwner(0);
-      setCekPenggarap(false);
-      setCekOwner(false);
       setShowSesiSummary(false);
+      setSelectedLandIds([]);
 
-      router.push(`/penggarap/${penggarapId}/lahan/${landId}`);
+      router.push(`/penggarap/${penggarapId}/lahan/${selectedLands[0].id}`);
     } catch (err: any) {
       console.error("Error kirim gabah:", err);
       alert("❌ Gagal kirim: " + (err.message || "Unknown error"));
@@ -626,25 +640,6 @@ export function GabahKlien() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Lahan <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={landId}
-                  onChange={(e) => handleLahanChange(e.target.value)}
-                  disabled={!penggarapId}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:bg-gray-100"
-                >
-                  <option value="">-- Pilih Lahan --</option>
-                  {lands.map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.nama} ({l.luas} Ha)
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Tanggal Panen <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -654,15 +649,55 @@ export function GabahKlien() {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Luas Lahan
-                </label>
-                <div className="w-full bg-gray-100 rounded-lg px-3 py-2 text-gray-700">
-                  {luasLahan > 0 ? `${luasLahan} Ha` : "-"}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Lahan <span className="text-red-500">*</span> (bisa pilih lebih dari 1)
+              </label>
+              {!penggarapId ? (
+                <div className="text-sm text-gray-500 italic p-3 bg-gray-50 rounded-lg">
+                  Pilih penggarap dulu
                 </div>
-              </div>
+              ) : lands.length === 0 ? (
+                <div className="text-sm text-gray-500 italic p-3 bg-gray-50 rounded-lg">
+                  Penggarap ini belum punya lahan
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {lands.map((l) => {
+                    const checked = selectedLandIds.includes(l.id);
+                    return (
+                      <label
+                        key={l.id}
+                        className={`flex items-center justify-between p-3 border-2 rounded-lg cursor-pointer transition ${
+                          checked
+                            ? "border-[#2c5e2e] bg-[#2c5e2e]/5"
+                            : "border-gray-200 hover:border-gray-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleLahan(l.id)}
+                            className="w-4 h-4 accent-[#2c5e2e]"
+                          />
+                          <span className="text-sm font-medium text-gray-800">
+                            {l.nama}
+                          </span>
+                        </div>
+                        <span className="text-xs text-gray-500">{l.luas} Ha</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
+              {selectedLandIds.length > 0 && (
+                <div className="mt-2 text-xs font-medium text-[#2c5e2e]">
+                  {selectedLandIds.length} lahan dipilih · Total luas {totalLuas.toFixed(2)} Ha
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2 border-t">
@@ -736,7 +771,7 @@ export function GabahKlien() {
               >
                 <div className="absolute top-0 left-0 w-1 h-full bg-green-600" />
 
-                <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-200 gap-2 flex-wrap">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 pb-3 border-b border-gray-200 gap-2">
                   <div className="font-bold text-green-800">
                     ⚖️ Sesi Timbang {sesiIdx + 1}
                   </div>
@@ -763,7 +798,7 @@ export function GabahKlien() {
                     <div
                       key={sakIdx}
                       className={`border-2 rounded-lg p-3 ${
-                        sak.pribadi
+                        sak.bawaPulang
                           ? "border-orange-300 bg-orange-50"
                           : "border-gray-200 bg-gray-50"
                       }`}
@@ -772,24 +807,6 @@ export function GabahKlien() {
                         <span className="text-xs font-bold text-gray-700">
                           Sak {sakIdx + 1}
                         </span>
-                        <label className="flex items-center gap-1 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={sak.pribadi}
-                            onChange={(e) =>
-                              updateSak(
-                                s.id,
-                                sakIdx,
-                                "pribadi",
-                                e.target.checked
-                              )
-                            }
-                            className="w-3.5 h-3.5 accent-orange-600"
-                          />
-                          <span className="text-[10px] text-gray-600">
-                            Pribadi
-                          </span>
-                        </label>
                       </div>
 
                       <label className="block text-[10px] text-gray-500 mb-0.5">
@@ -827,8 +844,45 @@ export function GabahKlien() {
                           )
                         }
                         placeholder="0"
-                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-green-500"
+                        className="w-full border border-gray-300 rounded px-2 py-1 text-sm mb-2 focus:outline-none focus:ring-1 focus:ring-green-500"
                       />
+
+                      {/* Ganti Pribadi jadi 2 Checkbox */}
+                      <div className="flex flex-col gap-1 border-t border-gray-200 pt-1.5 mt-1">
+                        <span className="text-[9px] text-gray-500 font-bold uppercase">Dibawa Pulang?</span>
+                        <label className="flex items-center gap-1 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={sak.bawaPulang === "penggarap"}
+                            onChange={(e) =>
+                              updateSak(
+                                s.id,
+                                sakIdx,
+                                "bawaPulang",
+                                e.target.checked ? "penggarap" : ""
+                              )
+                            }
+                            className="w-3.5 h-3.5 accent-orange-600"
+                          />
+                          <span className="text-[10px] text-gray-700">👨‍🌾 Penggarap</span>
+                        </label>
+                        <label className="flex items-center gap-1 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={sak.bawaPulang === "owner"}
+                            onChange={(e) =>
+                              updateSak(
+                                s.id,
+                                sakIdx,
+                                "bawaPulang",
+                                e.target.checked ? "owner" : ""
+                              )
+                            }
+                            className="w-3.5 h-3.5 accent-orange-600"
+                          />
+                          <span className="text-[10px] text-gray-700">👤 Owner</span>
+                        </label>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -912,88 +966,6 @@ export function GabahKlien() {
             </div>
           )}
 
-          <div className="bg-orange-50 border border-orange-200 rounded-xl p-5 mb-6">
-            <h3 className="text-sm font-bold text-orange-900 mb-3">
-              🏠 Gabah Dibawa Pulang (Tidak Dijual)
-            </h3>
-            <p className="text-xs text-orange-700 mb-4">
-              Isi jika ada gabah yang dibawa pulang oleh penggarap atau owner.
-              Nilai gabah akan dialihkan antar pihak.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div
-                className={`border-2 rounded-lg p-3 ${
-                  cekPenggarap
-                    ? "border-orange-400 bg-white"
-                    : "border-orange-200 bg-orange-50"
-                }`}
-              >
-                <label className="flex items-center gap-2 cursor-pointer mb-2">
-                  <input
-                    type="checkbox"
-                    checked={cekPenggarap}
-                    onChange={(e) => {
-                      setCekPenggarap(e.target.checked);
-                      if (!e.target.checked) setBawaPenggarap(0);
-                    }}
-                    className="w-4 h-4 accent-orange-600"
-                  />
-                  <span className="text-sm font-semibold text-orange-900">
-                    👨‍🌾 Penggarap bawa pulang
-                  </span>
-                </label>
-                {cekPenggarap && (
-                  <input
-                    type="number"
-                    value={bawaPenggarap || ""}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) =>
-                      setBawaPenggarap(parseFloat(e.target.value) || 0)
-                    }
-                    placeholder="Bobot (Kg)"
-                    className="w-full border border-orange-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
-                  />
-                )}
-              </div>
-
-              <div
-                className={`border-2 rounded-lg p-3 ${
-                  cekOwner
-                    ? "border-orange-400 bg-white"
-                    : "border-orange-200 bg-orange-50"
-                }`}
-              >
-                <label className="flex items-center gap-2 cursor-pointer mb-2">
-                  <input
-                    type="checkbox"
-                    checked={cekOwner}
-                    onChange={(e) => {
-                      setCekOwner(e.target.checked);
-                      if (!e.target.checked) setBawaOwner(0);
-                    }}
-                    className="w-4 h-4 accent-orange-600"
-                  />
-                  <span className="text-sm font-semibold text-orange-900">
-                    👤 Owner bawa pulang
-                  </span>
-                </label>
-                {cekOwner && (
-                  <input
-                    type="number"
-                    value={bawaOwner || ""}
-                    onFocus={(e) => e.target.select()}
-                    onChange={(e) =>
-                      setBawaOwner(parseFloat(e.target.value) || 0)
-                    }
-                    placeholder="Bobot (Kg)"
-                    className="w-full border border-orange-300 rounded px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-orange-500"
-                  />
-                )}
-              </div>
-            </div>
-          </div>
-
           <div className="text-center mb-6">
             <button
               onClick={hitungTotal}
@@ -1013,7 +985,7 @@ export function GabahKlien() {
                   🌾 Hasil Penimbangan Gabah
                 </h2>
                 <p className="text-xs text-gray-500 mt-1">
-                  {namaPenggarap} &middot; {namaLahan} ({luasLahan} Ha) &middot;{" "}
+                  {namaPenggarap} &middot; {selectedLandIds.length} Lahan ({totalLuas.toFixed(2)} Ha) &middot;{" "}
                   {new Date(tanggal).toLocaleDateString("id-ID", {
                     weekday: "long",
                     day: "numeric",
@@ -1122,9 +1094,13 @@ export function GabahKlien() {
                                   {sk.jumlah}
                                 </td>
                                 <td className="py-1 text-center">
-                                  {sk.pribadi ? (
+                                  {sk.bawaPulang === "penggarap" ? (
                                     <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-medium">
-                                      Pribadi
+                                      👨‍🌾 Penggarap
+                                    </span>
+                                  ) : sk.bawaPulang === "owner" ? (
+                                    <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-medium">
+                                      👤 Owner
                                     </span>
                                   ) : (
                                     <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded font-medium">
@@ -1229,7 +1205,7 @@ export function GabahKlien() {
                         {hasil.nilaiBawaPenggarap > 0 && (
                           <div className="flex justify-between text-orange-800">
                             <span>
-                              Penggarap bawa {bawaPenggarap} Kg
+                              Penggarap bawa {hasil.bawaPenggarapKg} Kg
                             </span>
                             <span className="font-mono">
                               <span className="text-green-700">
@@ -1244,7 +1220,7 @@ export function GabahKlien() {
                         )}
                         {hasil.nilaiBawaOwner > 0 && (
                           <div className="flex justify-between text-orange-800">
-                            <span>Owner bawa {bawaOwner} Kg</span>
+                            <span>Owner bawa {hasil.bawaOwnerKg} Kg</span>
                             <span className="font-mono">
                               <span className="text-green-700">
                                 Penggarap +{formatRp(hasil.nilaiBawaOwner)}
@@ -1294,7 +1270,7 @@ export function GabahKlien() {
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm mb-5">
                   📊 <strong>Produktivitas:</strong>{" "}
                   {hasil.produktivitas.toFixed(2)} Kg/Ha (
-                  {hasil.totalBobot.toFixed(0)} Kg ÷ {luasLahan} Ha)
+                  {hasil.totalBobot.toFixed(0)} Kg ÷ {totalLuas.toFixed(2)} Ha)
                 </div>
               )}
 
@@ -1312,12 +1288,12 @@ export function GabahKlien() {
                   komoditas="padi"
                   komoditasLabel="🌾 Padi"
                   hasilKg={hasil.totalBobot}
-                  luasHa={luasLahan}
+                  luasHa={totalLuas}
                   produktivitas={hasil.produktivitas}
                   hargaJual={hargaJual}
                   tanggal={tanggal}
                   namaPenggarap={namaPenggarap || null}
-                  namaLahan={namaLahan || null}
+                  namaLahan={selectedLandIds.length > 1 ? `${selectedLandIds.length} Lahan` : (lands.find((l) => l.id === selectedLandIds[0])?.nama || null)}
                   profitOwner={hasil.profitOwnerFinal}
                   profitPenggarap={hasil.profitPenggarapFinal}
                   polygon={null}
