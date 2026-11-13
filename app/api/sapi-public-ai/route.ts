@@ -6,6 +6,22 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+// Helper: Cari info via DuckDuckGo
+async function cariInternet(query: string): Promise<string> {
+  try {
+    const searchRes = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`);
+    const data = await searchRes.json();
+    let hasil = "";
+    if (data.AbstractText) hasil += `${data.AbstractText}\n`;
+    if (data.RelatedTopics && data.RelatedTopics.length > 0) {
+       hasil += data.RelatedTopics.slice(0, 3).map((t: any) => t.Text).join("\n");
+    }
+    return hasil || "Tidak ada data spesifik ditemukan di internet.";
+  } catch (e) {
+    return "Gagal mengakses internet.";
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -17,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = await createClient();
     
-    // 1. Ambil data sapi (Termasuk URL Foto)
+    // 1. Ambil data sapi
     const { data: sapi } = await supabase
       .from("livestocks")
       .select("id, nama_sapi, jenis, jenis_kelamin, bobot_awal, tanggal_masuk, foto_url, public_token")
@@ -29,66 +45,47 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Sapi tidak ditemukan" }, { status: 404 });
     }
 
-    // 2. Ambil SEMUA data timbang
+    // 2. Ambil data timbang terakhir
     const { data: measurements } = await supabase
       .from("livestock_measurements")
-      .select("tanggal, bobot_kg, tinggi_cm, panjang_cm, catatan")
+      .select("bobot_kg")
       .eq("livestock_id", sapi.id)
-      .order("tanggal", { ascending: true });
+      .order("tanggal", { ascending: false })
+      .limit(1);
 
-    const listTimbang = measurements && measurements.length > 0 
-      ? measurements.map((m, i) => `- Tgl ${m.tanggal}: ${m.bobot_kg} Kg (Tinggi: ${m.tinggi_cm || '-'}cm, Panjang: ${m.panjang_cm || '-'}cm)`).join('\n')
-      : "Belum ada data timbang";
+    const bobotTerakhir = measurements && measurements.length > 0 ? measurements[0].bobot_kg : sapi.bobot_awal;
 
-    const lastMeasure = measurements && measurements.length > 0 ? measurements[measurements.length - 1] : null;
-    const bobotTerakhir = lastMeasure ? lastMeasure.bobot_kg : sapi.bobot_awal;
-    const totalHari = Math.max(1, Math.floor((new Date().getTime() - new Date(sapi.tanggal_masuk).getTime()) / (1000 * 60 * 60 * 24)));
-    const adg = (bobotTerakhir - sapi.bobot_awal) / totalHari;
+    // 3. DEEP SEARCH INTERNET (Cari Harga Sapi Hidup & Harga Daging)
+    // Kita cari info terbaru biar AI gak ngarang.
+    const [searchSapiHidup, searchDaging] = await Promise.all([
+      cariInternet(`harga sapi hidup limosin per kg 2026`),
+      cariInternet(`harga daging sapi potong per kg 2026`)
+    ]);
 
-    // 3. Cari Harga Pasar via DuckDuckGo
-    let hasilPencarian = "";
-    try {
-      const searchQuery = encodeURIComponent(`harga sapi ${sapi.jenis} bobot ${bobotTerakhir}kg 2026`);
-      const searchRes = await fetch(`https://api.duckduckgo.com/?q=${searchQuery}&format=json&no_html=1`);
-      const searchData = await searchRes.json();
-      
-      if (searchData.RelatedTopics && searchData.RelatedTopics.length > 0) {
-         hasilPencarian = searchData.RelatedTopics.slice(0, 3).map((t: any) => t.Text).join("\n");
-      }
-    } catch (e) {
-      console.log("Gagal search internet", e);
-    }
-
-    // 4. Siapkan Prompt Super Cerdas
+    // 4. Susun Prompt untuk AI (AI sebagai perekomendasi harga)
     const prompt = `Kamu adalah Asisten Penjualan Sapi Profesional (Sales Closer) dari Harvestan.
-Tugasmu: Meyakinkan calon pembeli untuk membeli sapi ini berdasarkan data riil.
+Tugasmu: Berikan rekomendasi harga jual yang WAJAR dan MEYAKINKAN kepada calon pembeli.
 
 DATA SAPI SAAT INI:
 - Nama: ${sapi.nama_sapi || "Tanpa Nama"}
-- Jenis: ${sapi.jenis}
-- Kelamin: ${sapi.jenis_kelamin}
-- Umur (Hari): ${totalHari} hari
-- Bobot Awal: ${sapi.bobot_awal} Kg
-- Bobot Terakhir: ${bobotTerakhir} Kg
-- ADG (Pertumbuhan/Hari): ${adg.toFixed(2)} Kg/hari
-- **Link Foto Sapi**: ${sapi.foto_url ? sapi.foto_url : "Tidak ada foto"}
+- Jenis: ${sapi.jenis} (${sapi.jenis_kelamin})
+- Bobot Terakhir (Data Timbang): ${bobotTerakhir} Kg
+- Foto: ${sapi.foto_url ? "Ada (Sapi terlihat sehat & berotot)" : "Tidak ada"}
 
-RIWAYAT TIMBANG:
-${listTimbang}
-
-INFO HARGA PASAR TERKINI (Dari Internet):
-${hasilPencarian || "Gunakan pengetahuan umum harga sapi terbaru."}
+HASIL PENCARIAN INTERNET TERBARU:
+1. **Harga Sapi Hidup**: ${searchSapiHidup}
+2. **Harga Daging Sapi Potong**: ${searchDaging}
 
 PERTANYAAN PEMBELI:
 "${pertanyaan}"
 
 ATURAN MENJAWAB:
-1. Jawab dengan SANGAT MEYAKINKAN dan profesional. Fokus pada keunggulan sapi (pertumbuhan ADG yang bagus, bobot yang sudah tinggi, dll).
-2. Hitung estimasi harga jual & potensi karkas berdasarkan **Bobot Terakhir (${bobotTerakhir} Kg)**, JANGAN pakai bobot awal.
-3. WAJIB cantumkan sumber referensi harga pasar yang kamu sebutkan (misal: "Berdasarkan pantauan pasar X...").
-4. Jika pembeli tanya soal gambar/foto atau potensi karkas, katakan bahwa berdasarkan "Foto Sapi (Link di atas)", sapi terlihat sehat, berotot, dan punya potensi karkas yang baik. (Karena kamu adalah AI teks, kamu bisa menganalisa secara logis dari jenis & bobotnya, dan seolah-olah kamu melihat fotonya untuk meyakinkan pembeli).
-5. Jangan sebutkan harga beli/modal.
-6. Output maksimal 3 paragraf, gunakan format markdown untuk poin-poin penting (bold).`;
+1. **Analisa Dua Harga**: Kamu harus bisa membedakan mana "Harga Sapi Hidup" (biasanya per kg bobot hidup) dan mana "Harga Daging" (biasanya lebih mahal, per kg daging).
+2. **Hitung Rekomendasi**: Berikan estimasi harga jual sapi ini berdasarkan **Bobot ${bobotTerakhir} Kg** dikali **Harga Sapi Hidup** yang kamu temukan di internet. (Jangan pakai harga daging untuk mengali total sapi hidup).
+3. **Sebutkan Sumber**: Sebutkan dari mana kamu dapat info harga tersebut (berdasarkan hasil pencarian internet di atas).
+4. **Jual Kelebihannya**: Yakinkan pembeli bahwa sapi ini sehat, pertumbuhannya bagus, dan potensi karkasnya tinggi (berdasarkan jenis & bobotnya).
+5. Jika ditanya potensi karkas, jelaskan persentase karkas wajar untuk sapi jenis ${sapi.jenis} (misal 50-60%) dan hitung perkiraan kg dagingnya.
+6. Output maksimal 3 paragraf, gunakan format **bold** untuk angka penting.`;
 
     const { text } = await generateText({
       model: groq("openai/gpt-oss-120b"),
