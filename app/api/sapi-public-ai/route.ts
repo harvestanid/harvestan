@@ -6,22 +6,6 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// Helper: Cari info via DuckDuckGo
-async function cariInternet(query: string): Promise<string> {
-  try {
-    const searchRes = await fetch(`https://api.duckduckgo.com/?q=${encodeURIComponent(query)}&format=json&no_html=1`);
-    const data = await searchRes.json();
-    let hasil = "";
-    if (data.AbstractText) hasil += `${data.AbstractText}\n`;
-    if (data.RelatedTopics && data.RelatedTopics.length > 0) {
-       hasil += data.RelatedTopics.slice(0, 3).map((t: any) => t.Text).join("\n");
-    }
-    return hasil || "Tidak ada data spesifik ditemukan di internet.";
-  } catch (e) {
-    return "Gagal mengakses internet.";
-  }
-}
-
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -55,16 +39,9 @@ export async function POST(req: NextRequest) {
 
     const bobotTerakhir = measurements && measurements.length > 0 ? measurements[0].bobot_kg : sapi.bobot_awal;
 
-    // 3. DEEP SEARCH INTERNET (Cari Harga Sapi Hidup & Harga Daging)
-    // Kita cari info terbaru biar AI gak ngarang.
-    const [searchSapiHidup, searchDaging] = await Promise.all([
-      cariInternet(`harga sapi hidup limosin per kg 2026`),
-      cariInternet(`harga daging sapi potong per kg 2026`)
-    ]);
-
-    // 4. Susun Prompt untuk AI (AI sebagai perekomendasi harga)
+    // 3. Prompt dengan Instruksi Search Real-Time
     const prompt = `Kamu adalah Asisten Penjualan Sapi Profesional (Sales Closer) dari Harvestan.
-Tugasmu: Berikan rekomendasi harga jual yang WAJAR dan MEYAKINKAN kepada calon pembeli.
+Tugasmu: Meyakinkan calon pembeli dan memberikan estimasi harga yang AKURAT BERDASARKAN HARGA PASAR SAAT INI.
 
 DATA SAPI SAAT INI:
 - Nama: ${sapi.nama_sapi || "Tanpa Nama"}
@@ -72,28 +49,61 @@ DATA SAPI SAAT INI:
 - Bobot Terakhir (Data Timbang): ${bobotTerakhir} Kg
 - Foto: ${sapi.foto_url ? "Ada (Sapi terlihat sehat & berotot)" : "Tidak ada"}
 
-HASIL PENCARIAN INTERNET TERBARU:
-1. **Harga Sapi Hidup**: ${searchSapiHidup}
-2. **Harga Daging Sapi Potong**: ${searchDaging}
-
 PERTANYAAN PEMBELI:
 "${pertanyaan}"
 
-ATURAN MENJAWAB:
-1. **Analisa Dua Harga**: Kamu harus bisa membedakan mana "Harga Sapi Hidup" (biasanya per kg bobot hidup) dan mana "Harga Daging" (biasanya lebih mahal, per kg daging).
-2. **Hitung Rekomendasi**: Berikan estimasi harga jual sapi ini berdasarkan **Bobot ${bobotTerakhir} Kg** dikali **Harga Sapi Hidup** yang kamu temukan di internet. (Jangan pakai harga daging untuk mengali total sapi hidup).
-3. **Sebutkan Sumber**: Sebutkan dari mana kamu dapat info harga tersebut (berdasarkan hasil pencarian internet di atas).
-4. **Jual Kelebihannya**: Yakinkan pembeli bahwa sapi ini sehat, pertumbuhannya bagus, dan potensi karkasnya tinggi (berdasarkan jenis & bobotnya).
-5. Jika ditanya potensi karkas, jelaskan persentase karkas wajar untuk sapi jenis ${sapi.jenis} (misal 50-60%) dan hitung perkiraan kg dagingnya.
-6. Output maksimal 3 paragraf, gunakan format **bold** untuk angka penting.`;
+ATURAN KETAT (WAJIB DIIKUTI):
+1. **KAMU WAJIB MENGGUNAKAN FITUR SEARCH (INTERNET) UNTUK MENCARI HARGA SAPI HIDUP DAN HARGA DAGING SAPI SAAT INI (BULAN INI, TAHUN INI).** 
+2. JANGAN PERNAH menggunakan data tahun lalu atau mengarang data jika search gagal. Jika search benar-benar gagal, katakan "Mohon maaf, sistem pencarian harga sedang gangguan".
+3. **BEDAKAN HARGA SAPI HIDUP DAN HARGA DAGING:**
+   - Harga Sapi Hidup (Bobot Hidup): Biasanya dihitung per kg bobot sapi (misal Rp 50.000/kg).
+   - Harga Daging Sapi Potong: Biasanya lebih mahal (misal Rp 130.000/kg).
+4. Hitung estimasi harga jual sapi ini berdasarkan **Bobot ${bobotTerakhir} Kg** dikali **Harga Sapi Hidup** yang kamu temukan dari internet.
+5. Sebutkan sumber referensi harga secara spesifik (misal: "Berdasarkan pantauan harga pasar sapi hidup dari [Nama Sumber/Portal]").
+6. Jelaskan potensi karkas (misal 50-55% dari bobot hidup) dan estimasi nilai jual jika dipotong.
+7. Output maksimal 3 paragraf, gunakan format **bold** untuk angka penting.`;
 
+    // 4. Panggil AI dengan fitur Search (Menggunakan tool use / native search Groq)
+    // Kita pake model yang support tool/function calling
     const { text } = await generateText({
       model: groq("openai/gpt-oss-120b"),
       prompt,
-      temperature: 0.5,
+      temperature: 0.3,
+      tools: {
+        // Dummy tool buat maksa AI mikir dia bisa search (opsional, kalo groq ga support native search, kita pake external API)
+        // Tapi karena kita mau realtime, kita harus punya API Search. 
+        // Solusi paling gampang: Kita bypass Groq Search, kita pake DuckDuckGo HTML Scraping (lebih stabil dari API).
+      }
     });
 
-    return NextResponse.json({ ok: true, hasil: text });
+    // KARENA GROQ GAK ADA NATIVE SEARCH, KITA BIKIN FUNGSI SCRAPING DUCKDUCKGO DI SINI
+    // (Scraping HTML lebih stabil daripada JSON API yang sering limit)
+    let searchResult = "";
+    try {
+      const query = `harga sapi hidup limosin per kg 2026`;
+      const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
+      });
+      const html = await res.text();
+      // Ambil cuplikan teks dari hasil pencarian (regex sederhana)
+      const snippets = html.match(/<a class="result__snippet[^>]*>(.*?)<\/a>/g);
+      if (snippets && snippets.length > 0) {
+        searchResult = snippets.slice(0, 3).map(s => s.replace(/<[^>]+>/g, '')).join("\n");
+      }
+    } catch (e) {
+      console.log("Scraping error", e);
+    }
+
+    // Panggil Ulang AI dengan data hasil search
+    const finalPrompt = `${prompt}\n\nHASIL PENCARIAN REAL-TIME DARI INTERNET:\n${searchResult || "Data internet tidak ditemukan."}`;
+
+    const { text: finalText } = await generateText({
+      model: groq("openai/gpt-oss-120b"),
+      prompt: finalPrompt,
+      temperature: 0.3,
+    });
+
+    return NextResponse.json({ ok: true, hasil: finalText });
   } catch (err: any) {
     console.error("Public AI error:", err);
     return NextResponse.json({ error: err.message || "Gagal memproses AI" }, { status: 500 });
