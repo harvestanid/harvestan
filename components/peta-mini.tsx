@@ -1,4 +1,3 @@
-
 "use client";
 
 import { MapContainer, TileLayer, Polygon, Marker } from "react-leaflet";
@@ -78,12 +77,11 @@ export default function PetaMini({ polygon, koordinat, luas }: Props) {
       Math.max(...lngs) - Math.min(...lngs)
     );
 
+    // Rumus zoom standar (lebih akurat & langsung fokus ke polygon)
     let zoom = 18;
-    if (maxDiff > 0.0001)
-      zoom = Math.min(
-        18,
-        Math.max(6, Math.floor(14 - Math.log2(maxDiff * 10000)))
-      );
+    if (maxDiff > 0) {
+      zoom = Math.max(12, Math.min(18, Math.floor(Math.log2(360 / (maxDiff * 2)))));
+    }
 
     return (
       <div className="relative z-0">
