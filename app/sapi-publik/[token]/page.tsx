@@ -36,6 +36,7 @@ export default async function SapiPublikPage({ params }: { params: Promise<{ tok
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
+      {/* Navbar Sederhana (Tanpa Login) */}
       <nav className="bg-white border-b border-gray-200 px-4 py-3 flex justify-center shadow-sm sticky top-0 z-10">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-horizontal.png" alt="Harvestan" className="h-10 w-auto" />

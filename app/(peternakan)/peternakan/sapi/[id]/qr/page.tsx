@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
+import { headers } from "next/headers";
 import { QrKlien } from "./klien";
 
 export default async function QrPage({ params }: { params: Promise<{ id: string }> }) {
@@ -17,8 +18,13 @@ export default async function QrPage({ params }: { params: Promise<{ id: string 
 
   if (!sapi) notFound();
 
-  // URL Publik (sesuaikan dengan domain vercel Anda nanti)
-  const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL || "https://harvestan.vercel.app"}/sapi-publik/${sapi.public_token}`;
+  // Deteksi domain (Vercel / Localhost / IP Lokal)
+  const headersList = await headers();
+  const host = headersList.get("host") || "localhost:3000";
+  const protocol = host.includes("localhost") || host.includes("192.168.") ? "http" : "https";
+  const baseUrl = `${protocol}://${host}`;
+
+  const publicUrl = `${baseUrl}/sapi-publik/${sapi.public_token}`;
 
   return <QrKlien sapi={sapi} publicUrl={publicUrl} />;
 }
