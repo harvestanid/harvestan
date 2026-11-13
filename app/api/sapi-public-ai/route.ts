@@ -6,6 +6,46 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+// Fungsi cari internet pakai Tavily
+async function searchTavily(query: string): Promise<string> {
+  const apiKey = process.env.TAVILY_API_KEY;
+  if (!apiKey) {
+    console.log("Tavily API Key tidak ditemukan.");
+    return "Sistem pencarian internet tidak dikonfigurasi (API Key missing).";
+  }
+
+  try {
+    const res = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: apiKey,
+        query: query,
+        search_depth: "basic",
+        include_answer: true,
+        max_results: 3,
+      }),
+    });
+
+    if (!res.ok) {
+      throw new Error(`Tavily HTTP Error: ${res.status}`);
+    }
+
+    const data = await res.json();
+    let hasil = "";
+    if (data.answer) hasil += `Ringkasan: ${data.answer}\n\n`;
+    
+    if (data.results && data.results.length > 0) {
+      hasil += data.results.map((r: any) => `Sumber (${r.url}): ${r.content}`).join("\n");
+    }
+
+    return hasil || "Tidak ada hasil pencarian.";
+  } catch (err: any) {
+    console.error("Search Error:", err);
+    return "Gagal terhubung ke mesin pencari.";
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -17,7 +57,6 @@ export async function POST(req: NextRequest) {
 
     const supabase = await createClient();
     
-    // 1. Ambil data sapi
     const { data: sapi } = await supabase
       .from("livestocks")
       .select("id, nama_sapi, jenis, jenis_kelamin, bobot_awal, tanggal_masuk, foto_url, public_token")
@@ -29,7 +68,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Sapi tidak ditemukan" }, { status: 404 });
     }
 
-    // 2. Ambil data timbang terakhir
     const { data: measurements } = await supabase
       .from("livestock_measurements")
       .select("bobot_kg")
@@ -39,71 +77,39 @@ export async function POST(req: NextRequest) {
 
     const bobotTerakhir = measurements && measurements.length > 0 ? measurements[0].bobot_kg : sapi.bobot_awal;
 
-    // 3. Prompt dengan Instruksi Search Real-Time
-    const prompt = `Kamu adalah Asisten Penjualan Sapi Profesional (Sales Closer) dari Harvestan.
-Tugasmu: Meyakinkan calon pembeli dan memberikan estimasi harga yang AKURAT BERDASARKAN HARGA PASAR SAAT INI.
+    // CARI HARGA VIA TAVILY
+    const searchQuery = `harga sapi hidup ${sapi.jenis} per kg bobot hidup terbaru`;
+    const internetInfo = await searchTavily(searchQuery);
 
-DATA SAPI SAAT INI:
+    const prompt = `Kamu adalah Asisten Penjualan Sapi Profesional (Sales Closer) dari Harvestan.
+Tugasmu: Meyakinkan calon pembeli dan memberikan estimasi harga yang AKURAT BERDASARKAN DATA INTERNET.
+
+DATA SAPI:
 - Nama: ${sapi.nama_sapi || "Tanpa Nama"}
 - Jenis: ${sapi.jenis} (${sapi.jenis_kelamin})
-- Bobot Terakhir (Data Timbang): ${bobotTerakhir} Kg
-- Foto: ${sapi.foto_url ? "Ada (Sapi terlihat sehat & berotot)" : "Tidak ada"}
+- Bobot Terakhir: ${bobotTerakhir} Kg
+
+HASIL PENCARIAN INTERNET REAL-TIME:
+${internetInfo}
 
 PERTANYAAN PEMBELI:
 "${pertanyaan}"
 
 ATURAN KETAT (WAJIB DIIKUTI):
-1. **KAMU WAJIB MENGGUNAKAN FITUR SEARCH (INTERNET) UNTUK MENCARI HARGA SAPI HIDUP DAN HARGA DAGING SAPI SAAT INI (BULAN INI, TAHUN INI).** 
-2. JANGAN PERNAH menggunakan data tahun lalu atau mengarang data jika search gagal. Jika search benar-benar gagal, katakan "Mohon maaf, sistem pencarian harga sedang gangguan".
-3. **BEDAKAN HARGA SAPI HIDUP DAN HARGA DAGING:**
-   - Harga Sapi Hidup (Bobot Hidup): Biasanya dihitung per kg bobot sapi (misal Rp 50.000/kg).
-   - Harga Daging Sapi Potong: Biasanya lebih mahal (misal Rp 130.000/kg).
-4. Hitung estimasi harga jual sapi ini berdasarkan **Bobot ${bobotTerakhir} Kg** dikali **Harga Sapi Hidup** yang kamu temukan dari internet.
-5. Sebutkan sumber referensi harga secara spesifik (misal: "Berdasarkan pantauan harga pasar sapi hidup dari [Nama Sumber/Portal]").
-6. Jelaskan potensi karkas (misal 50-55% dari bobot hidup) dan estimasi nilai jual jika dipotong.
-7. Output maksimal 3 paragraf, gunakan format **bold** untuk angka penting.`;
+1. Gunakan data dari "HASIL PENCARIAN INTERNET" di atas untuk menjawab. Jika data pencarian berisi "Gagal terhubung" atau "Tidak dikonfigurasi", katakan dengan jujur bahwa sistem harga sedang offline dan sarankan pembeli menghubungi admin.
+2. **BEDAKAN HARGA SAPI HIDUP DAN HARGA DAGING:** Jangan tertukar!
+3. Hitung estimasi harga jual berdasarkan **Bobot ${bobotTerakhir} Kg** dikali **Harga Sapi Hidup** yang ada di hasil pencarian.
+4. Sebutkan sumber URL (link) secara spesifik darimana kamu mengambil harga tersebut.
+5. Jelaskan potensi karkas dan jual kelebihan sapi ini.
+6. Output maksimal 3 paragraf, gunakan format **bold**.`;
 
-    // 4. Panggil AI dengan fitur Search (Menggunakan tool use / native search Groq)
-    // Kita pake model yang support tool/function calling
     const { text } = await generateText({
       model: groq("openai/gpt-oss-120b"),
       prompt,
-      temperature: 0.3,
-      tools: {
-        // Dummy tool buat maksa AI mikir dia bisa search (opsional, kalo groq ga support native search, kita pake external API)
-        // Tapi karena kita mau realtime, kita harus punya API Search. 
-        // Solusi paling gampang: Kita bypass Groq Search, kita pake DuckDuckGo HTML Scraping (lebih stabil dari API).
-      }
+      temperature: 0.4,
     });
 
-    // KARENA GROQ GAK ADA NATIVE SEARCH, KITA BIKIN FUNGSI SCRAPING DUCKDUCKGO DI SINI
-    // (Scraping HTML lebih stabil daripada JSON API yang sering limit)
-    let searchResult = "";
-    try {
-      const query = `harga sapi hidup limosin per kg 2026`;
-      const res = await fetch(`https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`, {
-        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" }
-      });
-      const html = await res.text();
-      // Ambil cuplikan teks dari hasil pencarian (regex sederhana)
-      const snippets = html.match(/<a class="result__snippet[^>]*>(.*?)<\/a>/g);
-      if (snippets && snippets.length > 0) {
-        searchResult = snippets.slice(0, 3).map(s => s.replace(/<[^>]+>/g, '')).join("\n");
-      }
-    } catch (e) {
-      console.log("Scraping error", e);
-    }
-
-    // Panggil Ulang AI dengan data hasil search
-    const finalPrompt = `${prompt}\n\nHASIL PENCARIAN REAL-TIME DARI INTERNET:\n${searchResult || "Data internet tidak ditemukan."}`;
-
-    const { text: finalText } = await generateText({
-      model: groq("openai/gpt-oss-120b"),
-      prompt: finalPrompt,
-      temperature: 0.3,
-    });
-
-    return NextResponse.json({ ok: true, hasil: finalText });
+    return NextResponse.json({ ok: true, hasil: text });
   } catch (err: any) {
     console.error("Public AI error:", err);
     return NextResponse.json({ error: err.message || "Gagal memproses AI" }, { status: 500 });
