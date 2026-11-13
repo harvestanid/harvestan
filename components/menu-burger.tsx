@@ -80,7 +80,7 @@ export function MenuBurger() {
               </Link>
 
               <Link
-                href="/"
+                href="/?preview=true"
                 onClick={() => setIsOpen(false)}
                 className="block px-3 py-2 rounded-lg hover:bg-[#f0b429]/10 transition-colors text-sm font-bold text-[#2c5e2e]"
               >

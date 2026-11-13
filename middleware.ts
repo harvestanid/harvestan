@@ -30,6 +30,7 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const pathname = request.nextUrl.pathname;
+  const isPreviewLanding = request.nextUrl.searchParams.get("preview") === "true";
 
   // ===== STATIC FILES — SELALU IZINKAN =====
   if (
@@ -47,6 +48,11 @@ export async function middleware(request: NextRequest) {
     return supabaseResponse;
   }
 
+  // ===== REDIRECT USER LOGIN DARI LANDING (KECUALI PREVIEW) =====
+  if (user && pathname === "/" && !isPreviewLanding) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   // ===== ROUTE PUBLIK =====
   const isPublicRoute =
     pathname === "/" ||
@@ -59,8 +65,7 @@ export async function middleware(request: NextRequest) {
       !pathname.startsWith("/toko/pesanan"));
 
   if (isPublicRoute) {
-    // Cuma redirect kalau user buka /login atau /register, 
-    // TAPI TIDAK untuk / (Landing Page)
+    // Cuma redirect kalau user buka /login atau /register
     if (user && (pathname === "/login" || pathname === "/register")) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
