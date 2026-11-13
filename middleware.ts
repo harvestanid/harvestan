@@ -61,7 +61,8 @@ export async function middleware(request: NextRequest) {
     pathname === "/login" ||
     pathname === "/register" ||
     pathname.startsWith("/reset-password") ||
-    pathname.startsWith("/sapi-publik") || // <--- INI YANG DITAMBAHIN BANG
+    pathname.startsWith("/sapi-publik") || 
+    pathname.startsWith("/api/sapi-public-ai") || // <--- INI YANG DITAMBAHIN BANG
     ((pathname === "/toko" || pathname.startsWith("/toko/")) &&
       !pathname.startsWith("/toko/checkout") &&
       !pathname.startsWith("/toko/pesanan"));
