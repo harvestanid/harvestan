@@ -31,21 +31,29 @@ export async function DELETE(request: Request) {
       );
     }
 
-    // Hapus data user (pakai supabase client biasa)
-    await supabase.from("harvests").delete().eq("user_id", user.id);
-    await supabase.from("debts").delete().eq("user_id", user.id);
-    await supabase.from("lands").delete().eq("user_id", user.id);
-    await supabase.from("penggaraps").delete().eq("user_id", user.id);
-    await supabase.from("categories").delete().eq("user_id", user.id);
-
-    // ===== HAPUS USER AUTH PERMANEN (Pakai Admin Client) =====
-    // Ini yang bikin username bisa dipakai lagi
+    // PAKAI ADMIN CLIENT (Bypass RLS)
     const admin = createAdminClient();
+
+    // Hapus data satu per satu (kalau gagal, tetap lanjut ke tabel berikutnya)
+    await admin.from("harvests").delete().eq("user_id", user.id);
+    await admin.from("debts").delete().eq("user_id", user.id);
+    await admin.from("lands").delete().eq("user_id", user.id);
+    await admin.from("penggaraps").delete().eq("user_id", user.id);
+    await admin.from("categories").delete().eq("user_id", user.id);
+    await admin.from("musim_cabai").delete().eq("user_id", user.id);
+    await admin.from("activity_logs").delete().eq("user_id", user.id);
+    await admin.from("activity_jenis_custom").delete().eq("user_id", user.id);
+    await admin.from("kalender_tanam").delete().eq("user_id", user.id);
+
+    // Hapus akun auth permanen
     const { error: errAuth } = await admin.auth.admin.deleteUser(user.id);
 
     if (errAuth) {
       console.error("Gagal hapus user auth:", errAuth);
-      return NextResponse.json({ error: "Gagal menghapus akun permanen" }, { status: 500 });
+      return NextResponse.json(
+        { error: "Gagal menghapus akun permanen: " + errAuth.message },
+        { status: 500 }
+      );
     }
 
     return NextResponse.json({
