@@ -6,6 +6,7 @@ import QRCode from "qrcode";
 
 type Sapi = {
   id: string;
+  nama_sapi: string | null;
   jenis: string;
   jenis_kelamin: string;
   tanggal_masuk: string;
@@ -17,7 +18,6 @@ export function QrKlien({ sapi, publicUrl }: { sapi: Sapi; publicUrl: string }) 
   const cardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Generate QR Code
     QRCode.toDataURL(publicUrl, {
       width: 500,
       margin: 1,
@@ -49,7 +49,6 @@ export function QrKlien({ sapi, publicUrl }: { sapi: Sapi; publicUrl: string }) 
 
   return (
     <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
-      {/* Tombol Navigasi */}
       <div className="flex items-center justify-between no-print flex-wrap gap-2">
         <Link href={`/peternakan/sapi/${sapi.id}`} className="text-[#2c5e2e] hover:text-[#f0b429] text-sm font-medium">
           ← Kembali ke Detail Sapi
@@ -69,14 +68,13 @@ export function QrKlien({ sapi, publicUrl }: { sapi: Sapi; publicUrl: string }) 
         <p className="text-gray-500 text-sm">Cetak dan gantungkan di kandang sapi.</p>
       </div>
 
-      {/* Desain Cardholder (A6 Landscape / 10.5 x 14.8 cm) */}
       <div className="flex justify-center">
         <div
           ref={cardRef}
           className="relative bg-gradient-to-br from-[#f0fdf4] via-white to-[#fef3c7] border-[6px] border-[#2c5e2e] rounded-[24px] overflow-hidden shadow-2xl"
           style={{
             width: "500px",
-            height: "700px", // portrait (kalo landscape tinggal tukar width & height)
+            height: "700px",
             padding: "30px",
             display: "flex",
             flexDirection: "column",
@@ -85,15 +83,12 @@ export function QrKlien({ sapi, publicUrl }: { sapi: Sapi; publicUrl: string }) 
             fontFamily: "Inter, sans-serif",
           }}
         >
-          {/* Pola Latar Belakang */}
           <div className="absolute inset-0 opacity-5 pointer-events-none" style={{
             backgroundImage: "radial-gradient(#2c5e2e 2px, transparent 2px)",
             backgroundSize: "30px 30px",
           }} />
 
-          {/* Bagian Atas: Logo & Judul */}
           <div className="relative z-10">
-            {/* Logo Harvestan */}
             <div className="flex items-center justify-center gap-2 mb-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo-horizontal.png" alt="Harvestan" style={{ height: "40px" }} />
@@ -103,7 +98,6 @@ export function QrKlien({ sapi, publicUrl }: { sapi: Sapi; publicUrl: string }) 
             </div>
           </div>
 
-          {/* Bagian Tengah: Foto & Info */}
           <div className="relative z-10 flex flex-col items-center gap-3">
             {sapi.foto_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -119,17 +113,17 @@ export function QrKlien({ sapi, publicUrl }: { sapi: Sapi; publicUrl: string }) 
             )}
 
             <div className="text-2xl font-black text-[#2c5e2e] leading-tight">
-              Sapi {sapi.jenis} <br/>
-              <span className="text-lg font-bold text-gray-600">({sapi.jenis_kelamin})</span>
+              {sapi.nama_sapi ? sapi.nama_sapi : `Sapi ${sapi.jenis}`} <br/>
+              <span className="text-lg font-bold text-gray-600">
+                {sapi.nama_sapi ? `Sapi ${sapi.jenis} (${sapi.jenis_kelamin})` : `(${sapi.jenis_kelamin})`}
+              </span>
             </div>
 
-            {/* QR Code */}
             <div className="bg-white p-2 rounded-2xl shadow-md border-2 border-[#2c5e2e]/20 mt-1">
               {qrDataUrl && <img src={qrDataUrl} alt="QR Code" style={{ width: "160px", height: "160px" }} />}
             </div>
           </div>
 
-          {/* Bagian Bawah: Call to Action */}
           <div className="relative z-10">
             <h2 className="text-xl font-black text-[#2c5e2e] tracking-tight leading-tight mb-1">
               Lihat Perkembanganku! ✨
@@ -145,7 +139,6 @@ export function QrKlien({ sapi, publicUrl }: { sapi: Sapi; publicUrl: string }) 
         </div>
       </div>
 
-      {/* CSS Khusus Print */}
       <style jsx global>{`
         @media print {
           body * {
@@ -154,7 +147,6 @@ export function QrKlien({ sapi, publicUrl }: { sapi: Sapi; publicUrl: string }) 
           .no-print {
             display: none !important;
           }
-          /* Kita perlu trik khusus agar div cardholder tetap kelihatan */
           div[style*="width: 500px"] {
             visibility: visible !important;
             position: absolute;

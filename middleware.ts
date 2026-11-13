@@ -42,8 +42,9 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/icon-") ||
     pathname === "/icon.png" ||
     pathname === "/logo.png" ||
+    pathname === "/logo-horizontal.png" ||
     pathname.startsWith("/apple-touch-icon") ||
-    /\.(png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|eot)$/.test(pathname)
+    /\.(png|jpg|jpeg|svg|gif|webp|ico|woff|woff2|ttf|eot|glb)$/.test(pathname)
   ) {
     return supabaseResponse;
   }
@@ -60,6 +61,7 @@ export async function middleware(request: NextRequest) {
     pathname === "/login" ||
     pathname === "/register" ||
     pathname.startsWith("/reset-password") ||
+    pathname.startsWith("/sapi-publik") || // <--- INI YANG DITAMBAHIN BANG
     ((pathname === "/toko" || pathname.startsWith("/toko/")) &&
       !pathname.startsWith("/toko/checkout") &&
       !pathname.startsWith("/toko/pesanan"));
@@ -84,6 +86,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp|ico)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|webp|ico|glb)$).*)",
   ],
 };

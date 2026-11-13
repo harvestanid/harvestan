@@ -13,10 +13,9 @@ export default async function SapiPublikPage({ params }: { params: Promise<{ tok
   const { token } = await params;
   const supabase = await createClient();
 
-  // Ambil data sapi (tanpa harga_beli)
   const { data: sapi } = await supabase
     .from("livestocks")
-    .select("id, jenis, jenis_kelamin, tanggal_masuk, bobot_awal, foto_url, status, public_token")
+    .select("id, nama_sapi, jenis, jenis_kelamin, tanggal_masuk, bobot_awal, foto_url, status, public_token")
     .eq("public_token", token)
     .eq("is_public", true)
     .single();
@@ -32,20 +31,17 @@ export default async function SapiPublikPage({ params }: { params: Promise<{ tok
   const lastMeasurement = measurements && measurements.length > 0 ? measurements[measurements.length - 1] : null;
   const bobotTerakhir = lastMeasurement ? lastMeasurement.bobot_kg : sapi.bobot_awal;
 
-  // Hitung ADG
   const totalHari = Math.max(1, Math.floor((new Date().getTime() - new Date(sapi.tanggal_masuk).getTime()) / (1000 * 60 * 60 * 24)));
   const adg = (bobotTerakhir - sapi.bobot_awal) / totalHari;
 
   return (
     <div className="min-h-screen bg-gray-50 pb-10">
-      {/* Navbar Sederhana */}
       <nav className="bg-white border-b border-gray-200 px-4 py-3 flex justify-center shadow-sm sticky top-0 z-10">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-horizontal.png" alt="Harvestan" className="h-10 w-auto" />
       </nav>
 
       <div className="max-w-md mx-auto p-4 space-y-5 mt-4">
-        {/* Hero Card */}
         <div className="bg-white rounded-3xl border-2 border-[#2c5e2e]/10 p-5 text-center shadow-lg relative overflow-hidden">
           <div className="absolute top-0 left-0 right-0 h-24 bg-[#2c5e2e]" />
           <div className="relative z-10 mt-6">
@@ -55,15 +51,19 @@ export default async function SapiPublikPage({ params }: { params: Promise<{ tok
             ) : (
               <div className="w-32 h-32 bg-gray-100 rounded-full flex items-center justify-center mx-auto border-4 border-white shadow-md text-5xl">🐄</div>
             )}
-            <h1 className="text-2xl font-black text-[#2c5e2e] mt-3">Sapi {sapi.jenis}</h1>
-            <p className="text-sm text-gray-500 font-medium">{sapi.jenis_kelamin} · Masuk {formatTanggal(sapi.tanggal_masuk)}</p>
+            <h1 className="text-2xl font-black text-[#2c5e2e] mt-3">
+              {sapi.nama_sapi ? sapi.nama_sapi : `Sapi ${sapi.jenis}`}
+            </h1>
+            <p className="text-sm text-gray-500 font-medium">
+              {sapi.nama_sapi ? `Sapi ${sapi.jenis} · ` : ""}
+              {sapi.jenis_kelamin} · Masuk {formatTanggal(sapi.tanggal_masuk)}
+            </p>
             <div className="mt-2 inline-block bg-green-100 text-green-800 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">
               {sapi.status === "aktif" ? "🟢 Sapi Sehat & Aktif" : "🔴 Terjual"}
             </div>
           </div>
         </div>
 
-        {/* Statistik Singkat */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white rounded-2xl border-2 border-[#2c5e2e]/10 p-4 text-center shadow-sm">
             <div className="text-[10px] text-gray-500 font-bold uppercase">Bobot Terakhir</div>
@@ -75,7 +75,6 @@ export default async function SapiPublikPage({ params }: { params: Promise<{ tok
           </div>
         </div>
 
-        {/* Detail Ukur */}
         {lastMeasurement && (
           <div className="bg-white rounded-3xl border-2 border-[#2c5e2e]/10 p-5 shadow-sm">
             <h3 className="font-bold text-gray-800 mb-3 text-sm uppercase tracking-wider">📏 Dimensi Terakhir</h3>
@@ -92,7 +91,6 @@ export default async function SapiPublikPage({ params }: { params: Promise<{ tok
           </div>
         )}
 
-        {/* Grafik Pertumbuhan */}
         <div className="bg-white rounded-3xl border-2 border-[#2c5e2e]/10 p-5 shadow-sm">
           <h3 className="font-bold text-gray-800 mb-4 text-sm uppercase tracking-wider">📈 Grafik Pertumbuhan</h3>
           {!measurements || measurements.length === 0 ? (

@@ -1,13 +1,15 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { TombolAksiSapi } from "./tombol-aksi";
 
 type Sapi = {
   id: string;
   public_token: string;
+  nama_sapi: string | null;
   jenis: string;
   jenis_kelamin: string;
   tanggal_lahir: string | null;
@@ -30,18 +32,10 @@ type Measurement = {
   catatan: string | null;
 };
 
-type Log = {
-  id: string;
-  tanggal: string;
-  jenis_kegiatan: string;
-  keterangan: string | null;
-  biaya: number;
-};
-
 type Props = {
   sapi: Sapi;
   measurements: Measurement[];
-  logs: Log[];
+  isDemo: boolean;
 };
 
 function formatRp(n: number) {
@@ -52,11 +46,10 @@ function formatTanggal(t: string) {
   return new Date(t).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 }
 
-export function DetailSapiKlien({ sapi, measurements, logs }: Props) {
+export function DetailSapiKlien({ sapi, measurements, isDemo }: Props) {
   const router = useRouter();
   const supabase = createClient();
 
-  // State untuk Timbang
   const [showFormTimbang, setShowFormTimbang] = useState(false);
   const [tglTimbang, setTglTimbang] = useState(new Date().toISOString().split("T")[0]);
   const [bobot, setBobot] = useState("");
@@ -66,28 +59,17 @@ export function DetailSapiKlien({ sapi, measurements, logs }: Props) {
   const [fotoFile, setFotoFile] = useState<File | null>(null);
   const [loadingTimbang, setLoadingTimbang] = useState(false);
 
-  // State untuk Log
-  const [showFormLog, setShowFormLog] = useState(false);
-  const [tglLog, setTglLog] = useState(new Date().toISOString().split("T")[0]);
-  const [jenisLog, setJenisLog] = useState("Pakan");
-  const [ketLog, setKetLog] = useState("");
-  const [biayaLog, setBiayaLog] = useState("");
-  const [loadingLog, setLoadingLog] = useState(false);
-
   const [error, setError] = useState("");
 
-  // Hitung ADG (Average Daily Gain)
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
+
   const lastMeasurement = measurements[measurements.length - 1];
   const bobotTerakhir = lastMeasurement ? lastMeasurement.bobot_kg : sapi.bobot_awal;
   
   const totalHari = Math.max(1, Math.floor((new Date().getTime() - new Date(sapi.tanggal_masuk).getTime()) / (1000 * 60 * 60 * 24)));
   const adg = (bobotTerakhir - sapi.bobot_awal) / totalHari;
-
-  // Total Biaya Log
-  const totalBiayaLog = logs.reduce((s, l) => s + Number(l.biaya || 0), 0);
-  
-  // Estimasi Profit Sederhana (Harga jual belum tahu, jadi cuma info biaya)
-  const totalInvestasi = sapi.harga_beli + totalBiayaLog;
 
   async function handleTimbang(e: React.FormEvent) {
     e.preventDefault();
@@ -100,7 +82,6 @@ export function DetailSapiKlien({ sapi, measurements, logs }: Props) {
 
       let fotoUrl = sapi.foto_url;
 
-      // Upload foto baru (kalau ada)
       if (fotoFile) {
         const ext = fotoFile.name.split(".").pop() || "jpg";
         const fileName = `${user.id}/${sapi.id}-${Date.now()}.${ext}`;
@@ -118,7 +99,6 @@ export function DetailSapiKlien({ sapi, measurements, logs }: Props) {
         fotoUrl = pubUrl.publicUrl;
       }
 
-      // Insert Measurement
       const { error: insErr } = await supabase.from("livestock_measurements").insert({
         livestock_id: sapi.id,
         tanggal: tglTimbang,
@@ -130,7 +110,6 @@ export function DetailSapiKlien({ sapi, measurements, logs }: Props) {
 
       if (insErr) throw new Error(insErr.message);
 
-      // Update foto di tabel livestocks (karena cuma 1 foto terbaru)
       if (fotoUrl !== sapi.foto_url) {
         await supabase.from("livestocks").update({ foto_url: fotoUrl }).eq("id", sapi.id);
       }
@@ -150,51 +129,51 @@ export function DetailSapiKlien({ sapi, measurements, logs }: Props) {
     }
   }
 
-  async function handleLog(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoadingLog(true);
+  async function handleTanyaAI(tipe: "harga" | "karkas") {
+    setAiLoading(true);
+    setAiError(null);
+    setAiResult(null);
 
     try {
-      const { error: insErr } = await supabase.from("livestock_logs").insert({
-        livestock_id: sapi.id,
-        tanggal: tglLog,
-        jenis_kegiatan: jenisLog,
-        keterangan: ketLog || null,
-        biaya: Number(biayaLog) || 0,
+      const res = await fetch("/api/sapi/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tipe,
+          jenis: sapi.jenis,
+          jenis_kelamin: sapi.jenis_kelamin,
+          bobot_kg: bobotTerakhir,
+          adg: adg,
+          umur_hari: totalHari,
+        }),
       });
-
-      if (insErr) throw new Error(insErr.message);
-
-      alert("✅ Log berhasil disimpan");
-      setShowFormLog(false);
-      setKetLog("");
-      setBiayaLog("");
-      router.refresh();
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Gagal memanggil AI");
+      
+      setAiResult(json.hasil);
     } catch (err: any) {
-      setError(err.message || "Gagal simpan log");
+      setAiError(err.message || "Error");
     } finally {
-      setLoadingLog(false);
+      setAiLoading(false);
     }
   }
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
-      {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <Link href="/peternakan/sapi" className="text-[#2c5e2e] hover:text-[#f0b429] text-sm font-medium">
             ← Kembali ke Daftar Sapi
           </Link>
           <h1 className="text-3xl font-bold text-gray-900 mt-2">
-            🐄 Sapi {sapi.jenis}
+            🐄 {sapi.nama_sapi ? sapi.nama_sapi : `Sapi ${sapi.jenis}`}
           </h1>
           <p className="text-gray-600 text-sm mt-1">
+            {sapi.nama_sapi && `Sapi ${sapi.jenis} · `}
             {sapi.jenis_kelamin} · Masuk: {formatTanggal(sapi.tanggal_masuk)} · Status: <span className="font-bold uppercase">{sapi.status}</span>
           </p>
         </div>
         
-        {/* Tombol QR Publik */}
         <Link
           href={`/peternakan/sapi/${sapi.id}/qr`}
           className="bg-[#f0b429] hover:bg-[#e6a617] text-[#2c5e2e] font-bold px-5 py-2.5 rounded-full transition shadow-md flex items-center gap-2"
@@ -205,7 +184,6 @@ export function DetailSapiKlien({ sapi, measurements, logs }: Props) {
 
       {error && <div className="bg-red-50 border-2 border-red-200 text-red-700 p-3 rounded-xl text-sm">{error}</div>}
 
-      {/* Ringkasan & Foto */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="md:col-span-2 bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-5 shadow-sm space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -220,15 +198,14 @@ export function DetailSapiKlien({ sapi, measurements, logs }: Props) {
           </div>
 
           <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-            <div className="text-[10px] text-red-700 font-bold uppercase">Total Investasi (Beli + Biaya)</div>
-            <div className="text-lg font-bold text-red-900 mt-1">{formatRp(totalInvestasi)}</div>
-            <div className="text-[10px] text-red-600 italic mt-0.5">Harga beli: {formatRp(sapi.harga_beli)} · Biaya operasional: {formatRp(totalBiayaLog)}</div>
+            <div className="text-[10px] text-red-700 font-bold uppercase">Harga Beli Bakalan</div>
+            <div className="text-lg font-bold text-red-900 mt-1">{formatRp(sapi.harga_beli)}</div>
+            <div className="text-[10px] text-red-600 italic mt-0.5">*Biaya operasional (pakan, dll) ada di halaman Daftar Sapi.</div>
           </div>
         </div>
 
         <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-3 shadow-sm flex flex-col items-center justify-center">
           {sapi.foto_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img src={sapi.foto_url} alt="Foto Sapi" className="w-full h-40 object-cover rounded-2xl" />
           ) : (
             <div className="w-full h-40 bg-gray-100 rounded-2xl flex items-center justify-center text-gray-400 text-sm">Belum ada foto</div>
@@ -237,23 +214,15 @@ export function DetailSapiKlien({ sapi, measurements, logs }: Props) {
         </div>
       </div>
 
-      {/* Tombol Aksi */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3">
         <button
           onClick={() => setShowFormTimbang(!showFormTimbang)}
           className="bg-[#2c5e2e] hover:bg-[#1f4521] text-white font-bold py-3 rounded-2xl transition shadow-md"
         >
-          ⚖️ Input Timbang
-        </button>
-        <button
-          onClick={() => setShowFormLog(!showFormLog)}
-          className="bg-[#f0b429] hover:bg-[#e6a617] text-[#2c5e2e] font-bold py-3 rounded-2xl transition shadow-md"
-        >
-          📝 Input Log/Biaya
+          ⚖️ Input Timbang & Ukur
         </button>
       </div>
 
-      {/* Form Timbang */}
       {showFormTimbang && (
         <form onSubmit={handleTimbang} className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-5 space-y-4 shadow-lg">
           <h3 className="font-bold text-[#2c5e2e]">⚖️ Input Timbang & Ukur</h3>
@@ -296,47 +265,6 @@ export function DetailSapiKlien({ sapi, measurements, logs }: Props) {
         </form>
       )}
 
-      {/* Form Log */}
-      {showFormLog && (
-        <form onSubmit={handleLog} className="bg-white border-2 border-[#f0b429]/40 rounded-3xl p-5 space-y-4 shadow-lg">
-          <h3 className="font-bold text-[#2c5e2e]">📝 Input Log & Biaya</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Tanggal *</label>
-              <input type="date" value={tglLog} onChange={(e) => setTglLog(e.target.value)} required className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#f0b429]" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Jenis Kegiatan *</label>
-              <select value={jenisLog} onChange={(e) => setJenisLog(e.target.value)} className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#f0b429]">
-                <option value="Pakan">🌾 Pakan</option>
-                <option value="Obat">💊 Obat / Vaksin</option>
-                <option value="Tenaga Kerja">👷 Tenaga Kerja</option>
-                <option value="Lainnya">📝 Lainnya</option>
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Keterangan</label>
-              <input type="text" value={ketLog} onChange={(e) => setKetLog(e.target.value)} placeholder="Contoh: Konsentrat 5kg" className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#f0b429]" />
-            </div>
-            <div>
-              <label className="block text-[10px] font-bold text-gray-600 uppercase mb-1">Biaya (Rp) *</label>
-              <input type="number" value={biayaLog} onChange={(e) => setBiayaLog(e.target.value)} placeholder="50000" required className="w-full border-2 border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-[#f0b429]" />
-            </div>
-          </div>
-          <div className="flex gap-2 pt-2">
-            <button type="submit" disabled={loadingLog} className="flex-1 bg-[#f0b429] text-[#2c5e2e] font-bold py-2.5 rounded-xl text-sm disabled:opacity-50">
-              {loadingLog ? "Menyimpan..." : "💾 Simpan Log"}
-            </button>
-            <button type="button" onClick={() => setShowFormLog(false)} className="bg-gray-100 text-gray-700 font-bold px-4 py-2.5 rounded-xl text-sm">
-              Batal
-            </button>
-          </div>
-        </form>
-      )}
-
-      {/* Grafik Sederhana (Bar Chart CSS) */}
       <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-5 shadow-sm">
         <h3 className="font-bold text-[#2c5e2e] mb-4">📈 Grafik Pertumbuhan Bobot</h3>
         {measurements.length === 0 ? (
@@ -365,25 +293,42 @@ export function DetailSapiKlien({ sapi, measurements, logs }: Props) {
         )}
       </div>
 
-      {/* Riwayat Log */}
-      <div className="bg-white border-2 border-[#2c5e2e]/10 rounded-3xl p-5 shadow-sm">
-        <h3 className="font-bold text-[#2c5e2e] mb-4">📋 Riwayat Pengeluaran</h3>
-        {logs.length === 0 ? (
-          <div className="text-center py-6 text-gray-400 text-sm italic">Belum ada log pengeluaran</div>
-        ) : (
-          <div className="space-y-2">
-            {logs.map((l) => (
-              <div key={l.id} className="flex justify-between items-start p-3 bg-gray-50 rounded-xl border border-gray-200 gap-2">
-                <div>
-                  <div className="font-bold text-sm text-gray-800">{l.jenis_kegiatan}</div>
-                  <div className="text-[10px] text-gray-500">{formatTanggal(l.tanggal)} {l.keterangan && `· ${l.keterangan}`}</div>
-                </div>
-                <div className="font-bold text-red-600 text-sm flex-shrink-0">{formatRp(l.biaya)}</div>
-              </div>
-            ))}
+      <div className="bg-gradient-to-br from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-3xl p-5 shadow-sm space-y-4">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-2xl">🤖</span>
+          <h3 className="font-bold text-purple-900">AI Assistant (Sapi)</h3>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => handleTanyaAI("harga")}
+            disabled={aiLoading}
+            className="bg-white border-2 border-purple-300 hover:border-purple-500 text-purple-800 font-bold text-xs px-4 py-2.5 rounded-full transition disabled:opacity-50"
+          >
+            {aiLoading ? "⏳ Menganalisa..." : "💰 Estimasi Harga Pasar"}
+          </button>
+          <button
+            onClick={() => handleTanyaAI("karkas")}
+            disabled={aiLoading}
+            className="bg-white border-2 border-purple-300 hover:border-purple-500 text-purple-800 font-bold text-xs px-4 py-2.5 rounded-full transition disabled:opacity-50"
+          >
+            {aiLoading ? "⏳ Menganalisa..." : "🥩 Estimasi Karkas / Daging"}
+          </button>
+        </div>
+
+        {aiError && <div className="text-xs text-red-600 font-bold">{aiError}</div>}
+
+        {aiResult && (
+          <div className="bg-white border border-purple-200 rounded-2xl p-4 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+            {aiResult}
+            <div className="mt-3 pt-3 border-t border-gray-100 text-[10px] text-gray-500 italic">
+              *Hasil AI bersifat estimasi berdasarkan data historis, harga aktual dapat berbeda.
+            </div>
           </div>
         )}
       </div>
+
+      {/* TOMBOL AKSI (EDIT & HAPUS) */}
+      <TombolAksiSapi id={sapi.id} isDemo={isDemo} />
     </div>
   );
 }

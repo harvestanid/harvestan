@@ -33,15 +33,22 @@ export default async function SapiPage() {
           <h1 className="text-3xl font-bold text-gray-900">🐄 Manajemen Sapi</h1>
           <p className="text-gray-600 text-sm mt-1">Kelola data sapi, pakan, dan pertumbuhan.</p>
         </div>
-        <Link
-          href="/peternakan/sapi/baru"
-          className="bg-[#2c5e2e] hover:bg-[#1f4521] text-white font-bold px-5 py-2.5 rounded-full transition shadow-md"
-        >
-          + Tambah Sapi
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/peternakan/sapi/biaya"
+            className="bg-[#f0b429] hover:bg-[#e6a617] text-[#2c5e2e] font-bold px-5 py-2.5 rounded-full transition shadow-md"
+          >
+            📋 Biaya Operasional
+          </Link>
+          <Link
+            href="/peternakan/sapi/baru"
+            className="bg-[#2c5e2e] hover:bg-[#1f4521] text-white font-bold px-5 py-2.5 rounded-full transition shadow-md"
+          >
+            + Tambah Sapi
+          </Link>
+        </div>
       </div>
 
-      {/* Ringkasan */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-white border border-gray-200 rounded-2xl p-4">
           <div className="text-[10px] text-gray-500 font-bold uppercase">Total Sapi</div>
@@ -61,7 +68,6 @@ export default async function SapiPage() {
         </div>
       </div>
 
-      {/* Daftar Sapi */}
       {!livestocks || livestocks.length === 0 ? (
         <div className="bg-white border-2 border-dashed border-gray-300 rounded-3xl p-12 text-center">
           <div className="text-6xl mb-4 opacity-50">🐄</div>
@@ -81,8 +87,13 @@ export default async function SapiPage() {
             >
               <div className="flex items-start justify-between mb-2">
                 <div>
-                  <div className="font-bold text-lg text-[#2c5e2e]">{sapi.jenis}</div>
-                  <div className="text-xs text-gray-500 uppercase tracking-wider">{sapi.jenis_kelamin} · Masuk: {new Date(sapi.tanggal_masuk).toLocaleDateString("id-ID")}</div>
+                  <div className="font-bold text-lg text-[#2c5e2e]">
+                    {sapi.nama_sapi ? sapi.nama_sapi : `Sapi ${sapi.jenis}`}
+                  </div>
+                  <div className="text-xs text-gray-500 uppercase tracking-wider">
+                    {sapi.nama_sapi && `Sapi ${sapi.jenis} · `}
+                    {sapi.jenis_kelamin} · Masuk: {new Date(sapi.tanggal_masuk).toLocaleDateString("id-ID")}
+                  </div>
                 </div>
                 <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase ${sapi.status === "aktif" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}>
                   {sapi.status}
