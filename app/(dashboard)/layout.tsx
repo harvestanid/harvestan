@@ -18,14 +18,14 @@ const MENU_ITEMS = [
   { href: "/toko", label: "Toko", icon: "🛒", premium: false },
   {
     href: "/gabah",
-    label: "Gabah",
+    label: "Timbang Gabah",
     icon: "⚖️",
     premium: false,
     strictPremium: true,
   },
   {
     href: "/panen-multi",
-    label: "Panen",
+    label: "Input Panen",
     icon: "🌾",
     premium: false,
     strictPremium: true,
@@ -46,7 +46,7 @@ const MENU_ITEMS = [
   { href: "/log-tanam", label: "Log Tanam", icon: "📋", premium: false },
   {
     href: "/kalkulator",
-    label: "Kalkulator",
+    label: "Kalkulator Pupuk",
     icon: "🧪",
     premium: false,
     strictPremium: true,

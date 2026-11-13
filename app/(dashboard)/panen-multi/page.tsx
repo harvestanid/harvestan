@@ -5,7 +5,7 @@ import { checkPremiumStatus } from "@/lib/supabase/queries/subscription-server";
 import { PanenMultiKlien } from "./klien";
 
 export const metadata = {
-  title: "Panen Multi-Lahan",
+  title: "Input Panen",
 };
 
 export default async function PanenMultiPage() {
@@ -31,14 +31,14 @@ export default async function PanenMultiPage() {
             ← Kembali ke Dashboard
           </Link>
           <h1 className="text-2xl font-bold text-gray-800 mt-2">
-            📦 Input Panen Multi-Lahan
+            📦 Input Panen
           </h1>
         </div>
 
         <div className="bg-gradient-to-br from-orange-50 to-red-50 border-2 border-orange-300 rounded-2xl p-8 text-center">
           <div className="text-6xl mb-4">🔒</div>
           <h2 className="text-2xl font-bold text-orange-900 mb-3">
-            Panen Multi-Lahan — Premium
+            Input Panen — Premium
           </h2>
           <p className="text-sm text-orange-800 mb-4 leading-relaxed max-w-md mx-auto">
             Input satu kali panen untuk beberapa lahan sekaligus. Hemat waktu
@@ -47,7 +47,7 @@ export default async function PanenMultiPage() {
 
           <div className="bg-white rounded-xl p-4 my-4 text-left max-w-md mx-auto border border-green-200">
             <div className="text-xs font-bold text-green-800 mb-2">
-              ✨ Fitur Panen Multi-Lahan:
+              ✨ Fitur Input Panen:
             </div>
             <ul className="text-xs text-gray-700 space-y-1">
               <li>✅ Pilih banyak lahan sekaligus</li>
@@ -90,5 +90,6 @@ export default async function PanenMultiPage() {
     );
   }
 
+  // Langsung render komponen klien tanpa judul tambahan
   return <PanenMultiKlien />;
 }

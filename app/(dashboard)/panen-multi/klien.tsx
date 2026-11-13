@@ -218,7 +218,7 @@ export function PanenMultiKlien() {
             potongan_hutang: 0,
             total_hutang_sebelum: 0,
             sisa_hutang_sesudah: 0,
-            catatan: catatan || `[MULTI-LAHAN-${metode === "proportional" ? "Proporsional" : "Rata"}]`,
+            catatan: catatan || `[PANEN-${metode === "proportional" ? "Proporsional" : "Rata"}]`,
             is_demo: false,
           })
           .select()
@@ -270,7 +270,7 @@ export function PanenMultiKlien() {
             Belum ada penggarap
           </p>
           <p className="text-yellow-700 text-sm mb-4">
-            Tambah penggarap dulu untuk mulai input panen multi-lahan
+            Tambah penggarap dulu untuk mulai input panen
           </p>
           <a
             href="/penggarap/baru"
@@ -290,7 +290,7 @@ export function PanenMultiKlien() {
           <div className="text-center mb-5">
             <div className="text-5xl mb-3">✅</div>
             <h2 className="text-xl font-bold text-green-900 mb-2">
-              Panen Multi-Lahan Berhasil!
+              Input Panen Berhasil!
             </h2>
             <p className="text-sm text-green-800">
               {sukses.jmlLahan} lahan untuk {sukses.penggarap}
@@ -338,10 +338,10 @@ export function PanenMultiKlien() {
     <div className="p-4 md:p-6 max-w-4xl mx-auto">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-gray-900">
-          📦 Input Panen Multi-Lahan
+          📦 Input Panen
         </h1>
         <p className="text-gray-600 text-sm mt-1">
-          Input satu kali untuk beberapa lahan sekaligus
+          Input panen untuk satu atau beberapa lahan sekaligus
         </p>
       </div>
 
