@@ -485,17 +485,18 @@ async function generateSatelitImage(data: {
     const numerator = CANVAS_SIZE * 156543.03 * Math.cos(latRad);
     const zExact = Math.log2(numerator / paddedSpanM);
 
-    // --- LOGIKA KHUSUS: BEDAIN POLYGON GEDE (GPS WALKING) & KECIL (GPS SELECTION) ---
-    // Kalau span polygon < 200 meter (kira-kira < 1 Ha), ini polygon kecil (GPS Selection).
-    // Naikin zoom maksimalnya jadi 17 biar lahan kelihatan jelas.
-    // Kalau polygon gede (GPS Walking / Padi), tetep pakai Math.min(19) kayak aslinya.
     zoom = Math.floor(zExact);
+
+    // LOGIKA KHUSUS (GPS WALKING VS SELECTION)
     const isSmallPolygon = maxSpanM < 200;
-    
+
     if (isSmallPolygon) {
-      zoom = Math.max(14, Math.min(17, zoom)); // khusus GPS Selection: max 17
+      // KHUSUS LAHAN KECIL: Paksa Zoom 18 (ArcGIS gak punya gambar Zoom 19 di area pelosok)
+      // Tapi jangan di-zoom out pakai scaleFactor, biarkan tetap normal.
+      zoom = Math.max(14, Math.min(18, zoom));
     } else {
-      zoom = Math.max(14, Math.min(19, zoom)); // GPS Walking: gak berubah
+      // KHUSUS GPS WALKING: JANGAN DIUBAH! Pakai zoom 19 kayak aslinya.
+      zoom = Math.max(14, Math.min(19, zoom));
     }
   } else if (koordinat) {
     const matches = koordinat.match(/-?\d+(\.\d+)?/g);
@@ -547,6 +548,7 @@ async function generateSatelitImage(data: {
   const ctx = canvas.getContext("2d");
   if (!ctx) return null;
 
+  // Warna dasar map
   ctx.fillStyle = "#1a3a1c";
   ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
@@ -567,6 +569,7 @@ async function generateSatelitImage(data: {
         try {
           const px = x * TILE_SIZE - topLeftPixelX;
           const py = y * TILE_SIZE - topLeftPixelY;
+          
           ctx.drawImage(img, px, py, TILE_SIZE, TILE_SIZE);
         } catch (e) {
           console.error("drawImage error:", e);
