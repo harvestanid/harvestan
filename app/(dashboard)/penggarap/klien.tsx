@@ -354,7 +354,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
               <div className="text-[9px] text-[#2c5e2e] font-bold leading-tight mb-1">
                 👤 {isPenggarap ? "Owner Ext." : "Owner"} ({persenOwner}%)
               </div>
-              <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight break-all">
+              <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight whitespace-nowrap">
                 {formatRp(profitOwnerMurni)}
               </div>
             </div>
@@ -362,7 +362,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
               <div className="text-[9px] text-[#2c5e2e] font-bold leading-tight mb-1">
                 👨‍🌾 Penggarap ({persenPenggarap}%)
               </div>
-              <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight break-all">
+              <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight whitespace-nowrap">
                 {formatRp(profitPenggarapMurni)}
               </div>
             </div>
@@ -377,7 +377,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
             <div className="text-[10px] text-red-700 mb-2 flex items-center justify-between flex-wrap gap-1">
               <span>
                 💸 Potong:{" "}
-                <span className="font-bold break-all">
+                <span className="font-bold whitespace-nowrap">
                   − {formatRp(potonganHutang)}
                 </span>
               </span>
@@ -396,7 +396,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                 <div className="text-[9px] text-[#2c5e2e] font-bold leading-tight mb-1">
                   👤 Owner
                 </div>
-                <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight break-all">
+                <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight whitespace-nowrap">
                   {formatRp(profitOwnerFinal)}
                 </div>
               </div>
@@ -404,7 +404,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                 <div className="text-[9px] text-[#2c5e2e] font-bold leading-tight mb-1">
                   👨‍🌾 Penggarap
                 </div>
-                <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight break-all">
+                <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight whitespace-nowrap">
                   {formatRp(profitPenggarapFinal)}
                 </div>
               </div>
@@ -816,7 +816,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                               <div className="text-[#2c5e2e] font-bold text-[9px] leading-tight mb-1">
                                                                 👤 Total Owner
                                                               </div>
-                                                              <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight break-all">
+                                                              <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight whitespace-nowrap">
                                                                 {formatRp(
                                                                   m.totalProfitOwner
                                                                 )}
@@ -826,7 +826,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                               <div className="text-[#2c5e2e] font-bold text-[9px] leading-tight mb-1">
                                                                 👨‍🌾 Penggarap
                                                               </div>
-                                                              <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight break-all">
+                                                              <div className="font-bold text-[#2c5e2e] text-[9px] sm:text-[10px] tracking-tighter leading-tight whitespace-nowrap">
                                                                 {formatRp(
                                                                   m.totalProfitPenggarap
                                                                 )}
@@ -837,7 +837,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                           <div className="mt-2 text-[10px] flex items-center justify-between flex-wrap gap-1">
                                                             <span className="text-[#2c5e2e]/70">
                                                               Potong Hutang:{" "}
-                                                              <span className="font-bold break-all">
+                                                              <span className="font-bold whitespace-nowrap">
                                                                 {formatRp(
                                                                   m.totalPotongan
                                                                 )}
@@ -848,7 +848,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                                 ✅ LUNAS
                                                               </span>
                                                             ) : (
-                                                              <span className="bg-red-200 text-red-900 px-2 py-0.5 rounded-full font-bold break-all">
+                                                              <span className="bg-red-200 text-red-900 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">
                                                                 ⚠️ Sisa{" "}
                                                                 {formatRp(
                                                                   m.sisaHutangAkhir
@@ -946,7 +946,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                                           Profit
                                                                           Bersih
                                                                         </div>
-                                                                        <div className="font-bold text-blue-700 break-all leading-tight">
+                                                                        <div className="font-bold text-blue-700 whitespace-nowrap leading-tight">
                                                                           {formatRp(
                                                                             h.profitBersih
                                                                           )}
@@ -1084,7 +1084,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                                           <div className="text-[9px] text-[#2c5e2e]/60">
                                                             💵 Profit Bersih
                                                           </div>
-                                                          <div className="font-bold text-blue-700 break-all leading-tight">
+                                                          <div className="font-bold text-blue-700 whitespace-nowrap leading-tight">
                                                             {formatRp(
                                                               h.profitBersih
                                                             )}

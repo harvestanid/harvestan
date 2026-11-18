@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getDataFilter } from "@/lib/demo/demo-mode";
 
-// POST: Save/Update kategori per komoditas
-export async function POST(request: Request) {
+export async function GET() {
   try {
     const supabase = await createClient();
     const {
@@ -13,101 +13,41 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { items } = body; // Array of { komoditas, cukup, baik, sangat_baik }
+    const filter = await getDataFilter(user.id);
 
-    if (!Array.isArray(items)) {
+    const { data, error } = await supabase
+      .from("categories")
+      .select("komoditas, cukup, baik, sangat_baik")
+      .eq("user_id", filter.user_id)
+      .eq("is_demo", filter.is_demo);
+
+    if (error) throw error;
+
+    return NextResponse.json({
+      is_demo: filter.is_demo,
+      data: data || [],
+    });
+  } catch (err: any) {
+    console.error("GET kategori error:", err);
+    return NextResponse.json(
+      { error: err.message || "Server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { rows } = body;
+
+    if (!Array.isArray(rows)) {
       return NextResponse.json(
         { error: "Format data tidak valid" },
         { status: 400 }
       );
     }
 
-    // Validasi
-    for (const item of items) {
-      if (!item.komoditas) {
-        return NextResponse.json(
-          { error: "Komoditas wajib diisi" },
-          { status: 400 }
-        );
-      }
-
-      const c = item.cukup;
-      const b = item.baik;
-      const s = item.sangat_baik;
-
-      // Kalau semua terisi, harus urut: cukup < baik < sangat_baik
-      if (c !== null && b !== null && s !== null) {
-        if (!(c < b && b < s)) {
-          return NextResponse.json(
-            {
-              error: `Urutan salah untuk ${item.komoditas}. Harus: Cukup < Baik < Sangat Baik`,
-            },
-            { status: 400 }
-          );
-        }
-      }
-    }
-
-    // Upsert satu per satu
-    const hasil: any[] = [];
-    for (const item of items) {
-      // Cek dulu ada atau belum
-      const { data: existing } = await supabase
-        .from("categories")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("komoditas", item.komoditas)
-        .maybeSingle();
-
-      if (existing) {
-        // Update
-        const { data, error } = await supabase
-          .from("categories")
-          .update({
-            cukup: item.cukup,
-            baik: item.baik,
-            sangat_baik: item.sangat_baik,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id)
-          .select()
-          .single();
-
-        if (error) throw error;
-        hasil.push(data);
-      } else {
-        // Insert
-        const { data, error } = await supabase
-          .from("categories")
-          .insert({
-            user_id: user.id,
-            komoditas: item.komoditas,
-            cukup: item.cukup,
-            baik: item.baik,
-            sangat_baik: item.sangat_baik,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        hasil.push(data);
-      }
-    }
-
-    return NextResponse.json({ success: true, data: hasil });
-  } catch (err: any) {
-    console.error("Error save kategori:", err);
-    return NextResponse.json(
-      { error: err.message || "Terjadi kesalahan" },
-      { status: 500 }
-    );
-  }
-}
-
-// DELETE: Hapus kategori per komoditas
-export async function DELETE(request: Request) {
-  try {
     const supabase = await createClient();
     const {
       data: { user },
@@ -117,29 +57,59 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const url = new URL(request.url);
-    const komoditas = url.searchParams.get("komoditas");
+    const filter = await getDataFilter(user.id);
 
-    if (!komoditas) {
-      return NextResponse.json(
-        { error: "komoditas wajib diisi" },
-        { status: 400 }
-      );
+    // Siapin payload cuma buat yang diisi lengkap
+    const payload = rows
+      .filter(
+        (r: any) =>
+          r.cukup !== null && r.baik !== null && r.sangat_baik !== null
+      )
+      .map((r: any) => ({
+        user_id: filter.user_id,
+        komoditas: r.komoditas,
+        cukup: r.cukup,
+        baik: r.baik,
+        sangat_baik: r.sangat_baik,
+        is_demo: filter.is_demo,
+      }));
+
+    // UPSERT (Update or Insert) berdasarkan user_id + komoditas
+    if (payload.length > 0) {
+      const { error: upsertErr } = await supabase
+        .from("categories")
+        .upsert(payload, {
+          onConflict: "user_id,komoditas",
+        });
+
+      if (upsertErr) throw upsertErr;
     }
 
-    const { error } = await supabase
-      .from("categories")
-      .delete()
-      .eq("user_id", user.id)
-      .eq("komoditas", komoditas);
+    // (Optional) Handle yang di-nonaktifkan (dikosongkan).
+    // Karena kodenya ngehapus data kalau dikosongin, kita perlu hapus baris
+    // yang di DB gak ada di payload (khusus user & is_demo ini).
+    const komoditasTerisi = payload.map((p: any) => p.komoditas);
+    const semuaKomoditas = rows.map((r: any) => r.komoditas);
 
-    if (error) throw error;
+    // Yang ada di form tapi gak masuk payload = dikosongin user, jadi hapus dari DB
+    const yangHarusDihapus = semuaKomoditas.filter(
+      (k: string) => !komoditasTerisi.includes(k)
+    );
 
-    return NextResponse.json({ success: true });
+    if (yangHarusDihapus.length > 0) {
+      await supabase
+        .from("categories")
+        .delete()
+        .eq("user_id", filter.user_id)
+        .eq("is_demo", filter.is_demo)
+        .in("komoditas", yangHarusDihapus);
+    }
+
+    return NextResponse.json({ ok: true });
   } catch (err: any) {
-    console.error("Error delete kategori:", err);
+    console.error("POST kategori error:", err);
     return NextResponse.json(
-      { error: err.message || "Terjadi kesalahan" },
+      { error: err.message || "Server error" },
       { status: 500 }
     );
   }

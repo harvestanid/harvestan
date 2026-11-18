@@ -204,7 +204,7 @@ export function RiwayatPanen({
 
             const kartuContent = (
               <>
-                <div className="flex items-center justify-between flex-wrap gap-2 mb-1">
+                <div className="flex items-center justify-between flex-wrap gap-2 mb-2 border-b border-gray-200 pb-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     {modeSelect && (
                       <input
@@ -215,7 +215,7 @@ export function RiwayatPanen({
                         className="w-5 h-5 accent-red-600 flex-shrink-0"
                       />
                     )}
-                    <span className="text-xs font-bold text-gray-800">
+                    <span className="text-sm font-bold text-gray-800">
                       {KOMODITAS_LABEL[h.komoditas] || h.komoditas}
                     </span>
                     {h.musim && (
@@ -234,7 +234,7 @@ export function RiwayatPanen({
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-gray-500">
+                  <span className="text-xs text-gray-500">
                     {new Date(h.tanggal).toLocaleDateString("id-ID", {
                       day: "numeric",
                       month: "short",
@@ -242,43 +242,39 @@ export function RiwayatPanen({
                     })}
                   </span>
                 </div>
+                
+                {/* Grid Layout: 2 Kolom di HP, 4 Kolom di Tablet/PC */}
                 <div
                   className={`grid ${
-                    isMandiri ? "grid-cols-3" : "grid-cols-4"
-                  } gap-2 text-xs`}
+                    isMandiri ? "grid-cols-2 md:grid-cols-3" : "grid-cols-2 md:grid-cols-4"
+                  } gap-3 text-xs`}
                 >
                   <div>
-                    <div className="text-gray-500 text-[10px]">Hasil</div>
-                    <div className="font-bold text-gray-800">
-                      {Number(h.hasil_kg).toLocaleString("id-ID")} Kg
+                    <div className="text-gray-500 text-[10px] uppercase tracking-wider mb-0.5">Hasil</div>
+                    <div className="font-bold text-gray-800 text-sm">
+                      {Number(h.hasil_kg).toLocaleString("id-ID")} <span className="text-[10px] font-normal">Kg</span>
                     </div>
                   </div>
                   <div>
-                    <div className="text-gray-500 text-[10px]">
-                      Produktivitas
-                    </div>
-                    <div className="font-bold text-green-700">
-                      {prod.toFixed(0)} Kg/Ha
+                    <div className="text-gray-500 text-[10px] uppercase tracking-wider mb-0.5">Produktivitas</div>
+                    <div className="font-bold text-green-700 text-sm">
+                      {prod.toFixed(0)} <span className="text-[10px] font-normal">Kg/Ha</span>
                     </div>
                   </div>
                   <div className="min-w-0">
-                    <div className="text-gray-500 text-[10px]">
-                      Profit Bersih
-                    </div>
-                    <div className="font-bold text-blue-700">
-                      <span className="angka-fit whitespace-nowrap">{formatRp(Number(h.profit_bersih || 0))}</span>
+                    <div className="text-gray-500 text-[10px] uppercase tracking-wider mb-0.5">Profit Bersih</div>
+                    <div className="font-bold text-blue-700 text-sm truncate">
+                      {formatRp(Number(h.profit_bersih || 0))}
                     </div>
                   </div>
                   {!isMandiri && (
                     <div className="min-w-0">
-                      <div className="text-gray-500 text-[10px]">
-                        Bagi Hasil
-                      </div>
-                      <div className="text-[10px] font-bold mt-0.5 flex flex-col gap-0.5">
-                        <div className="text-green-700 whitespace-nowrap">
+                      <div className="text-gray-500 text-[10px] uppercase tracking-wider mb-0.5">Bagi Hasil</div>
+                      <div className="text-[11px] font-bold flex flex-col gap-0.5">
+                        <div className="text-green-700 truncate">
                           👤 {formatRp(Number(h.profit_owner || 0))}
                         </div>
-                        <div className="text-orange-700 whitespace-nowrap">
+                        <div className="text-orange-700 truncate">
                           👨‍🌾 {formatRp(Number(h.profit_penggarap || 0))}
                         </div>
                       </div>
@@ -292,7 +288,7 @@ export function RiwayatPanen({
               return (
                 <label
                   key={h.id}
-                  className={`block rounded-lg p-3 border-2 cursor-pointer transition ${
+                  className={`block rounded-xl p-3 border-2 cursor-pointer transition ${
                     isDipilih
                       ? "bg-red-50 border-red-400"
                       : "bg-gray-50 hover:bg-red-50 border-gray-200 hover:border-red-300"
@@ -307,7 +303,7 @@ export function RiwayatPanen({
               <Link
                 key={h.id}
                 href={`/penggarap/${penggarapId}/lahan/${landId}/panen/${h.id}`}
-                className="block bg-gray-50 hover:bg-green-50 rounded-lg p-3 border border-gray-200 transition"
+                className="block bg-gray-50 hover:bg-green-50 rounded-xl p-3 border border-gray-200 transition"
               >
                 {kartuContent}
               </Link>

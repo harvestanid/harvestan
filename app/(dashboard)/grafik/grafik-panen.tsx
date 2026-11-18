@@ -274,16 +274,18 @@ export function GrafikPanen({ penggaraps, lands, harvests }: Props) {
 
       {/* GRAFIK 2: PRODUKTIVITAS PER KOMODITAS */}
       <div className="bg-white border border-gray-200 rounded-xl p-5">
-        <div className="mb-4 flex items-start justify-between flex-wrap gap-2">
-          <div className="flex-1 min-w-0">
-            <h2 className="font-bold text-gray-900 text-lg">
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+          <div className="flex-1">
+            <h2 className="font-bold text-gray-900 text-lg leading-tight break-words">
               ⚡ Produktivitas Panen per Komoditas
             </h2>
             <p className="text-xs text-gray-500 mt-1">
               Grafik garis produktivitas (Kg/Ha) — cabai per musim, lainnya per panen
             </p>
           </div>
-          <CtaThreshold />
+          <div className="flex-shrink-0 self-start">
+            <CtaThreshold />
+          </div>
         </div>
 
         <div className="mb-4 bg-green-50 border border-green-200 rounded-lg p-3 flex flex-wrap items-center gap-3">

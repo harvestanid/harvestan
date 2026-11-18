@@ -249,12 +249,12 @@ export function siapkanDataMultiKomoditas(
 }
 
 // ===================================================
-// ✅ BARU: Data Harga per Bulan (non-cabai) & per Musim (cabai)
+// ✅ BARU: Data Harga (Non-cabai: semua input, Cabai: per musim)
 // ===================================================
 export type BarisHarga = {
   tanggal: string;
   timestamp: number;
-  labelBulan: string; // untuk agregasi di chart, format "2026-01"
+  labelBulan: string; // untuk agregasi di chart, format "2026-01" atau "Musim X"
   komoditas: string;
   harga: number;
 };
@@ -283,57 +283,24 @@ export function siapkanDataHargaPerBulan(
 
   const perKom: Record<string, BarisHarga[]> = {};
 
-  // ===== Non-cabai: agregasi per bulan =====
-  const nonCabaiPerBulan: Record<
-    string, // key: `${kom}-${YYYY-MM}`
-    { komoditas: string; total: number; jml: number; tanggal: string }
-  > = {};
-
+  // ===== Non-cabai: LANGSUNG pakai tanggal input (TANPA RATA-RATA BULAN) =====
   nonCabai.forEach((h) => {
     const harga = Number(h.harga_per_kg ?? h.harga_gabah ?? 0);
     if (harga <= 0) return;
 
     const kom = normalisasiKomoditas(h.komoditas);
-    const d = new Date(h.tanggal);
-    const yyyymm = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-      2,
-      "0"
-    )}`;
-    const key = `${kom}-${yyyymm}`;
+    if (!perKom[kom]) perKom[kom] = [];
 
-    if (!nonCabaiPerBulan[key]) {
-      nonCabaiPerBulan[key] = {
-        komoditas: kom,
-        total: 0,
-        jml: 0,
-        tanggal: h.tanggal,
-      };
-    }
-    const entry = nonCabaiPerBulan[key];
-    entry.total += harga;
-    entry.jml += 1;
-    // Simpan tanggal yang paling baru di bulan itu (untuk titik X di chart)
-    if (new Date(h.tanggal).getTime() > new Date(entry.tanggal).getTime()) {
-      entry.tanggal = h.tanggal;
-    }
-  });
-
-  Object.entries(nonCabaiPerBulan).forEach(([key, entry]) => {
-    const [kom, yyyymm] = key.split("-");
-    const hargaRata = entry.jml > 0 ? entry.total / entry.jml : 0;
-
-    if (!perKom[entry.komoditas]) perKom[entry.komoditas] = [];
-
-    perKom[entry.komoditas].push({
-      tanggal: entry.tanggal,
-      timestamp: new Date(entry.tanggal).getTime(),
-      labelBulan: `${kom}-${yyyymm}`,
-      komoditas: entry.komoditas,
-      harga: hargaRata,
+    perKom[kom].push({
+      tanggal: h.tanggal,
+      timestamp: new Date(h.tanggal).getTime(),
+      labelBulan: h.tanggal,
+      komoditas: kom,
+      harga: harga,
     });
   });
 
-  // ===== Cabai: harga per musim (rata-rata sepanjang musim) =====
+  // ===== Cabai: TETAP per musim (karena butuh 1 garis per musim) =====
   if (cabai.length > 0) {
     const musimMap = new Map<
       string,

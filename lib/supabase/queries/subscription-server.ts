@@ -153,30 +153,8 @@ export async function checkPremiumStatus(
   const supabase = await createClient();
 
   // ============================================================
-  // CEK GLOBAL TOGGLE (ADMIN MODE GRATIS PREMIUM)
+  // 1. CEK DEMO SESSION DULU (biar gak ketiban global toggle)
   // ============================================================
-  const { data: globalSettings } = await supabase
-    .from("app_settings")
-    .select("value")
-    .eq("id", "global_premium_on")
-    .single();
-
-  const isGlobalPremiumOn = globalSettings?.value === "true";
-
-  if (isGlobalPremiumOn) {
-    return {
-      isPremium: true,
-      isActive: true,
-      isDemoActive: false,
-      effectivePremium: true,
-      expiresAt: null,
-      type: "global_free",
-      source: "admin_toggle",
-      daysRemaining: null,
-    };
-  }
-  // ============================================================
-
   const { data: demoSession } = await supabase
     .from("demo_sessions")
     .select("*")
@@ -190,6 +168,31 @@ export async function checkPremiumStatus(
     const expiresAt = new Date(demoSession.expires_at).getTime();
     isDemoActive = expiresAt > now;
   }
+
+  // ============================================================
+  // 2. CEK GLOBAL TOGGLE (ADMIN MODE GRATIS PREMIUM)
+  // ============================================================
+  const { data: globalSettings } = await supabase
+    .from("app_settings")
+    .select("value")
+    .eq("id", "global_premium_on")
+    .single();
+
+  const isGlobalPremiumOn = globalSettings?.value === "true";
+
+  if (isGlobalPremiumOn) {
+    return {
+      isPremium: true,
+      isActive: true,
+      isDemoActive, // Tetap bawa status demo aktif
+      effectivePremium: true,
+      expiresAt: null,
+      type: "global_free",
+      source: "admin_toggle",
+      daysRemaining: null,
+    };
+  }
+  // ============================================================
 
   const sub = await getUserSubscription(userId);
 
@@ -1333,6 +1336,7 @@ export async function updateMayarOrderStatus(
     .from("premium_orders")
     .update({ status, updated_at: new Date().toISOString() })
     .eq("order_id", orderId);
+
   if (error) {
     console.error("updateMayarOrderStatus error:", error);
   }

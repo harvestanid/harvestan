@@ -20,7 +20,6 @@ type Lahan = {
 type SakInput = {
   bobot: number;
   jumlah: number;
-  // bawaPulang: "" (dijual), "penggarap", atau "owner"
   bawaPulang: "" | "penggarap" | "owner";
 };
 
@@ -64,8 +63,11 @@ export function GabahKlien() {
     new Date().toISOString().split("T")[0]
   );
   const [namaPenggarap, setNamaPenggarap] = useState("");
-  const [hargaJual, setHargaJual] = useState(5000);
-  const [hargaVendor, setHargaVendor] = useState(400);
+  
+  // STATE HARGA & BIAYA (UBAH KE STRING AGAR BISA FORMAT RUPIAH)
+  const [hargaJual, setHargaJual] = useState("5.000");
+  const [hargaVendor, setHargaVendor] = useState("400");
+  
   const [persenOwner, setPersenOwner] = useState(50);
 
   const [defaultSak, setDefaultSak] = useState(2);
@@ -96,6 +98,36 @@ export function GabahKlien() {
   } | null>(null);
 
   const [sedangKirim, setSedangKirim] = useState(false);
+
+  // FUNGSI FORMAT RUPIAH
+  const formatRupiah = (value: string) => {
+    const number_string = value.replace(/[^,\d]/g, "").toString();
+    const split = number_string.split(",");
+    const sisa = split[0].length % 3;
+    let rupiah = split[0].substr(0, sisa);
+    const ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+
+    if (ribuan) {
+      const separator = sisa ? "." : "";
+      rupiah += separator + ribuan.join(".");
+    }
+
+    return split[1] !== undefined ? rupiah + "," + split[1] : rupiah;
+  };
+
+  const handleHargaJualChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\./g, "");
+    if (raw === "" || /^[0-9]+$/.test(raw)) {
+      setHargaJual(formatRupiah(e.target.value));
+    }
+  };
+
+  const handleHargaVendorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\./g, "");
+    if (raw === "" || /^[0-9]+$/.test(raw)) {
+      setHargaVendor(formatRupiah(e.target.value));
+    }
+  };
 
   useEffect(() => {
     try {
@@ -254,7 +286,7 @@ export function GabahKlien() {
 
         if (sak.bawaPulang === "penggarap") {
           bawaPenggarapKg += bobot;
-          subPribadi += bobot; // tetap masuk pribadi (tidak dijual)
+          subPribadi += bobot; 
         } else if (sak.bawaPulang === "owner") {
           bawaOwnerKg += bobot;
           subPribadi += bobot;
@@ -276,13 +308,17 @@ export function GabahKlien() {
       });
     });
 
-    const totalHarga = bobotDijual * hargaJual;
-    const biayaVendor = totalBobot * hargaVendor;
+    // UBAH HARGA JADI ANGKA
+    const hargaJualNum = parseFloat(hargaJual.replace(/\./g, "")) || 0;
+    const hargaVendorNum = parseFloat(hargaVendor.replace(/\./g, "")) || 0;
+
+    const totalHarga = bobotDijual * hargaJualNum;
+    const biayaVendor = totalBobot * hargaVendorNum;
     const profitBersih = totalHarga - biayaVendor;
     const produktivitas = totalLuas > 0 ? totalBobot / totalLuas : 0;
 
     const persenPenggarap = 100 - persenOwner;
-    const harga = hargaJual;
+    const harga = hargaJualNum;
 
     let po = profitBersih * (persenOwner / 100);
     let pp = profitBersih * (persenPenggarap / 100);
@@ -333,6 +369,8 @@ export function GabahKlien() {
     }
 
     const persenPenggarap = 100 - persenOwner;
+    const hargaJualNum = parseFloat(hargaJual.replace(/\./g, "")) || 0;
+    const hargaVendorNum = parseFloat(hargaVendor.replace(/\./g, "")) || 0;
 
     const selectedLands = lands.filter((l) => selectedLandIds.includes(l.id));
 
@@ -366,8 +404,8 @@ export function GabahKlien() {
       if (!user) throw new Error("Unauthorized");
 
       const hasilKg = hasil.totalBobot;
-      const harga = hargaJual;
-      const biayaPanen = hargaVendor;
+      const harga = hargaJualNum;
+      const biayaPanen = hargaVendorNum;
 
       const pendapatan = hasil.bobotDijual * harga;
       const totalBiaya = hasilKg * biayaPanen;
@@ -706,14 +744,11 @@ export function GabahKlien() {
                   💰 Harga Jual per Kg (Rp)
                 </label>
                 <input
-                  type="number"
-                  value={hargaJual === 0 ? "" : hargaJual}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setHargaJual(v === "" ? 0 : parseFloat(v) || 0);
-                  }}
-                  placeholder="5000"
+                  type="text"
+                  inputMode="numeric"
+                  value={hargaJual}
+                  onChange={handleHargaJualChange}
+                  placeholder="5.000"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
@@ -722,13 +757,10 @@ export function GabahKlien() {
                   🔧 Biaya Vendor per Kg (Rp)
                 </label>
                 <input
-                  type="number"
-                  value={hargaVendor === 0 ? "" : hargaVendor}
-                  onFocus={(e) => e.target.select()}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setHargaVendor(v === "" ? 0 : parseFloat(v) || 0);
-                  }}
+                  type="text"
+                  inputMode="numeric"
+                  value={hargaVendor}
+                  onChange={handleHargaVendorChange}
                   placeholder="400"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
@@ -847,7 +879,6 @@ export function GabahKlien() {
                         className="w-full border border-gray-300 rounded px-2 py-1 text-sm mb-2 focus:outline-none focus:ring-1 focus:ring-green-500"
                       />
 
-                      {/* Ganti Pribadi jadi 2 Checkbox */}
                       <div className="flex flex-col gap-1 border-t border-gray-200 pt-1.5 mt-1">
                         <span className="text-[9px] text-gray-500 font-bold uppercase">Dibawa Pulang?</span>
                         <label className="flex items-center gap-1 cursor-pointer">
@@ -1132,7 +1163,7 @@ export function GabahKlien() {
                       Bobot Dijual × Harga/Kg
                     </span>
                     <span className="font-mono text-gray-800">
-                      {hasil.bobotDijual.toFixed(0)} Kg × {formatRp(hargaJual)}
+                      {hasil.bobotDijual.toFixed(0)} Kg × {formatRp(parseFloat(hargaJual.replace(/\./g, "")) || 0)}
                     </span>
                   </div>
                   <div className="flex justify-between border-b border-gray-200 pb-2">
@@ -1149,7 +1180,7 @@ export function GabahKlien() {
                       Total Bobot × Biaya Vendor
                     </span>
                     <span className="font-mono text-gray-800">
-                      {hasil.totalBobot.toFixed(0)} Kg × {formatRp(hargaVendor)}
+                      {hasil.totalBobot.toFixed(0)} Kg × {formatRp(parseFloat(hargaVendor.replace(/\./g, "")) || 0)}
                     </span>
                   </div>
                   <div className="flex justify-between border-b border-gray-200 pb-2">
@@ -1290,7 +1321,7 @@ export function GabahKlien() {
                   hasilKg={hasil.totalBobot}
                   luasHa={totalLuas}
                   produktivitas={hasil.produktivitas}
-                  hargaJual={hargaJual}
+                  hargaJual={hargaJualNum}
                   tanggal={tanggal}
                   namaPenggarap={namaPenggarap || null}
                   namaLahan={selectedLandIds.length > 1 ? `${selectedLandIds.length} Lahan` : (lands.find((l) => l.id === selectedLandIds[0])?.nama || null)}

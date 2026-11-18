@@ -63,11 +63,11 @@ export function GabahKlien() {
     new Date().toISOString().split("T")[0]
   );
   const [namaPenggarap, setNamaPenggarap] = useState("");
-  
+
   // STATE HARGA & BIAYA (UBAH KE STRING AGAR BISA FORMAT RUPIAH)
   const [hargaJual, setHargaJual] = useState("5.000");
   const [hargaVendor, setHargaVendor] = useState("400");
-  
+
   const [persenOwner, setPersenOwner] = useState(50);
 
   const [defaultSak, setDefaultSak] = useState(2);
@@ -180,7 +180,7 @@ export function GabahKlien() {
         .eq("penggarap_id", penggarapId)
         .order("nama");
       setLands(data || []);
-      setSelectedLandIds([]); 
+      setSelectedLandIds([]);
     }
     loadLands();
   }, [penggarapId]);
@@ -286,7 +286,7 @@ export function GabahKlien() {
 
         if (sak.bawaPulang === "penggarap") {
           bawaPenggarapKg += bobot;
-          subPribadi += bobot; 
+          subPribadi += bobot;
         } else if (sak.bawaPulang === "owner") {
           bawaOwnerKg += bobot;
           subPribadi += bobot;
@@ -308,7 +308,7 @@ export function GabahKlien() {
       });
     });
 
-    // UBAH HARGA JADI ANGKA
+    // UBAH HARGA JADI ANGKA (Di sini udah bener, cuma butuh global)
     const hargaJualNum = parseFloat(hargaJual.replace(/\./g, "")) || 0;
     const hargaVendorNum = parseFloat(hargaVendor.replace(/\./g, "")) || 0;
 
@@ -504,7 +504,7 @@ export function GabahKlien() {
 
       for (const lahan of selectedLands) {
         const proporsi = totalLuas > 0 ? Number(lahan.luas) / totalLuas : 1 / selectedLands.length;
-        
+
         const hasilKgLahan = hasilKg * proporsi;
         const bobotDijualLahan = hasil.bobotDijual * proporsi;
         const totalHargaJualLahan = bobotDijualLahan * harga;
@@ -616,6 +616,9 @@ export function GabahKlien() {
   }
 
   const persenPenggarap = 100 - persenOwner;
+  
+  // DEKLARASI HARGA JUAL NUM DI SINI BIAR BISA DIPAKE DI JSX
+  const hargaJualNum = parseFloat(hargaJual.replace(/\./g, "")) || 0;
 
   const ringkasanSesi = sesi.map((s, idx) => {
     let subBobot = 0;

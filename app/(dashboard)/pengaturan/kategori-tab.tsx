@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 
 type KategoriRow = {
   komoditas: string;
@@ -19,53 +18,54 @@ const KOMODITAS_OPTIONS = [
 ];
 
 export function KategoriTab() {
-  const supabase = createClient();
-
   const [rows, setRows] = useState<KategoriRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sukses, setSukses] = useState("");
   const [error, setError] = useState("");
+  const [isDemo, setIsDemo] = useState(false);
 
   useEffect(() => {
     async function load() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+      try {
+        const res = await fetch("/api/kategori");
+        if (!res.ok) throw new Error("Gagal memuat data");
+        const json = await res.json();
 
-      const { data } = await supabase
-        .from("categories")
-        .select("komoditas, cukup, baik, sangat_baik")
-        .eq("user_id", user.id)
-        .eq("is_demo", false);
+        setIsDemo(json.is_demo);
+        const dataKategori = json.data || [];
 
-      const map = new Map<string, KategoriRow>();
-      (data || []).forEach((d) => {
-        map.set(d.komoditas, {
-          komoditas: d.komoditas,
-          cukup: d.cukup !== null ? Number(d.cukup) : null,
-          baik: d.baik !== null ? Number(d.baik) : null,
-          sangat_baik: d.sangat_baik !== null ? Number(d.sangat_baik) : null,
+        const map = new Map<string, KategoriRow>();
+        dataKategori.forEach((d: any) => {
+          map.set(d.komoditas, {
+            komoditas: d.komoditas,
+            cukup: d.cukup !== null ? Number(d.cukup) : null,
+            baik: d.baik !== null ? Number(d.baik) : null,
+            sangat_baik:
+              d.sangat_baik !== null ? Number(d.sangat_baik) : null,
+          });
         });
-      });
 
-      const finalRows: KategoriRow[] = KOMODITAS_OPTIONS.map((opt) => {
-        const existing = map.get(opt.val);
-        if (existing) return existing;
-        return {
-          komoditas: opt.val,
-          cukup: opt.default?.cukup ?? null,
-          baik: opt.default?.baik ?? null,
-          sangat_baik: opt.default?.sangat_baik ?? null,
-        };
-      });
+        const finalRows: KategoriRow[] = KOMODITAS_OPTIONS.map((opt) => {
+          const existing = map.get(opt.val);
+          if (existing) return existing;
+          return {
+            komoditas: opt.val,
+            cukup: opt.default?.cukup ?? null,
+            baik: opt.default?.baik ?? null,
+            sangat_baik: opt.default?.sangat_baik ?? null,
+          };
+        });
 
-      setRows(finalRows);
-      setLoading(false);
+        setRows(finalRows);
+      } catch (e: any) {
+        setError(e.message || "Gagal memuat data");
+      } finally {
+        setLoading(false);
+      }
     }
     load();
-  }, [supabase]);
+  }, []);
 
   function updateRow(kom: string, field: keyof KategoriRow, val: string) {
     setRows((prev) =>
@@ -109,35 +109,15 @@ export function KategoriTab() {
     setSaving(true);
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) throw new Error("Login dulu");
+      const res = await fetch("/api/kategori", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows }),
+      });
 
-      // Delete all + insert ulang
-      await supabase
-        .from("categories")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("is_demo", false);
-
-      const payload = rows
-        .filter((r) => r.cukup !== null && r.baik !== null && r.sangat_baik !== null)
-        .map((r) => ({
-          user_id: user.id,
-          komoditas: r.komoditas,
-          cukup: r.cukup,
-          baik: r.baik,
-          sangat_baik: r.sangat_baik,
-          is_demo: false,
-        }));
-
-      if (payload.length > 0) {
-        const { error: insertErr } = await supabase
-          .from("categories")
-          .insert(payload);
-
-        if (insertErr) throw insertErr;
+      if (!res.ok) {
+        const json = await res.json();
+        throw new Error(json.error || "Gagal menyimpan");
       }
 
       setSukses("✅ Standar KPI berhasil disimpan!");
@@ -183,6 +163,11 @@ export function KategoriTab() {
           <strong>Cukup, Baik, Sangat Baik</strong>. Kosongkan jika komoditas
           belum dikategorikan.
         </p>
+        {isDemo && (
+          <div className="mt-3 bg-[#f0b429]/30 rounded-xl p-3 text-[11px] font-bold text-[#2c5e2e]">
+            ⚠️ Saat ini Anda dalam Mode Demo. Pengaturan ini hanya berlaku untuk data demo.
+          </div>
+        )}
       </div>
 
       {/* ===== TABEL KATEGORI ===== */}
@@ -194,7 +179,8 @@ export function KategoriTab() {
         <div className="space-y-4">
           {rows.map((r) => {
             const opt = KOMODITAS_OPTIONS.find((o) => o.val === r.komoditas);
-            const aktif = r.cukup !== null && r.baik !== null && r.sangat_baik !== null;
+            const aktif =
+              r.cukup !== null && r.baik !== null && r.sangat_baik !== null;
 
             return (
               <div

@@ -775,7 +775,7 @@ function StyleFullPhoto({ data }: { data: PostcardData }) {
 
       <div style={{ position: "absolute", bottom: 0, left: "80px", right: "80px", paddingBottom: "200px", zIndex: 2 }}>
         <div style={{ color: "#f0b429", fontSize: "30px", fontWeight: 800, letterSpacing: "6px", textTransform: "uppercase", marginBottom: "20px" }}>
-          🌾 HASIL PANEN
+          {emoji} HASIL PANEN
         </div>
 
         <div style={{ color: "#ffffff", fontSize: "220px", fontWeight: 900, lineHeight: 0.9, letterSpacing: "-8px", fontFamily: FONT_DISPLAY }}>
@@ -903,7 +903,7 @@ function StyleSatelitCard({ data }: { data: PostcardData }) {
 
       <div style={{ position: "absolute", bottom: 0, left: "80px", right: "80px", paddingBottom: "200px", zIndex: 4 }}>
         <div style={{ color: "#f0b429", fontSize: "30px", fontWeight: 800, letterSpacing: "6px", textTransform: "uppercase", marginBottom: "20px" }}>
-          🌾 HASIL PANEN
+          {emoji} HASIL PANEN
         </div>
 
         <div style={{ color: "#ffffff", fontSize: "220px", fontWeight: 900, lineHeight: 0.9, letterSpacing: "-8px", fontFamily: FONT_DISPLAY }}>

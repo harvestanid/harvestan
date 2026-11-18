@@ -27,6 +27,12 @@ const KOMODITAS_ORDER = [
   "cabai_rawit",
 ];
 
+function normalisasiKomoditas(kom: string | null | undefined): string {
+  if (!kom) return "padi";
+  if (kom === "cabai") return "cabai_rawit";
+  return kom;
+}
+
 function formatRp(n: number) {
   return "Rp " + Math.round(n).toLocaleString("id-ID");
 }
@@ -130,7 +136,6 @@ function drawAlert(pdf: jsPDF, cx: number, cy: number, r: number) {
   pdf.setLineWidth(oldLineWidth);
 }
 
-// Watermark DEMO — simple, tanpa saveGraphicsState
 function addDemoWatermark(pdf: jsPDF) {
   const totalPages = pdf.getNumberOfPages();
   const pageWidth = pdf.internal.pageSize.getWidth();
@@ -165,68 +170,6 @@ function addDemoFooter(pdf: jsPDF) {
       { align: "center" }
     );
   }
-}
-
-function hitungProduktivitasPerKomoditasPDF(
-  harvests: any[],
-  lands: { id: string; luas: number }[],
-  kategoriList: any[]
-) {
-  const data: Record<
-    string,
-    {
-      totalHasil: number;
-      totalProdSum: number;
-      jmlPanen: number;
-    }
-  > = {};
-
-  harvests.forEach((h) => {
-    const kom = h.komoditas || "padi";
-    const land = lands.find((l) => l.id === h.land_id);
-    if (!land || Number(land.luas) <= 0) return;
-
-    const prod = Number(h.hasil_kg) / Number(land.luas);
-
-    if (!data[kom]) {
-      data[kom] = { totalHasil: 0, totalProdSum: 0, jmlPanen: 0 };
-    }
-    data[kom].totalHasil += Number(h.hasil_kg);
-    data[kom].totalProdSum += prod;
-    data[kom].jmlPanen += 1;
-  });
-
-  const hasil: any[] = [];
-  Object.entries(data).forEach(([kom, d]) => {
-    const rata = d.jmlPanen > 0 ? d.totalProdSum / d.jmlPanen : 0;
-    const kat = kategoriList.find((k) => k.komoditas === kom) || null;
-
-    hasil.push({
-      komoditas: kom,
-      produktivitasRata: rata,
-      jmlPanen: d.jmlPanen,
-      totalHasilKg: d.totalHasil,
-      kategoriRata: getKategoriFromThreshold(rata, kat),
-    });
-  });
-
-  const order = [
-    "padi",
-    "jagung",
-    "kacang_tanah",
-    "bawang_merah",
-    "cabai_rawit",
-  ];
-  hasil.sort((a, b) => {
-    const ia = order.indexOf(a.komoditas);
-    const ib = order.indexOf(b.komoditas);
-    if (ia === -1 && ib === -1) return a.komoditas.localeCompare(b.komoditas);
-    if (ia === -1) return 1;
-    if (ib === -1) return -1;
-    return ia - ib;
-  });
-
-  return hasil;
 }
 
 export async function GET(request: Request) {
@@ -301,7 +244,7 @@ export async function GET(request: Request) {
     }, 0);
 
     const komoditasDenganData = new Set<string>();
-    harvests.forEach((h) => komoditasDenganData.add(h.komoditas || "padi"));
+    harvests.forEach((h) => komoditasDenganData.add(normalisasiKomoditas(h.komoditas)));
     const komoditasList = Array.from(komoditasDenganData).sort((a, b) => {
       const ia = KOMODITAS_ORDER.indexOf(a);
       const ib = KOMODITAS_ORDER.indexOf(b);
@@ -310,11 +253,12 @@ export async function GET(request: Request) {
       return ia - ib;
     });
 
-    const kategoriTerisi = komoditasList.filter((kom) => {
-      const th = (kategoriList || []).find((k) => k.komoditas === kom);
-      return th && th.cukup !== null && th.cukup !== undefined;
+    const mapKategori = new Map<string, any>();
+    (kategoriList || []).forEach((k) => {
+      if (k.cukup !== null && k.cukup !== undefined) {
+        mapKategori.set(k.komoditas, k);
+      }
     });
-    const adaKategori = kategoriTerisi.length > 0;
 
     type PenggarapData = {
       id: string;
@@ -349,39 +293,102 @@ export async function GET(request: Request) {
 
       komoditasList.forEach((kom) => {
         const harvestsKom = penggarapHarvests.filter(
-          (h) => (h.komoditas || "padi") === kom
+          (h) => normalisasiKomoditas(h.komoditas) === kom
         );
         if (harvestsKom.length === 0) return;
 
         let nilai = 0;
-        if (mode === "terakhir") {
-          const sorted = [...harvestsKom].sort(
-            (a, b) =>
-              new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
-          );
-          const h = sorted[0];
-          const land = penggarapLands.find((l) => l.id === h.land_id);
-          if (land && Number(land.luas) > 0) {
-            nilai = Number(h.hasil_kg) / Number(land.luas);
-          }
-        } else {
-          const total = harvestsKom.reduce((s, h) => {
+
+        // ===== KHUSUS CABAI =====
+        // Hitung produktivitas per musim dulu, baru dirata-rata atau ambil terakhir
+        if (kom === "cabai_rawit") {
+          const musimMap = new Map<
+            string,
+            { totalHasil: number; luasSet: Set<number>; tanggalAkhir: string }
+          >();
+
+          harvestsKom.forEach((h) => {
+            const musim = h.musim || "Tanpa Musim";
             const land = penggarapLands.find((l) => l.id === h.land_id);
-            if (!land || Number(land.luas) <= 0) return s;
-            return s + Number(h.hasil_kg) / Number(land.luas);
-          }, 0);
-          nilai = total / harvestsKom.length;
+            const luas = land ? Number(land.luas) : 0;
+
+            if (!musimMap.has(musim)) {
+              musimMap.set(musim, {
+                totalHasil: 0,
+                luasSet: new Set(),
+                tanggalAkhir: h.tanggal,
+              });
+            }
+            const m = musimMap.get(musim)!;
+            m.totalHasil += Number(h.hasil_kg);
+            if (luas > 0) m.luasSet.add(luas);
+            if (
+              new Date(h.tanggal).getTime() >
+              new Date(m.tanggalAkhir).getTime()
+            ) {
+              m.tanggalAkhir = h.tanggal;
+            }
+          });
+
+          // Hitung produktivitas tiap musim (Kg/Ha)
+          const prodPerMusim: { nilai: number; tanggalAkhir: string }[] = [];
+          musimMap.forEach((m) => {
+            const luas = Math.max(...Array.from(m.luasSet), 1);
+            prodPerMusim.push({
+              nilai: m.totalHasil / luas,
+              tanggalAkhir: m.tanggalAkhir,
+            });
+          });
+
+          if (mode === "terakhir") {
+            // Ambil produktivitas dari musim paling baru
+            const sorted = [...prodPerMusim].sort(
+              (a, b) =>
+                new Date(b.tanggalAkhir).getTime() -
+                new Date(a.tanggalAkhir).getTime()
+            );
+            nilai = sorted[0]?.nilai || 0;
+          } else {
+            // Rata-rata produktivitas antar musim
+            if (prodPerMusim.length > 0) {
+              nilai =
+                prodPerMusim.reduce((s, d) => s + d.nilai, 0) /
+                prodPerMusim.length;
+            }
+          }
+        }
+        // ===== NON-CABAI =====
+        else {
+          if (mode === "terakhir") {
+            const sorted = [...harvestsKom].sort(
+              (a, b) =>
+                new Date(b.tanggal).getTime() - new Date(a.tanggal).getTime()
+            );
+            const h = sorted[0];
+            const land = penggarapLands.find((l) => l.id === h.land_id);
+            if (land && Number(land.luas) > 0) {
+              nilai = Number(h.hasil_kg) / Number(land.luas);
+            }
+          } else {
+            const total = harvestsKom.reduce((s, h) => {
+              const land = penggarapLands.find((l) => l.id === h.land_id);
+              if (!land || Number(land.luas) <= 0) return s;
+              return s + Number(h.hasil_kg) / Number(land.luas);
+            }, 0);
+            nilai = total / harvestsKom.length;
+          }
         }
 
         nilaiPerKomoditas[kom] = nilai;
 
-        if (adaKategori) {
-          const threshold =
-            (kategoriList || []).find((k) => k.komoditas === kom) || null;
+        const threshold = mapKategori.get(kom) || null;
+        if (threshold) {
           const kat = getKategoriFromThreshold(nilai, threshold);
           kategoriPerKomoditas[kom] = kat
             ? { label: kat.label, kode: kat.kode }
             : null;
+        } else {
+          kategoriPerKomoditas[kom] = null;
         }
       });
 
@@ -429,21 +436,19 @@ export async function GET(request: Request) {
     const rewardList: { nama: string; komoditas: string; nilai: number }[] = [];
     const pendampinganList: { nama: string; komoditas: string; nilai: number }[] = [];
 
-    if (adaKategori) {
-      penggarapData.forEach((p) => {
-        komoditasList.forEach((kom) => {
-          const nilai = p.nilaiPerKomoditas[kom];
-          if (!nilai) return;
-          const kat = p.kategoriPerKomoditas[kom];
-          if (!kat) return;
-          if (kat.kode === "sangat") {
-            rewardList.push({ nama: p.nama, komoditas: kom, nilai });
-          } else if (kat.kode === "kurang") {
-            pendampinganList.push({ nama: p.nama, komoditas: kom, nilai });
-          }
-        });
+    penggarapData.forEach((p) => {
+      komoditasList.forEach((kom) => {
+        const nilai = p.nilaiPerKomoditas[kom];
+        if (!nilai) return;
+        const kat = p.kategoriPerKomoditas[kom];
+        if (!kat) return;
+        if (kat.kode === "sangat") {
+          rewardList.push({ nama: p.nama, komoditas: kom, nilai });
+        } else if (kat.kode === "kurang") {
+          pendampinganList.push({ nama: p.nama, komoditas: kom, nilai });
+        }
       });
-    }
+    });
 
     // ========== GENERATE PDF ==========
     const pdf = new jsPDF({
@@ -540,7 +545,7 @@ export async function GET(request: Request) {
     // ===================================================
     // KATEGORI PRODUKTIVITAS
     // ===================================================
-    if (adaKategori) {
+    if (mapKategori.size > 0) {
       pdf.setFillColor(232, 245, 233);
       pdf.rect(margin, y - 2, contentWidth, 6, "F");
       pdf.setTextColor(44, 94, 46);
@@ -555,9 +560,9 @@ export async function GET(request: Request) {
 
       const colKatWidth = contentWidth / 4;
 
-      kategoriTerisi.forEach((kom) => {
-        const th = (kategoriList || []).find((k) => k.komoditas === kom);
-        if (!th || th.cukup === null || th.cukup === undefined) return;
+      komoditasList.forEach((kom) => {
+        const threshold = mapKategori.get(kom);
+        if (!threshold) return;
 
         if (y > pageHeight - 35) {
           pdf.addPage();
@@ -585,7 +590,7 @@ export async function GET(request: Request) {
           warna: [200, 40, 40],
           bintang: 0,
           isAlert: true,
-          teksNilai: `< ${Number(th.cukup).toLocaleString("id-ID")}`,
+          teksNilai: `< ${Number(threshold.cukup).toLocaleString("id-ID")}`,
         });
 
         katCols.push({
@@ -593,16 +598,16 @@ export async function GET(request: Request) {
           warna: [230, 126, 34],
           bintang: 1,
           isAlert: false,
-          teksNilai: `>= ${Number(th.cukup).toLocaleString("id-ID")}`,
+          teksNilai: `>= ${Number(threshold.cukup).toLocaleString("id-ID")}`,
         });
 
-        if (th.baik !== null && th.baik !== undefined) {
+        if (threshold.baik !== null && threshold.baik !== undefined) {
           katCols.push({
             label: "Baik",
             warna: [74, 144, 226],
             bintang: 2,
             isAlert: false,
-            teksNilai: `>= ${Number(th.baik).toLocaleString("id-ID")}`,
+            teksNilai: `>= ${Number(threshold.baik).toLocaleString("id-ID")}`,
           });
         } else {
           katCols.push({
@@ -614,13 +619,13 @@ export async function GET(request: Request) {
           });
         }
 
-        if (th.sangat_baik !== null && th.sangat_baik !== undefined) {
+        if (threshold.sangat_baik !== null && threshold.sangat_baik !== undefined) {
           katCols.push({
             label: "Sangat Baik",
             warna: [44, 94, 46],
             bintang: 3,
             isAlert: false,
-            teksNilai: `>= ${Number(th.sangat_baik).toLocaleString("id-ID")}`,
+            teksNilai: `>= ${Number(threshold.sangat_baik).toLocaleString("id-ID")}`,
           });
         } else {
           katCols.push({
@@ -720,7 +725,7 @@ export async function GET(request: Request) {
     }
 
     // ===================================================
-    // LEADERBOARD — LAYOUT DINAMIS ANTI KEPOTONG
+    // LEADERBOARD
     // ===================================================
     if (y > pageHeight - 60) {
       pdf.addPage();
@@ -741,9 +746,6 @@ export async function GET(request: Request) {
     );
     y += 8;
 
-    // ===== HITUNG LEBAR KOLOM DINAMIS =====
-    // Kolom tetap: No(8) + Nama(variabel) + Lhn(10) + Panen(12) = total fixed
-    // Kolom komoditas: bagi sisa ruang
     const colRankW = 8;
     const colLahanW = 10;
     const colPanenW = 12;
@@ -753,17 +755,14 @@ export async function GET(request: Request) {
 
     const availableForNamaAndKom = contentWidth - fixedWidth;
 
-    // Jika jumlah komoditas banyak → perkecil nama
     let colNamaW = 40;
     let colKomWidth = minKomW;
 
     if (komoditasList.length > 0) {
-      // Coba alokasi: nama 40, sisa untuk komoditas
       const sisaUntukKom = availableForNamaAndKom - colNamaW;
       const perKom = sisaUntukKom / komoditasList.length;
 
       if (perKom < minKomW) {
-        // Perkecil nama biar komoditas dapat minKomW
         colKomWidth = minKomW;
         colNamaW = availableForNamaAndKom - colKomWidth * komoditasList.length;
         if (colNamaW < minNamaW) colNamaW = minNamaW;
@@ -778,11 +777,9 @@ export async function GET(request: Request) {
     const colPanenX = colLahanX + colLahanW;
     const colKomStartX = colPanenX + colPanenW;
 
-    // Font size adaptif
     const headerFontSize = komoditasList.length > 3 ? 6.5 : 7.5;
     const bodyFontSize = komoditasList.length > 3 ? 7 : 8;
 
-    // ===== HEADER TABEL =====
     pdf.setFillColor(44, 94, 46);
     pdf.rect(margin, y, contentWidth, 7, "F");
     pdf.setTextColor(255, 255, 255);
@@ -797,7 +794,6 @@ export async function GET(request: Request) {
     komoditasList.forEach((kom, i) => {
       const xKom = colKomStartX + i * colKomWidth;
       const label = KOMODITAS_SHORT[kom] || kom;
-      // Truncate label komoditas kalau kepanjangan
       const maxChars = Math.floor(colKomWidth / 2);
       const truncated = label.length > maxChars ? label.substring(0, maxChars) : label;
       pdf.text(truncated, xKom + colKomWidth / 2, y + 4.5, {
@@ -807,7 +803,6 @@ export async function GET(request: Request) {
 
     y += 7;
 
-    // ===== BODY TABEL =====
     pdf.setTextColor(60, 60, 60);
     pdf.setFontSize(bodyFontSize);
     pdf.setFont("helvetica", "normal");
@@ -826,10 +821,8 @@ export async function GET(request: Request) {
       pdf.setFont("helvetica", "normal");
       pdf.setTextColor(60, 60, 60);
 
-      // No
       pdf.text(String(idx + 1), colRankX + 2, y + 4.5);
 
-      // Nama (truncate kalau panjang)
       const maxNamaChars = Math.floor(colNamaW / 1.8);
       const namaTruncated =
         p.nama.length > maxNamaChars
@@ -837,51 +830,43 @@ export async function GET(request: Request) {
           : p.nama;
       pdf.text(namaTruncated, colNamaX + 1, y + 4.5);
 
-      // Lahan
       pdf.text(String(p.lahanCount), colLahanX + 1, y + 4.5);
-
-      // Panen
       pdf.text(String(p.jmlPanen), colPanenX + 1, y + 4.5);
 
-      // Kolom komoditas — angka + bintang / alert
       komoditasList.forEach((kom, i) => {
         const nilai = p.nilaiPerKomoditas[kom];
         const xKom = colKomStartX + i * colKomWidth;
         const centerX = xKom + colKomWidth / 2;
 
         if (nilai) {
-          // Baris 1: angka di tengah atas
           pdf.setTextColor(60, 60, 60);
           pdf.setFont("helvetica", "bold");
           pdf.setFontSize(bodyFontSize - 0.5);
           pdf.text(nilai.toFixed(0), centerX, y + 3, { align: "center" });
 
-          // Baris 2: ikon di bawah (bintang atau alert)
-          if (adaKategori) {
-            const katInfo = p.kategoriPerKomoditas[kom];
-            if (katInfo) {
-              const stars =
-                katInfo.kode === "sangat"
-                  ? 3
-                  : katInfo.kode === "baik"
-                  ? 2
-                  : katInfo.kode === "cukup"
-                  ? 1
-                  : 0;
+          const katInfo = p.kategoriPerKomoditas[kom];
+          if (katInfo) {
+            const stars =
+              katInfo.kode === "sangat"
+                ? 3
+                : katInfo.kode === "baik"
+                ? 2
+                : katInfo.kode === "cukup"
+                ? 1
+                : 0;
 
-              if (stars > 0) {
-                const starSize = 1.2;
-                const starWidth = stars * (starSize * 2 + 0.5) - 0.5;
-                const startX = centerX - starWidth / 2;
-                pdf.setDrawColor(255, 193, 7);
-                pdf.setLineWidth(0.25);
-                drawStars(pdf, startX, y + 5.8, stars, starSize);
-              } else {
-                pdf.setDrawColor(200, 40, 40);
-                pdf.setFillColor(200, 40, 40);
-                pdf.setLineWidth(0.3);
-                drawAlert(pdf, centerX, y + 5.8, 1.5);
-              }
+            if (stars > 0) {
+              const starSize = 1.2;
+              const starWidth = stars * (starSize * 2 + 0.5) - 0.5;
+              const startX = centerX - starWidth / 2;
+              pdf.setDrawColor(255, 193, 7);
+              pdf.setLineWidth(0.25);
+              drawStars(pdf, startX, y + 5.8, stars, starSize);
+            } else {
+              pdf.setDrawColor(200, 40, 40);
+              pdf.setFillColor(200, 40, 40);
+              pdf.setLineWidth(0.3);
+              drawAlert(pdf, centerX, y + 5.8, 1.5);
             }
           }
         } else {
@@ -891,7 +876,6 @@ export async function GET(request: Request) {
         }
       });
 
-      // Reset color
       pdf.setFont("helvetica", "normal");
       pdf.setTextColor(60, 60, 60);
       pdf.setFontSize(bodyFontSize);
@@ -904,111 +888,109 @@ export async function GET(request: Request) {
     // ===================================================
     // REWARD & PENDAMPINGAN
     // ===================================================
-    if (adaKategori) {
-      if (y > pageHeight - 50) {
-        pdf.addPage();
-        y = margin;
-      }
-
-      pdf.setFillColor(255, 193, 7);
-      pdf.rect(margin, y - 2, contentWidth, 6, "F");
-      pdf.setTextColor(60, 60, 60);
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(
-        "REKOMENDASI REWARD (Kategori Sangat Baik)",
-        margin + 2,
-        y + 2
-      );
-      y += 8;
-
-      pdf.setFontSize(8.5);
-      pdf.setFont("helvetica", "normal");
-      pdf.setTextColor(60, 60, 60);
-
-      if (rewardList.length === 0) {
-        pdf.setFont("helvetica", "italic");
-        pdf.text(
-          "Belum ada penggarap dengan kategori sangat baik di periode ini.",
-          margin + 2,
-          y
-        );
-        y += 6;
-      } else {
-        rewardList.forEach((r) => {
-          if (y > pageHeight - 20) {
-            pdf.addPage();
-            y = margin;
-          }
-          pdf.setDrawColor(255, 193, 7);
-          pdf.setLineWidth(0.3);
-          drawStars(pdf, margin + 2, y - 1, 3, 2);
-          pdf.setFont("helvetica", "bold");
-          pdf.text(`${r.nama}`, margin + 24, y);
-          pdf.setFont("helvetica", "normal");
-          pdf.text(
-            `- ${KOMODITAS_LABEL[r.komoditas] || r.komoditas} (${r.nilai.toFixed(0)} Kg/Ha)`,
-            margin + 70,
-            y
-          );
-          y += 6;
-        });
-      }
-
-      y += 4;
-
-      if (y > pageHeight - 50) {
-        pdf.addPage();
-        y = margin;
-      }
-
-      pdf.setFillColor(231, 76, 60);
-      pdf.rect(margin, y - 2, contentWidth, 6, "F");
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(
-        "REKOMENDASI PENDAMPINGAN (Kurang Optimal)",
-        margin + 2,
-        y + 2
-      );
-      y += 8;
-
-      pdf.setFontSize(8.5);
-      pdf.setFont("helvetica", "normal");
-      pdf.setTextColor(60, 60, 60);
-
-      if (pendampinganList.length === 0) {
-        pdf.setFont("helvetica", "italic");
-        pdf.text(
-          "Tidak ada penggarap yang perlu pendampingan. Semua optimal!",
-          margin + 2,
-          y
-        );
-        y += 6;
-      } else {
-        pendampinganList.forEach((r) => {
-          if (y > pageHeight - 20) {
-            pdf.addPage();
-            y = margin;
-          }
-          pdf.setTextColor(200, 40, 40);
-          pdf.setFont("helvetica", "bold");
-          pdf.text("! ", margin + 2, y);
-          pdf.setTextColor(60, 60, 60);
-          pdf.text(`${r.nama}`, margin + 8, y);
-          pdf.setFont("helvetica", "normal");
-          pdf.text(
-            `- ${KOMODITAS_LABEL[r.komoditas] || r.komoditas} (${r.nilai.toFixed(0)} Kg/Ha)`,
-            margin + 55,
-            y
-          );
-          y += 6;
-        });
-      }
-
-      y += 6;
+    if (y > pageHeight - 50) {
+      pdf.addPage();
+      y = margin;
     }
+
+    pdf.setFillColor(255, 193, 7);
+    pdf.rect(margin, y - 2, contentWidth, 6, "F");
+    pdf.setTextColor(60, 60, 60);
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(
+      "REKOMENDASI REWARD (Kategori Sangat Baik)",
+      margin + 2,
+      y + 2
+    );
+    y += 8;
+
+    pdf.setFontSize(8.5);
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(60, 60, 60);
+
+    if (rewardList.length === 0) {
+      pdf.setFont("helvetica", "italic");
+      pdf.text(
+        "Belum ada penggarap dengan kategori sangat baik di periode ini.",
+        margin + 2,
+        y
+      );
+      y += 6;
+    } else {
+      rewardList.forEach((r) => {
+        if (y > pageHeight - 20) {
+          pdf.addPage();
+          y = margin;
+        }
+        pdf.setDrawColor(255, 193, 7);
+        pdf.setLineWidth(0.3);
+        drawStars(pdf, margin + 2, y - 1, 3, 2);
+        pdf.setFont("helvetica", "bold");
+        pdf.text(`${r.nama}`, margin + 24, y);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(
+          `- ${KOMODITAS_LABEL[r.komoditas] || r.komoditas} (${r.nilai.toFixed(0)} Kg/Ha)`,
+          margin + 70,
+          y
+        );
+        y += 6;
+      });
+    }
+
+    y += 4;
+
+    if (y > pageHeight - 50) {
+      pdf.addPage();
+      y = margin;
+    }
+
+    pdf.setFillColor(231, 76, 60);
+    pdf.rect(margin, y - 2, contentWidth, 6, "F");
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(10);
+    pdf.setFont("helvetica", "bold");
+    pdf.text(
+      "REKOMENDASI PENDAMPINGAN (Kurang Optimal)",
+      margin + 2,
+      y + 2
+    );
+    y += 8;
+
+    pdf.setFontSize(8.5);
+    pdf.setFont("helvetica", "normal");
+    pdf.setTextColor(60, 60, 60);
+
+    if (pendampinganList.length === 0) {
+      pdf.setFont("helvetica", "italic");
+      pdf.text(
+        "Tidak ada penggarap yang perlu pendampingan. Semua optimal!",
+        margin + 2,
+        y
+      );
+      y += 6;
+    } else {
+      pendampinganList.forEach((r) => {
+        if (y > pageHeight - 20) {
+          pdf.addPage();
+          y = margin;
+        }
+        pdf.setTextColor(200, 40, 40);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("! ", margin + 2, y);
+        pdf.setTextColor(60, 60, 60);
+        pdf.text(`${r.nama}`, margin + 8, y);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(
+          `- ${KOMODITAS_LABEL[r.komoditas] || r.komoditas} (${r.nilai.toFixed(0)} Kg/Ha)`,
+          margin + 55,
+          y
+        );
+        y += 6;
+      });
+    }
+
+    y += 6;
 
     // ===================================================
     // RINGKASAN SETIAP PANEN
