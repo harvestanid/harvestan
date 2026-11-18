@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { SkemaBagiHasilV2 } from "@/components/skema-bagi-hasil-v2";
 
 type Penggarap = {
@@ -23,6 +23,11 @@ type LahanTerpilih = {
   checked: boolean;
 };
 
+type Musim = {
+  id: string;
+  nama: string;
+};
+
 function formatRp(n: number) {
   return "Rp " + Math.round(n).toLocaleString("id-ID");
 }
@@ -37,6 +42,7 @@ const KOMODITAS_LABEL: Record<string, string> = {
 
 export function PanenMultiKlien() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const [penggaraps, setPenggaraps] = useState<Penggarap[]>([]);
@@ -49,9 +55,12 @@ export function PanenMultiKlien() {
   );
   const [komoditas, setKomoditas] = useState("padi");
   const [totalHasil, setTotalHasil] = useState("");
-  const [hargaJual, setHargaJual] = useState("5000");
+  
+  // STATE HARGA & BIAYA (DEFAULT DIKOSONGKAN)
+  const [hargaJual, setHargaJual] = useState("");
   const [biayaPanen, setBiayaPanen] = useState("400");
   const [biayaTambahan, setBiayaTambahan] = useState("");
+  
   const [keteranganBiaya, setKeteranganBiaya] = useState("");
   const [persenOwner, setPersenOwner] = useState(50);
   const [catatan, setCatatan] = useState("");
@@ -61,6 +70,54 @@ export function PanenMultiKlien() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [sukses, setSukses] = useState<any>(null);
+
+  const [musimList, setMusimList] = useState<Musim[]>([]);
+  const [selectedMusim, setSelectedMusim] = useState("");
+  const [showModalMusim, setShowModalMusim] = useState(false);
+  const [namaMusimBaru, setNamaMusimBaru] = useState("");
+  const [tanggalMulaiBaru, setTanggalMulaiBaru] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [catatanMusimBaru, setCatatanMusimBaru] = useState("");
+  const [loadingSimpanMusim, setLoadingSimpanMusim] = useState(false);
+  const [errorMusim, setErrorMusim] = useState("");
+
+  // FUNGSI FORMAT RUPIAH (Hanya Angka & Titik)
+  const formatRupiah = (value: string) => {
+    const number_string = value.replace(/[^,\d]/g, "").toString();
+    const split = number_string.split(",");
+    const sisa = split[0].length % 3;
+    let rupiah = split[0].substr(0, sisa);
+    const ribuan = split[0].substr(sisa).match(/\d{3}/gi);
+
+    if (ribuan) {
+      const separator = sisa ? "." : "";
+      rupiah += separator + ribuan.join(".");
+    }
+
+    return split[1] !== undefined ? rupiah + "," + split[1] : rupiah;
+  };
+
+  const handleHargaJualChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\./g, "");
+    if (raw === "" || /^[0-9]+$/.test(raw)) {
+      setHargaJual(formatRupiah(e.target.value));
+    }
+  };
+
+  const handleBiayaPanenChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\./g, "");
+    if (raw === "" || /^[0-9]+$/.test(raw)) {
+      setBiayaPanen(formatRupiah(e.target.value));
+    }
+  };
+
+  const handleBiayaTambahanChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\./g, "");
+    if (raw === "" || /^[0-9]+$/.test(raw)) {
+      setBiayaTambahan(formatRupiah(e.target.value));
+    }
+  };
 
   useEffect(() => {
     async function load() {
@@ -86,6 +143,24 @@ export function PanenMultiKlien() {
   }, []);
 
   useEffect(() => {
+    async function loadMusim() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("musim_cabai")
+        .select("id, nama")
+        .eq("user_id", user.id)
+        .order("nama");
+
+      setMusimList(data || []);
+    }
+    loadMusim();
+  }, []);
+
+  useEffect(() => {
     async function loadLahan() {
       if (!penggarapId) {
         setLahanList([]);
@@ -98,16 +173,25 @@ export function PanenMultiKlien() {
         .eq("is_demo", false)
         .order("nama");
 
+      const paramLandId = searchParams.get("landId");
+
       const list: LahanTerpilih[] = (data || []).map((l) => ({
         id: l.id,
         nama: l.nama,
         luas: Number(l.luas),
-        checked: true,
+        checked: paramLandId ? l.id === paramLandId : true,
       }));
       setLahanList(list);
     }
     loadLahan();
-  }, [penggarapId]);
+  }, [penggarapId, searchParams]);
+
+  useEffect(() => {
+    const paramPenggarapId = searchParams.get("penggarapId");
+    if (paramPenggarapId && penggaraps.length > 0) {
+      setPenggarapId(paramPenggarapId);
+    }
+  }, [searchParams, penggaraps]);
 
   function toggleLahan(id: string) {
     setLahanList((prev) =>
@@ -119,9 +203,64 @@ export function PanenMultiKlien() {
     setLahanList((prev) => prev.map((l) => ({ ...l, checked })));
   }
 
+  async function handleSimpanMusimClick() {
+    if (!namaMusimBaru.trim()) {
+      setErrorMusim("Isi nama musim dulu");
+      return;
+    }
+
+    setErrorMusim("");
+    setLoadingSimpanMusim(true);
+
+    try {
+      const res = await fetch("/api/musim", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nama: namaMusimBaru.trim(),
+          tanggal_mulai: tanggalMulaiBaru || null,
+          catatan: catatanMusimBaru || null,
+        }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setErrorMusim(json.error || "Gagal simpan musim");
+        setLoadingSimpanMusim(false);
+        return;
+      }
+
+      setMusimList([json.data, ...musimList]);
+      setSelectedMusim(json.data.nama);
+      setShowModalMusim(false);
+      setNamaMusimBaru("");
+      setTanggalMulaiBaru(new Date().toISOString().split("T")[0]);
+      setCatatanMusimBaru("");
+      router.refresh();
+    } catch (err: any) {
+      setErrorMusim(err.message || "Terjadi kesalahan");
+    } finally {
+      setLoadingSimpanMusim(false);
+    }
+  }
+
+  function handleBukaModal() {
+    setNamaMusimBaru("");
+    setTanggalMulaiBaru(new Date().toISOString().split("T")[0]);
+    setCatatanMusimBaru("");
+    setErrorMusim("");
+    setShowModalMusim(true);
+  }
+
   const lahanTerpilih = lahanList.filter((l) => l.checked);
   const totalLuas = lahanTerpilih.reduce((s, l) => s + l.luas, 0);
   const hasilKg = parseFloat(totalHasil) || 0;
+
+  // UBAH HARGA & BIAYA JADI ANGKA BIAR BISA DIHITUNG
+  const harga = parseFloat(hargaJual.replace(/\./g, "")) || 0;
+  const biayaPerKg = parseFloat(biayaPanen.replace(/\./g, "")) || 0;
+  const biayaLain = parseFloat(biayaTambahan.replace(/\./g, "")) || 0;
 
   const previewPembagian = lahanTerpilih.map((l) => {
     const proporsi = totalLuas > 0 ? l.luas / totalLuas : 0;
@@ -141,9 +280,6 @@ export function PanenMultiKlien() {
     };
   });
 
-  const harga = parseFloat(hargaJual) || 0;
-  const biayaPerKg = parseFloat(biayaPanen) || 0;
-  const biayaLain = parseFloat(biayaTambahan) || 0;
   const pendapatanTotal = hasilKg * harga;
   const biayaPanenTotal = hasilKg * biayaPerKg;
   const profitBersih = pendapatanTotal - biayaPanenTotal - biayaLain;
@@ -165,6 +301,14 @@ export function PanenMultiKlien() {
     }
     if (!hasilKg || hasilKg <= 0) {
       setError("Isi total hasil panen (Kg) dengan benar");
+      return;
+    }
+    if (!harga || harga <= 0) {
+      setError("Isi harga jual per Kg dengan benar");
+      return;
+    }
+    if (komoditas === "cabai_rawit" && !selectedMusim) {
+      setError("Pilih musim cabai dulu");
       return;
     }
 
@@ -200,7 +344,7 @@ export function PanenMultiKlien() {
             land_id: item.id,
             tanggal,
             komoditas,
-            musim: null,
+            musim: komoditas === "cabai_rawit" ? selectedMusim : null,
             hasil_kg: hasilLahan,
             harga_gabah: harga,
             harga_per_kg: harga,
@@ -418,6 +562,40 @@ export function PanenMultiKlien() {
               />
             </div>
           </div>
+
+          {/* FITUR MUSIM CABAI BARU */}
+          {komoditas === "cabai_rawit" && (
+            <div className="bg-orange-50 border-2 border-orange-300 rounded-lg p-4 mt-2">
+              <label className="block text-sm font-bold text-orange-900 mb-2">
+                🗓️ Musim Tanam Cabai <span className="text-red-500">*</span>
+              </label>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <select
+                  value={selectedMusim}
+                  onChange={(e) => setSelectedMusim(e.target.value)}
+                  required
+                  className="flex-1 border border-orange-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500 bg-white"
+                >
+                  <option value="">-- Pilih Musim --</option>
+                  {musimList.map((m) => (
+                    <option key={m.id} value={m.nama}>
+                      {m.nama}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={handleBukaModal}
+                  className="bg-orange-500 hover:bg-orange-600 text-white font-bold px-4 py-2 rounded-lg text-sm whitespace-nowrap transition shadow-md"
+                >
+                  + Musim Baru
+                </button>
+              </div>
+              <p className="text-xs text-orange-700 mt-2">
+                💡 Cabai dipanen berkali-kali. Pilih musim agar produktivitas dihitung per musim.
+              </p>
+            </div>
+          )}
         </div>
 
         {penggarapId && (
@@ -574,9 +752,11 @@ export function PanenMultiKlien() {
                 Harga Jual per Kg (Rp)
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={hargaJual}
-                onChange={(e) => setHargaJual(e.target.value)}
+                onChange={handleHargaJualChange}
+                placeholder="0"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
               />
             </div>
@@ -586,9 +766,10 @@ export function PanenMultiKlien() {
                 Biaya Panen per Kg (Rp)
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={biayaPanen}
-                onChange={(e) => setBiayaPanen(e.target.value)}
+                onChange={handleBiayaPanenChange}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
               />
             </div>
@@ -598,9 +779,10 @@ export function PanenMultiKlien() {
                 Biaya Tambahan (Rp)
               </label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 value={biayaTambahan}
-                onChange={(e) => setBiayaTambahan(e.target.value)}
+                onChange={handleBiayaTambahanChange}
                 placeholder="0"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
               />
@@ -698,6 +880,88 @@ export function PanenMultiKlien() {
           {loading ? "⏳ Menyimpan..." : `📦 Simpan Panen (${lahanTerpilih.length} lahan)`}
         </button>
       </form>
+
+      {/* MODAL MUSIM BARU */}
+      {showModalMusim && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-[3000] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-gray-900 text-lg">
+                🗓️ Bikin Musim Cabai Baru
+              </h3>
+              <button
+                type="button"
+                onClick={() => setShowModalMusim(false)}
+                className="text-gray-400 hover:text-gray-600 text-2xl leading-none"
+              >
+                ×
+              </button>
+            </div>
+
+            {errorMusim && (
+              <div className="bg-red-50 border border-red-200 text-red-700 p-3 rounded-lg mb-4 text-sm">
+                ❌ {errorMusim}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nama Musim <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={namaMusimBaru}
+                  onChange={(e) => setNamaMusimBaru(e.target.value)}
+                  placeholder="Contoh: Cabai 2026-1"
+                  required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Tanggal Mulai
+                </label>
+                <input
+                  type="date"
+                  value={tanggalMulaiBaru}
+                  onChange={(e) => setTanggalMulaiBaru(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Catatan
+                </label>
+                <textarea
+                  value={catatanMusimBaru}
+                  onChange={(e) => setCatatanMusimBaru(e.target.value)}
+                  rows={2}
+                  placeholder="Contoh: Bibit dari toko X"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSimpanMusimClick}
+                  disabled={loadingSimpanMusim}
+                  className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-2.5 rounded-lg disabled:opacity-50"
+                >
+                  {loadingSimpanMusim ? "⏳ Menyimpan..." : "💾 Simpan Musim"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowModalMusim(false)}
+                  className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium px-5 py-2.5 rounded-lg"
+                >
+                  Batal
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

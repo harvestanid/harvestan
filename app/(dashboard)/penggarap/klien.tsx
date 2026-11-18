@@ -601,7 +601,7 @@ export function PenggarapKlien({ penggarapLengkap }: Props) {
                                       🗺️ Detail Lahan
                                     </Link>
                                     <Link
-                                      href={`/penggarap/${p.id}/lahan/${l.id}/panen/baru`}
+                                      href={`/panen-multi?penggarapId=${p.id}&landId=${l.id}`}
                                       className="text-xs bg-[#2c5e2e] hover:bg-[#1f4521] text-white font-bold px-3 py-1.5 rounded-full transition-all hover:scale-105"
                                     >
                                       + Input Panen

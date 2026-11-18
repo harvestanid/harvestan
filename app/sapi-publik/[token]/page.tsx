@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound } from "next/navigation";
 import { TanyaAIKlien } from "./tanya-ai";
+import { GrafikPertumbuhan } from "./grafik-pertumbuhan";
 
 export const metadata = {
   title: "Data Sapi - Harvestan",
@@ -46,16 +47,13 @@ export default async function SapiPublikPage({ params }: { params: Promise<{ tok
 
   return (
     <div className="min-h-screen bg-[#faf9f5] pb-10">
-      {/* Navbar Fixed (Solid Putih) */}
       <nav className="fixed top-0 left-0 right-0 bg-white border-b border-[#2c5e2e]/10 h-16 flex items-center justify-center z-50 shadow-sm">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/logo-horizontal.png" alt="Harvestan" className="h-10 w-auto" />
       </nav>
 
-      {/* Konten dengan Jarak Atas (pt-20) */}
       <div className="max-w-md mx-auto px-4 pt-20 pb-6 space-y-5">
         
-        {/* KARTU HEADER */}
         <div className="bg-white rounded-3xl border-2 border-[#2c5e2e]/10 p-6 pt-14 text-center relative shadow-lg">
           <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-br from-[#2c5e2e] to-[#1f4521] rounded-t-3xl" />
           
@@ -87,7 +85,6 @@ export default async function SapiPublikPage({ params }: { params: Promise<{ tok
           </div>
         </div>
 
-        {/* STATISTIK CARD */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white rounded-2xl border-2 border-[#2c5e2e]/10 p-4 text-center shadow-sm">
             <div className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-1">Bobot Terakhir</div>
@@ -99,7 +96,6 @@ export default async function SapiPublikPage({ params }: { params: Promise<{ tok
           </div>
         </div>
 
-        {/* DIMENSI */}
         <div className="bg-white rounded-3xl border-2 border-[#2c5e2e]/10 p-5 shadow-sm">
           <h3 className="font-bold text-[#2c5e2e] mb-3 text-sm uppercase tracking-wider flex items-center gap-2">
             <span>📏</span> Dimensi Terakhir
@@ -116,46 +112,16 @@ export default async function SapiPublikPage({ params }: { params: Promise<{ tok
           </div>
         </div>
 
-        {/* GRAFIK PERTUMBUHAN */}
         <div className="bg-white rounded-3xl border-2 border-[#2c5e2e]/10 p-5 shadow-sm">
-          <h3 className="font-bold text-[#2c5e2e] mb-4 text-sm uppercase tracking-wider flex items-center gap-2">
+          <h3 className="font-bold text-[#2c5e2e] mb-2 text-sm uppercase tracking-wider flex items-center gap-2">
             <span>📈</span> Grafik Pertumbuhan
           </h3>
-          {!measurements || measurements.length === 0 ? (
-            <div className="text-center py-6 text-gray-400 text-sm italic bg-[#faf9f5] rounded-xl border border-dashed border-[#2c5e2e]/20">
-              Belum ada data timbang
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {measurements.map((m, i) => {
-                const prev = i === 0 ? sapi.bobot_awal : measurements[i - 1].bobot_kg;
-                const diff = m.bobot_kg - prev;
-                const maxBobot = Math.max(...measurements.map(x => x.bobot_kg), sapi.bobot_awal);
-                const pct = maxBobot > 0 ? (m.bobot_kg / maxBobot) * 100 : 0;
-
-                return (
-                  <div key={i}>
-                    <div className="flex justify-between items-end text-xs mb-1.5 flex-wrap gap-1">
-                      <span className="text-gray-600 font-medium">{formatTanggal(m.tanggal)}</span>
-                      <span className="font-bold text-[#2c5e2e]">
-                        {m.bobot_kg} Kg {diff > 0 && <span className="text-green-600 ml-1">(+{diff})</span>}
-                      </span>
-                    </div>
-                    <div className="h-3.5 bg-[#faf9f5] rounded-full overflow-hidden border border-[#2c5e2e]/10">
-                      <div className="h-full bg-gradient-to-r from-[#2c5e2e] to-[#4a9d4e] rounded-full" style={{ width: `${pct}%` }} />
-                    </div>
-                    {m.catatan && <div className="text-[10px] text-gray-500 mt-1 italic pl-1 border-l-2 border-[#2c5e2e]/20 ml-1">📝 {m.catatan}</div>}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          {/* PANGGIL KOMPONEN LINE CHART DI SINI */}
+          <GrafikPertumbuhan measurements={measurements || []} bobotAwal={sapi.bobot_awal} />
         </div>
 
-        {/* FITUR TANYA AI */}
         <TanyaAIKlien dataSapi={dataSapi} />
 
-        {/* FOOTER */}
         <div className="text-center pt-6 pb-2">
           <p className="text-[10px] text-gray-400 mb-2">Data ini dikelola secara transparan menggunakan</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}

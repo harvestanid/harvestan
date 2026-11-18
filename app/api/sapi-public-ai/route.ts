@@ -6,12 +6,12 @@ import { createClient } from "@/lib/supabase/server";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// Fungsi cari internet pakai Tavily
 async function searchTavily(query: string): Promise<string> {
   const apiKey = process.env.TAVILY_API_KEY;
+  
+  // Tampilkan error asli kalau API Key kosong
   if (!apiKey) {
-    console.log("Tavily API Key tidak ditemukan.");
-    return "Sistem pencarian internet tidak dikonfigurasi (API Key missing).";
+    return "ERROR_SISTEM: API Key TAVILY_API_KEY tidak terbaca oleh server (kosong).";
   }
 
   try {
@@ -28,21 +28,21 @@ async function searchTavily(query: string): Promise<string> {
     });
 
     if (!res.ok) {
-      throw new Error(`Tavily HTTP Error: ${res.status}`);
+      const errorText = await res.text();
+      return `ERROR_SISTEM: Gagal konek ke Tavily (HTTP ${res.status}). Pesan: ${errorText}`;
     }
 
     const data = await res.json();
     let hasil = "";
-    if (data.answer) hasil += `Ringkasan: ${data.answer}\n\n`;
+    if (data.answer) hasil += `Ringkasan Tavily: ${data.answer}\n\n`;
     
     if (data.results && data.results.length > 0) {
       hasil += data.results.map((r: any) => `Sumber (${r.url}): ${r.content}`).join("\n");
     }
 
-    return hasil || "Tidak ada hasil pencarian.";
+    return hasil || "ERROR_SISTEM: Tavily mengembalikan data kosong.";
   } catch (err: any) {
-    console.error("Search Error:", err);
-    return "Gagal terhubung ke mesin pencari.";
+    return `ERROR_SISTEM: Exception di server. Pesan: ${err.message}`;
   }
 }
 
@@ -78,30 +78,34 @@ export async function POST(req: NextRequest) {
     const bobotTerakhir = measurements && measurements.length > 0 ? measurements[0].bobot_kg : sapi.bobot_awal;
 
     // CARI HARGA VIA TAVILY
-    const searchQuery = `harga sapi hidup ${sapi.jenis} per kg bobot hidup terbaru`;
+    const searchQuery = `harga sapi hidup ${sapi.jenis} per kg bobot hidup terbaru 2026`;
     const internetInfo = await searchTavily(searchQuery);
 
+    // KALAU TAVILY ERROR, KITA KIRIM PESAN ERRORNYA LANGSUNG KE USER BUAT DEBUG
+    if (internetInfo.startsWith("ERROR_SISTEM:")) {
+      return NextResponse.json({ ok: true, hasil: `⚠️ **DEBUG MODE** ⚠️\n\n${internetInfo}` });
+    }
+
     const prompt = `Kamu adalah Asisten Penjualan Sapi Profesional (Sales Closer) dari Harvestan.
-Tugasmu: Meyakinkan calon pembeli dan memberikan estimasi harga yang AKURAT BERDASARKAN DATA INTERNET.
+Tugasmu: Meyakinkan calon pembeli dan memberikan estimasi harga yang AKURAT.
 
 DATA SAPI:
 - Nama: ${sapi.nama_sapi || "Tanpa Nama"}
 - Jenis: ${sapi.jenis} (${sapi.jenis_kelamin})
 - Bobot Terakhir: ${bobotTerakhir} Kg
 
-HASIL PENCARIAN INTERNET REAL-TIME:
+HASIL PENCARIAN INTERNET REAL-TIME (TAVILY):
 ${internetInfo}
 
 PERTANYAAN PEMBELI:
 "${pertanyaan}"
 
-ATURAN KETAT (WAJIB DIIKUTI):
-1. Gunakan data dari "HASIL PENCARIAN INTERNET" di atas untuk menjawab. Jika data pencarian berisi "Gagal terhubung" atau "Tidak dikonfigurasi", katakan dengan jujur bahwa sistem harga sedang offline dan sarankan pembeli menghubungi admin.
-2. **BEDAKAN HARGA SAPI HIDUP DAN HARGA DAGING:** Jangan tertukar!
-3. Hitung estimasi harga jual berdasarkan **Bobot ${bobotTerakhir} Kg** dikali **Harga Sapi Hidup** yang ada di hasil pencarian.
-4. Sebutkan sumber URL (link) secara spesifik darimana kamu mengambil harga tersebut.
-5. Jelaskan potensi karkas dan jual kelebihan sapi ini.
-6. Output maksimal 3 paragraf, gunakan format **bold**.`;
+ATURAN:
+1. Gunakan data dari "HASIL PENCARIAN INTERNET" untuk menjawab.
+2. Bedakan harga sapi hidup dan harga daging.
+3. Hitung estimasi harga jual (Bobot x Harga Sapi Hidup).
+4. Sebutkan sumber URL dari hasil pencarian.
+5. Maksimal 3 paragraf, pakai format **bold**.`;
 
     const { text } = await generateText({
       model: groq("openai/gpt-oss-120b"),

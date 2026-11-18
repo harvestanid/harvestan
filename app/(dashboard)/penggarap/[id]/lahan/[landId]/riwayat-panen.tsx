@@ -138,7 +138,7 @@ export function RiwayatPanen({
                 </button>
               )}
               <Link
-                href={`/penggarap/${penggarapId}/lahan/${landId}/panen/baru`}
+                href={`/panen-multi?penggarapId=${penggarapId}&landId=${landId}`}
                 className="bg-green-700 hover:bg-green-800 text-white text-xs font-bold px-3 py-2 rounded-lg transition"
               >
                 + Input Panen
