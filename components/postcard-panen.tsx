@@ -1,5 +1,4 @@
 "use client";
-
 import { Component, forwardRef, type ReactNode } from "react";
 
 export type PostcardStyle =
@@ -88,7 +87,6 @@ function safeLabel(v: any): string {
 }
 
 // ============ POLYGON OVERLAY ============
-// Warna sama seperti preview detail lahan: #10b981 + border putih
 function PolygonOverlay({
   polygon,
   bounds,
@@ -161,6 +159,76 @@ function PolygonOverlay({
         strokeWidth={3}
         strokeLinejoin="round"
         strokeDasharray="10 10"
+      />
+    </svg>
+  );
+}
+
+// ============ PIN OVERLAY (BARU) ============
+// Nampilin pin di tengah peta kalau mode input manual (gak ada polygon)
+function PinOverlay({
+  bounds,
+  imgWidth,
+  imgHeight,
+  containerWidth,
+  containerHeight,
+}: {
+  bounds: SatelitBounds | null | undefined;
+  imgWidth: number;
+  imgHeight: number;
+  containerWidth: number;
+  containerHeight: number;
+}) {
+  if (!bounds) return null;
+
+  // Titik tengah peta (pusat bounds)
+  const centerLng = (bounds.west + bounds.east) / 2;
+  const centerLat = (bounds.north + bounds.south) / 2;
+
+  const x = ((centerLng - bounds.west) / (bounds.east - bounds.west)) * imgWidth;
+  const y = ((bounds.north - centerLat) / (bounds.north - bounds.south)) * imgHeight;
+
+  const scaleX = containerWidth / imgWidth;
+  const scaleY = containerHeight / imgHeight;
+  const scale = Math.max(scaleX, scaleY);
+
+  const scaledW = imgWidth * scale;
+  const scaledH = imgHeight * scale;
+
+  const offsetX = (containerWidth - scaledW) / 2;
+  const offsetY = (containerHeight - scaledH) / 2;
+
+  const finalX = x * scale + offsetX;
+  const finalY = y * scale + offsetY;
+
+  return (
+    <svg
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        pointerEvents: "none",
+        zIndex: 3,
+      }}
+      viewBox={`0 0 ${containerWidth} ${containerHeight}`}
+      preserveAspectRatio="none"
+    >
+      {/* Lingkaran merah doang */}
+      <circle
+        cx={finalX}
+        cy={finalY}
+        r={20}
+        fill="#ef4444"
+        stroke="#ffffff"
+        strokeWidth={4}
+      />
+      <circle
+        cx={finalX}
+        cy={finalY}
+        r={6}
+        fill="#ffffff"
       />
     </svg>
   );
@@ -773,6 +841,15 @@ function StyleSatelitCard({ data }: { data: PostcardData }) {
           {adaPolygon && data.satelitBounds && (
             <PolygonOverlay
               polygon={data.polygon}
+              bounds={data.satelitBounds}
+              imgWidth={1024}
+              imgHeight={1024}
+              containerWidth={POSTCARD_W}
+              containerHeight={POSTCARD_H}
+            />
+          )}
+          {!adaPolygon && data.satelitBounds && (
+            <PinOverlay
               bounds={data.satelitBounds}
               imgWidth={1024}
               imgHeight={1024}

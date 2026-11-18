@@ -446,12 +446,14 @@ async function generateSatelitImage(data: {
   const polygon = data.polygon;
   const koordinat = data.koordinat;
 
+  // Default (fallback) kalau data gak valid
   let centerLat = -6.2;
   let centerLng = 106.8;
   let zoom = 17;
 
   let minLat = 0, maxLat = 0, minLng = 0, maxLng = 0;
   let hasPolygon = false;
+  let hasValidKoordinat = false;
 
   if (
     polygon &&
@@ -477,39 +479,47 @@ async function generateSatelitImage(data: {
     const maxSpanM = Math.max(spanLatM, spanLngM);
 
     // Padding 20% biar ada ruang di sekeliling
-    const paddedSpanM = maxSpanM * 1.2;
+    const paddedSpanM = Math.max(maxSpanM * 1.2, 20);
 
-    // Meter per pixel di zoom Z = (156543.03 * cos(lat)) / 2^Z
-    // Kita mau paddedSpanM muat di CANVAS_SIZE pixel
-    // Jadi: paddedSpanM = CANVAS_SIZE * (156543.03 * cos(lat)) / 2^Z
-    // 2^Z = CANVAS_SIZE * 156543.03 * cos(lat) / paddedSpanM
     const latRad = (centerLat * Math.PI) / 180;
     const numerator = CANVAS_SIZE * 156543.03 * Math.cos(latRad);
     const zExact = Math.log2(numerator / paddedSpanM);
 
-    // Round ke bawah (zoom integer) + clamp
+    // --- LOGIKA KHUSUS: BEDAIN POLYGON GEDE (GPS WALKING) & KECIL (GPS SELECTION) ---
+    // Kalau span polygon < 200 meter (kira-kira < 1 Ha), ini polygon kecil (GPS Selection).
+    // Naikin zoom maksimalnya jadi 17 biar lahan kelihatan jelas.
+    // Kalau polygon gede (GPS Walking / Padi), tetep pakai Math.min(19) kayak aslinya.
     zoom = Math.floor(zExact);
-    zoom = Math.max(14, Math.min(19, zoom));
+    const isSmallPolygon = maxSpanM < 200;
+    
+    if (isSmallPolygon) {
+      zoom = Math.max(14, Math.min(17, zoom)); // khusus GPS Selection: max 17
+    } else {
+      zoom = Math.max(14, Math.min(19, zoom)); // GPS Walking: gak berubah
+    }
   } else if (koordinat) {
-    const parts = koordinat.split(",").map((s) => s.trim());
-    if (parts.length === 2) {
-      const lat = parseFloat(parts[0]);
-      const lng = parseFloat(parts[1]);
-      if (!isNaN(lat) && !isNaN(lng)) {
+    const matches = koordinat.match(/-?\d+(\.\d+)?/g);
+
+    if (matches && matches.length >= 2) {
+      const lat = parseFloat(matches[0]);
+      const lng = parseFloat(matches[1]);
+
+      if (!isNaN(lat) && !isNaN(lng) && lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
         centerLat = lat;
         centerLng = lng;
-        // Default span ~200m
-        const defaultSpanM = 200;
-        const latRad = (centerLat * Math.PI) / 180;
-        const zExact = Math.log2(
-          (CANVAS_SIZE * 156543.03 * Math.cos(latRad)) / defaultSpanM
-        );
-        zoom = Math.max(14, Math.min(19, Math.floor(zExact)));
+        hasValidKoordinat = true;
+
+        // Titik manual: zoom 16 biar kelihatan
+        zoom = 16;
       }
     }
   }
 
-  // Konversi lat/lng center ke pixel global pada zoom
+  if (!hasPolygon && !hasValidKoordinat) {
+    console.warn("Tidak ada polygon atau koordinat valid untuk generate satelit");
+    return null;
+  }
+
   const n = Math.pow(2, zoom);
   const latRadCenter = (centerLat * Math.PI) / 180;
   const centerPixelX = ((centerLng + 180) / 360) * n * TILE_SIZE;
@@ -523,17 +533,14 @@ async function generateSatelitImage(data: {
     n *
     TILE_SIZE;
 
-  // Top-left pixel dunia
   const topLeftPixelX = centerPixelX - CANVAS_SIZE / 2;
   const topLeftPixelY = centerPixelY - CANVAS_SIZE / 2;
 
-  // Tile range
   const startTileX = Math.floor(topLeftPixelX / TILE_SIZE);
   const startTileY = Math.floor(topLeftPixelY / TILE_SIZE);
   const endTileX = Math.floor((topLeftPixelX + CANVAS_SIZE - 1) / TILE_SIZE);
   const endTileY = Math.floor((topLeftPixelY + CANVAS_SIZE - 1) / TILE_SIZE);
 
-  // Buat canvas
   const canvas = document.createElement("canvas");
   canvas.width = CANVAS_SIZE;
   canvas.height = CANVAS_SIZE;
@@ -543,7 +550,6 @@ async function generateSatelitImage(data: {
   ctx.fillStyle = "#1a3a1c";
   ctx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
 
-  // Load semua tile
   const loadTile = (x: number, y: number) =>
     new Promise<void>((resolve) => {
       const maxTile = Math.pow(2, zoom);
@@ -584,7 +590,6 @@ async function generateSatelitImage(data: {
   }
   await Promise.all(promises);
 
-  // Hitung bounds dari area yang ke-cover
   const topLeftLng = (topLeftPixelX / (n * TILE_SIZE)) * 360 - 180;
   const topLeftLatRad = Math.atan(
     Math.sinh(Math.PI * (1 - (2 * topLeftPixelY) / (n * TILE_SIZE)))
