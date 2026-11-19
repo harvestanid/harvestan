@@ -32,7 +32,7 @@ const GRID = "rgba(44, 94, 46, 0.08)";
 
 function formatRpRingkas(n: number): string {
   if (n >= 1_000_000) return "Rp " + (n / 1_000_000).toFixed(1) + " jt";
-  if (n >= 1_000) return "Rp " + (n / 1_000).toFixed(0) + " rb";
+  if (n >= 1_000) return "Rp " + Math.round(n).toLocaleString("id-ID");
   return "Rp " + n.toLocaleString("id-ID");
 }
 
@@ -326,7 +326,7 @@ export function GrafikHarga({ penggaraps, lands, harvests }: Props) {
               Grafik Harga Komoditas
             </div>
             <div className="text-[10px] text-[#2c5e2e]/60 mt-0.5">
-              Non-cabai: rata-rata per bulan · Cabai: rata-rata per musim
+              Semua titik panen · Cabai per musim
             </div>
           </div>
         </div>

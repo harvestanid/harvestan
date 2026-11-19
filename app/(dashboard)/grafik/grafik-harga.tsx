@@ -97,9 +97,36 @@ export function GrafikHarga({ penggaraps, lands, harvests }: Props) {
     setKomoditasAktif(new Set());
   }
 
+  // ===== Daftar musim cabai (untuk memisah garis antar musim) =====
+  const musimCabai = useMemo(() => {
+    if (!komoditasTerpilih.has("cabai_rawit")) return [] as string[];
+
+    const awalMusim = new Map<string, number>();
+    (dataHarga["cabai_rawit"] || []).forEach((d) => {
+      const musim = d.musim || "Tanpa Musim";
+      if (!awalMusim.has(musim) || d.timestamp < awalMusim.get(musim)!) {
+        awalMusim.set(musim, d.timestamp);
+      }
+    });
+
+    return Array.from(awalMusim.entries())
+      .sort((a, b) => a[1] - b[1])
+      .map(([musim]) => musim);
+  }, [dataHarga, komoditasTerpilih]);
+
+  // Kunci aman per musim (hindari karakter khusus di dataKey Recharts)
+  const kunciMusimCabai = useMemo(() => {
+    const map = new Map<string, string>();
+    musimCabai.forEach((musim, i) => {
+      map.set(musim, `cabai_rawit__${i}`);
+    });
+    return map;
+  }, [musimCabai]);
+
   // ===== Gabungin semua titik jadi 1 array dengan properti dinamis per komoditas =====
   const chartData = useMemo(() => {
     const timeMap = new Map<number, Record<string, any>>();
+    const hitung = new Map<string, number>();
 
     komoditasTerpilih.forEach((kom) => {
       (dataHarga[kom] || []).forEach((d) => {
@@ -110,14 +137,25 @@ export function GrafikHarga({ penggaraps, lands, harvests }: Props) {
           });
         }
         const entry = timeMap.get(d.timestamp)!;
-        entry[kom] = d.harga;
+
+        if (kom === "cabai_rawit") {
+          const key =
+            kunciMusimCabai.get(d.musim || "Tanpa Musim") || "cabai_rawit__0";
+          const hitungKey = `${d.timestamp}|${key}`;
+          const n = (hitung.get(hitungKey) || 0) + 1;
+          hitung.set(hitungKey, n);
+          const prev = typeof entry[key] === "number" ? entry[key] : 0;
+          entry[key] = prev + (d.harga - prev) / n;
+        } else {
+          entry[kom] = d.harga;
+        }
       });
     });
 
     return Array.from(timeMap.values()).sort(
       (a, b) => a.timestamp - b.timestamp
     );
-  }, [dataHarga, komoditasTerpilih]);
+  }, [dataHarga, komoditasTerpilih, kunciMusimCabai]);
 
   // ===== Insight per komoditas terpilih =====
   const insightPerKomoditas = useMemo(() => {
@@ -389,22 +427,44 @@ export function GrafikHarga({ penggaraps, lands, harvests }: Props) {
                   wrapperStyle={{ fontSize: 11 }}
                   formatter={(value: any) => KOMODITAS_LABEL[value] || value}
                 />
-                {Array.from(komoditasTerpilih).map((kom) => (
+                {Array.from(komoditasTerpilih).map((kom) => {
+                  if (kom === "cabai_rawit") return null;
+                  return (
+                    <Line
+                      key={kom}
+                      type="monotone"
+                      dataKey={kom}
+                      name={kom}
+                      stroke={KOMODITAS_COLOR[kom] || "#666"}
+                      strokeWidth={3}
+                      dot={{
+                        r: 5,
+                        fill: KOMODITAS_COLOR[kom] || "#666",
+                        strokeWidth: 2,
+                        stroke: "#fff",
+                      }}
+                      activeDot={{ r: 7 }}
+                      connectNulls
+                    />
+                  );
+                })}
+                {musimCabai.map((musim, i) => (
                   <Line
-                    key={kom}
+                    key={kunciMusimCabai.get(musim) || `cabai_rawit__${i}`}
                     type="monotone"
-                    dataKey={kom}
-                    name={kom}
-                    stroke={KOMODITAS_COLOR[kom] || "#666"}
+                    dataKey={kunciMusimCabai.get(musim) || `cabai_rawit__${i}`}
+                    name="cabai_rawit"
+                    stroke={KOMODITAS_COLOR["cabai_rawit"] || "#666"}
                     strokeWidth={3}
                     dot={{
                       r: 5,
-                      fill: KOMODITAS_COLOR[kom] || "#666",
+                      fill: KOMODITAS_COLOR["cabai_rawit"] || "#666",
                       strokeWidth: 2,
                       stroke: "#fff",
                     }}
                     activeDot={{ r: 7 }}
                     connectNulls
+                    legendType={i === 0 ? "line" : "none"}
                   />
                 ))}
               </LineChart>

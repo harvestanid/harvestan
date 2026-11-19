@@ -257,6 +257,7 @@ export type BarisHarga = {
   labelBulan: string; // untuk agregasi di chart, format "2026-01" atau "Musim X"
   komoditas: string;
   harga: number;
+  musim?: string | null; // khusus cabai: musim tanam tiap panen
 };
 
 export function siapkanDataHargaPerBulan(
@@ -300,47 +301,22 @@ export function siapkanDataHargaPerBulan(
     });
   });
 
-  // ===== Cabai: TETAP per musim (karena butuh 1 garis per musim) =====
+  // ===== Cabai: per panen (tiap panen jadi 1 titik, simpan info musim) =====
   if (cabai.length > 0) {
-    const musimMap = new Map<
-      string,
-      {
-        totalHarga: number;
-        jml: number;
-        tanggalAkhir: string;
-      }
-    >();
+    perKom["cabai_rawit"] = [];
 
     cabai.forEach((h) => {
       const harga = Number(h.harga_per_kg ?? h.harga_gabah ?? 0);
       if (harga <= 0) return;
 
       const musim = h.musim || "Tanpa Musim";
-      if (!musimMap.has(musim)) {
-        musimMap.set(musim, {
-          totalHarga: 0,
-          jml: 0,
-          tanggalAkhir: h.tanggal,
-        });
-      }
-      const m = musimMap.get(musim)!;
-      m.totalHarga += harga;
-      m.jml += 1;
-      if (new Date(h.tanggal).getTime() > new Date(m.tanggalAkhir).getTime()) {
-        m.tanggalAkhir = h.tanggal;
-      }
-    });
-
-    perKom["cabai_rawit"] = [];
-
-    musimMap.forEach((m, musim) => {
-      const hargaRata = m.jml > 0 ? m.totalHarga / m.jml : 0;
       perKom["cabai_rawit"].push({
-        tanggal: m.tanggalAkhir,
-        timestamp: new Date(m.tanggalAkhir).getTime(),
+        tanggal: h.tanggal,
+        timestamp: new Date(h.tanggal).getTime(),
         labelBulan: musim,
         komoditas: "cabai_rawit",
-        harga: hargaRata,
+        harga: harga,
+        musim,
       });
     });
   }
