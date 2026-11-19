@@ -253,7 +253,6 @@ export async function GET(request: Request) {
       return ia - ib;
     });
 
-    // Ambil semua KPI yang lengkap (cukup tidak null), simpan di Map
     const mapKategori = new Map<string, any>();
     (kategoriList || []).forEach((k) => {
       if (k.cukup !== null && k.cukup !== undefined) {
@@ -300,34 +299,65 @@ export async function GET(request: Request) {
 
         let nilai = 0;
 
-        // Khusus cabai: Hitung per musim (total 1 musim / luas)
+        // ===== KHUSUS CABAI =====
+        // Hitung produktivitas per musim dulu, baru dirata-rata atau ambil terakhir
         if (kom === "cabai_rawit") {
-          const musimMap = new Map<string, { totalHasil: number; luasSet: Set<number> }>();
-          
+          const musimMap = new Map<
+            string,
+            { totalHasil: number; luasSet: Set<number>; tanggalAkhir: string }
+          >();
+
           harvestsKom.forEach((h) => {
             const musim = h.musim || "Tanpa Musim";
             const land = penggarapLands.find((l) => l.id === h.land_id);
             const luas = land ? Number(land.luas) : 0;
 
             if (!musimMap.has(musim)) {
-              musimMap.set(musim, { totalHasil: 0, luasSet: new Set() });
+              musimMap.set(musim, {
+                totalHasil: 0,
+                luasSet: new Set(),
+                tanggalAkhir: h.tanggal,
+              });
             }
             const m = musimMap.get(musim)!;
             m.totalHasil += Number(h.hasil_kg);
             if (luas > 0) m.luasSet.add(luas);
+            if (
+              new Date(h.tanggal).getTime() >
+              new Date(m.tanggalAkhir).getTime()
+            ) {
+              m.tanggalAkhir = h.tanggal;
+            }
           });
 
-          const produktivitasPerMusim: number[] = [];
+          // Hitung produktivitas tiap musim (Kg/Ha)
+          const prodPerMusim: { nilai: number; tanggalAkhir: string }[] = [];
           musimMap.forEach((m) => {
             const luas = Math.max(...Array.from(m.luasSet), 1);
-            produktivitasPerMusim.push(m.totalHasil / luas);
+            prodPerMusim.push({
+              nilai: m.totalHasil / luas,
+              tanggalAkhir: m.tanggalAkhir,
+            });
           });
 
-          if (produktivitasPerMusim.length > 0) {
-            nilai = produktivitasPerMusim.reduce((s, p) => s + p, 0) / produktivitasPerMusim.length;
+          if (mode === "terakhir") {
+            // Ambil produktivitas dari musim paling baru
+            const sorted = [...prodPerMusim].sort(
+              (a, b) =>
+                new Date(b.tanggalAkhir).getTime() -
+                new Date(a.tanggalAkhir).getTime()
+            );
+            nilai = sorted[0]?.nilai || 0;
+          } else {
+            // Rata-rata produktivitas antar musim
+            if (prodPerMusim.length > 0) {
+              nilai =
+                prodPerMusim.reduce((s, d) => s + d.nilai, 0) /
+                prodPerMusim.length;
+            }
           }
-        } 
-        // Non-cabai: Logika normal (terakhir atau rata-rata)
+        }
+        // ===== NON-CABAI =====
         else {
           if (mode === "terakhir") {
             const sorted = [...harvestsKom].sort(

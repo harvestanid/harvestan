@@ -18,8 +18,7 @@ export async function GET() {
     const { data, error } = await supabase
       .from("categories")
       .select("komoditas, cukup, baik, sangat_baik")
-      .eq("user_id", filter.user_id)
-      .eq("is_demo", filter.is_demo);
+      .eq("user_id", user.id);
 
     if (error) throw error;
 
@@ -57,21 +56,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const filter = await getDataFilter(user.id);
-
-    // Siapin payload cuma buat yang diisi lengkap
+    // KPI bersifat per-user (unik: user_id + komoditas), is_demo tidak dipakai
     const payload = rows
       .filter(
         (r: any) =>
           r.cukup !== null && r.baik !== null && r.sangat_baik !== null
       )
       .map((r: any) => ({
-        user_id: filter.user_id,
+        user_id: user.id,
         komoditas: r.komoditas,
         cukup: r.cukup,
         baik: r.baik,
         sangat_baik: r.sangat_baik,
-        is_demo: filter.is_demo,
+        is_demo: false,
       }));
 
     // UPSERT (Update or Insert) berdasarkan user_id + komoditas
@@ -100,8 +97,7 @@ export async function POST(request: Request) {
       await supabase
         .from("categories")
         .delete()
-        .eq("user_id", filter.user_id)
-        .eq("is_demo", filter.is_demo)
+        .eq("user_id", user.id)
         .in("komoditas", yangHarusDihapus);
     }
 

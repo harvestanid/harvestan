@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { seedKategoriDefaults } from "@/lib/supabase/queries/kategori-seed";
 import fs from "fs";
 import path from "path";
 
@@ -131,24 +132,8 @@ export async function POST() {
       }
     }
 
-    // ===== CATEGORIES — bulk insert =====
-    if (demoData.categories && demoData.categories.length > 0) {
-      const catBatch = demoData.categories.map((c) => ({
-        user_id: user.id,
-        komoditas: c.komoditas,
-        cukup: c.cukup,
-        baik: c.baik,
-        sangat_baik: c.sangat_baik,
-        is_demo: true,
-      }));
-
-      const { error: errC } = await admin
-        .from("categories")
-        .insert(catBatch);
-      if (errC) {
-        console.error("Insert categories error:", errC);
-      }
-    }
+    // ===== KPI DEFAULT (per-user, tidak menimpa setting custom) =====
+    await seedKategoriDefaults(user.id);
 
     // ===== DEBTS — bulk insert =====
     const debtBatch = demoData.debts.map((d) => {

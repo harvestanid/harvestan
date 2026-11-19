@@ -50,8 +50,7 @@ export default async function ExportPage() {
   const { count: kategoriCount } = await supabase
     .from("categories")
     .select("*", { count: "exact", head: true })
-    .eq("user_id", filter.user_id)
-    .eq("is_demo", filter.is_demo);
+    .eq("user_id", user.id);
 
   const { count: musimCount } = await supabase
     .from("musim_cabai")

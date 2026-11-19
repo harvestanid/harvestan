@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getDefaultKategori } from "@/lib/kategori/defaults";
 
 type KategoriRow = {
   komoditas: string;
@@ -10,12 +11,12 @@ type KategoriRow = {
 };
 
 const KOMODITAS_OPTIONS = [
-  { val: "padi", label: "🌾 Padi", default: { cukup: 5000, baik: 6000, sangat_baik: 7000 } },
-  { val: "jagung", label: "🌽 Jagung", default: { cukup: 5000, baik: 6500, sangat_baik: 8000 } },
-  { val: "kacang_tanah", label: "🥜 Kacang Tanah", default: null },
-  { val: "bawang_merah", label: "🧅 Bawang Merah", default: null },
-  { val: "cabai_rawit", label: "🌶️ Cabai Rawit", default: { cukup: 4000, baik: 6000, sangat_baik: 8000 } },
-];
+  { val: "padi", label: "🌾 Padi" },
+  { val: "jagung", label: "🌽 Jagung" },
+  { val: "kacang_tanah", label: "🥜 Kacang Tanah" },
+  { val: "bawang_merah", label: "🧅 Bawang Merah" },
+  { val: "cabai_rawit", label: "🌶️ Cabai Rawit" },
+].map((opt) => ({ ...opt, default: getDefaultKategori(opt.val) }));
 
 export function KategoriTab() {
   const [rows, setRows] = useState<KategoriRow[]>([]);

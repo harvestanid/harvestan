@@ -129,6 +129,9 @@ export default function RegisterPage() {
       return;
     }
 
+    // Seed standar KPI default untuk akun baru
+    await fetch("/api/kategori/seed", { method: "POST" });
+
     router.push("/dashboard");
     router.refresh();
   }

@@ -28773,9 +28773,9 @@
     },
     {
       "komoditas": "cabai_rawit",
-      "cukup": 4000,
-      "baik": 6000,
-      "sangat_baik": 8000
+      "cukup": 8000,
+      "baik": 10000,
+      "sangat_baik": 12000
     },
     {
       "komoditas": "kacang_tanah",
@@ -28785,9 +28785,9 @@
     },
     {
       "komoditas": "bawang_merah",
-      "cukup": 8000,
-      "baik": 10000,
-      "sangat_baik": 12000
+      "cukup": 10000,
+      "baik": 12000,
+      "sangat_baik": 14000
     }
   ]
 }

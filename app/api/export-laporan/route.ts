@@ -219,11 +219,11 @@ export async function GET(request: Request) {
       .eq("user_id", filter.user_id)
       .eq("is_demo", filter.is_demo);
 
+    // KPI bersifat per-user (unik: user_id + komoditas), is_demo tidak dipakai
     const { data: kategoriList } = await supabase
       .from("categories")
       .select("*")
-      .eq("user_id", filter.user_id)
-      .eq("is_demo", filter.is_demo);
+      .eq("user_id", user.id);
 
     const filterPeriode = (h: any) => {
       const y = new Date(h.tanggal).getFullYear();

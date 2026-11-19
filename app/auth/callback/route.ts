@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { seedKategoriDefaults } from "@/lib/supabase/queries/kategori-seed";
 
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
@@ -97,6 +98,10 @@ export async function GET(request: NextRequest) {
       new Date(user.created_at).getTime() -
         new Date(user.last_sign_in_at).getTime()
     ) < 10000;
+
+  if (isNewUser) {
+    await seedKategoriDefaults(user.id);
+  }
 
   let finalUrl: URL;
   if (type === "recovery") {

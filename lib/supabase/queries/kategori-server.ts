@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { getDataFilter } from "@/lib/demo/demo-mode";
 
 export type Kategori = {
   id: string;
@@ -40,13 +39,10 @@ export async function getKategoriList(): Promise<Kategori[]> {
 
   if (!user) return [];
 
-  const filter = await getDataFilter(user.id);
-
   const { data, error } = await supabase
     .from("categories")
     .select("*")
-    .eq("user_id", filter.user_id)
-    .eq("is_demo", filter.is_demo)
+    .eq("user_id", user.id)
     .order("komoditas");
 
   if (error) {
@@ -67,13 +63,10 @@ export async function getKategoriByKomoditas(
 
   if (!user) return null;
 
-  const filter = await getDataFilter(user.id);
-
   const { data, error } = await supabase
     .from("categories")
     .select("*")
-    .eq("user_id", filter.user_id)
-    .eq("is_demo", filter.is_demo)
+    .eq("user_id", user.id)
     .eq("komoditas", komoditas)
     .maybeSingle();
 
