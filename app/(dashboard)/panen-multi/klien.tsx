@@ -60,6 +60,8 @@ export function PanenMultiKlien() {
   const [hargaJual, setHargaJual] = useState("");
   const [biayaPanen, setBiayaPanen] = useState("400");
   const [biayaTambahan, setBiayaTambahan] = useState("");
+  const [bawaPenggarap, setBawaPenggarap] = useState("");
+  const [bawaOwner, setBawaOwner] = useState("");
   
   const [keteranganBiaya, setKeteranganBiaya] = useState("");
   const [persenOwner, setPersenOwner] = useState(50);
@@ -262,6 +264,12 @@ export function PanenMultiKlien() {
   const biayaPerKg = parseFloat(biayaPanen.replace(/\./g, "")) || 0;
   const biayaLain = parseFloat(biayaTambahan.replace(/\./g, "")) || 0;
 
+  // BAWA PULANG (TOTAL Kg, DIBAGI PROPORSIONAL PER LUAS LAHAN)
+  const bawaPenggarapKg = parseFloat(bawaPenggarap) || 0;
+  const bawaOwnerKg = parseFloat(bawaOwner) || 0;
+  const bawaTotal = bawaPenggarapKg + bawaOwnerKg;
+  const bobotDijual = Math.max(0, hasilKg - bawaTotal);
+
   const previewPembagian = lahanTerpilih.map((l) => {
     const proporsi = totalLuas > 0 ? l.luas / totalLuas : 0;
     const hasil =
@@ -277,14 +285,24 @@ export function PanenMultiKlien() {
       proporsi,
       hasil,
       produktivitas: l.luas > 0 ? hasil / l.luas : 0,
+      bawaPenggarapLahan: bawaPenggarapKg * proporsi,
+      bawaOwnerLahan: bawaOwnerKg * proporsi,
     };
   });
 
-  const pendapatanTotal = hasilKg * harga;
+  // PENDAPATAN HANYA DARI GABAH YANG DIJUAL (BAWA PULANG TIDAK DIJUAL)
+  const pendapatanTotal = bobotDijual * harga;
   const biayaPanenTotal = hasilKg * biayaPerKg;
   const profitBersih = pendapatanTotal - biayaPanenTotal - biayaLain;
-  const profitOwner = profitBersih * (persenOwner / 100);
-  const profitPenggarap = profitBersih * ((100 - persenOwner) / 100);
+  const profitOwnerDasar = profitBersih * (persenOwner / 100);
+  const profitPenggarapDasar = profitBersih * ((100 - persenOwner) / 100);
+
+  // PENYESUAIAN PROFIT DARI BAWA PULANG (SAMA SEPERTI GABAH)
+  const nilaiBawaPenggarap = bawaPenggarapKg * harga;
+  const nilaiBawaOwner = bawaOwnerKg * harga;
+  const profitOwner = profitOwnerDasar + nilaiBawaPenggarap - nilaiBawaOwner;
+  const profitPenggarap =
+    profitPenggarapDasar - nilaiBawaPenggarap + nilaiBawaOwner;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -307,6 +325,16 @@ export function PanenMultiKlien() {
       setError("Isi harga jual per Kg dengan benar");
       return;
     }
+    if (bawaPenggarapKg < 0 || bawaOwnerKg < 0) {
+      setError("Bawa pulang tidak boleh minus");
+      return;
+    }
+    if (bawaTotal > hasilKg) {
+      setError(
+        "Total bawa pulang (Penggarap + Owner) tidak boleh melebihi total hasil panen"
+      );
+      return;
+    }
     if (komoditas === "cabai_rawit" && !selectedMusim) {
       setError("Pilih musim cabai dulu");
       return;
@@ -323,19 +351,119 @@ export function PanenMultiKlien() {
       const penggarap = penggaraps.find((p) => p.id === penggarapId);
       const hasilPanen: any[] = [];
 
+      const persenPenggarap = 100 - persenOwner;
+
+      // ===== POTONG HUTANG OTOMATIS (SAMA SEPERTI GABAH) =====
+      const { data: hutangList } = await supabase
+        .from("debts")
+        .select("*")
+        .eq("penggarap_id", penggarapId)
+        .eq("user_id", user.id)
+        .gt("sisa", 0)
+        .order("tanggal", { ascending: true });
+
+      const totalHutangSebelum = (hutangList || []).reduce(
+        (s, h) => s + Number(h.sisa || 0),
+        0
+      );
+
+      let potonganHutang = 0;
+      let profitPenggarapFinal = profitPenggarap;
+      let profitOwnerFinal = profitOwner;
+      const potonganLog: any[] = [];
+
+      if (totalHutangSebelum > 0 && profitPenggarap > 0) {
+        let sisaPotong = Math.min(profitPenggarap, totalHutangSebelum);
+        potonganHutang = sisaPotong;
+        const waktuPotong = new Date().toISOString();
+
+        for (const h of hutangList || []) {
+          if (sisaPotong <= 0) break;
+          const sisaHutang = Number(h.sisa);
+          const bayar = Math.min(sisaHutang, sisaPotong);
+          const sisaBaru = sisaHutang - bayar;
+          const dibayarBaru = Number(h.dibayar || 0) + bayar;
+
+          const logEntry = {
+            aksi: "potong_panen",
+            waktu: waktuPotong,
+            jumlah: bayar,
+            sisa_sebelum: sisaHutang,
+            sisa_sesudah: sisaBaru,
+            keterangan: "Potong otomatis dari input panen multi lahan",
+          };
+
+          const logLama = Array.isArray(h.log_perubahan)
+            ? h.log_perubahan
+            : [];
+
+          await supabase
+            .from("debts")
+            .update({
+              dibayar: dibayarBaru,
+              sisa: sisaBaru,
+              log_perubahan: [...logLama, logEntry],
+            })
+            .eq("id", h.id);
+
+          potonganLog.push({
+            debt_id: h.id,
+            jumlah_dipotong: bayar,
+            tanggal_hutang: h.tanggal,
+            keperluan: h.keperluan || null,
+            waktu_potong: waktuPotong,
+            aksi: "potong",
+          });
+
+          sisaPotong -= bayar;
+        }
+
+        profitPenggarapFinal = profitPenggarap - potonganHutang;
+        profitOwnerFinal = profitOwner + potonganHutang;
+      }
+
+      const totalHutangSesudah = Math.max(
+        0,
+        totalHutangSebelum - potonganHutang
+      );
+
       for (const item of previewPembagian) {
         const proporsi = item.proporsi;
         const hasilLahan = item.hasil;
 
-        const pendapatan = hasilLahan * harga;
+        const bawaPenggarapLahan = item.bawaPenggarapLahan;
+        const bawaOwnerLahan = item.bawaOwnerLahan;
+        const bobotDijualLahan =
+          hasilLahan - bawaPenggarapLahan - bawaOwnerLahan;
+
+        const pendapatanLahan = bobotDijualLahan * harga;
         const biayaPanenLahan = hasilLahan * biayaPerKg;
         const biayaTambahanLahan = biayaLain * proporsi;
         const profitBersihLahan =
-          pendapatan - biayaPanenLahan - biayaTambahanLahan;
+          pendapatanLahan - biayaPanenLahan - biayaTambahanLahan;
 
-        const profitOwnerLahan = profitBersihLahan * (persenOwner / 100);
+        const profitOwnerDasarLahan =
+          profitBersihLahan * (persenOwner / 100);
+        const profitPenggarapDasarLahan =
+          profitBersihLahan * (persenPenggarap / 100);
+
+        const nilaiBawaPenggarapLahan = bawaPenggarapLahan * harga;
+        const nilaiBawaOwnerLahan = bawaOwnerLahan * harga;
+
+        const profitOwnerLahan =
+          profitOwnerDasarLahan +
+          nilaiBawaPenggarapLahan -
+          nilaiBawaOwnerLahan;
         const profitPenggarapLahan =
-          profitBersihLahan * ((100 - persenOwner) / 100);
+          profitPenggarapDasarLahan -
+          nilaiBawaPenggarapLahan +
+          nilaiBawaOwnerLahan;
+
+        const potonganHutangLahan = potonganHutang * proporsi;
+        const potonganLogLahan = potonganLog.map((log) => ({
+          ...log,
+          jumlah_dipotong: Number(log.jumlah_dipotong) * proporsi,
+        }));
 
         const { data: inserted, error: insertError } = await supabase
           .from("harvests")
@@ -351,17 +479,18 @@ export function PanenMultiKlien() {
             biaya_panen_per_kg: biayaPerKg,
             biaya_tambahan: biayaTambahanLahan,
             keterangan_biaya: keteranganBiaya || null,
-            bawa_penggarap: 0,
-            bawa_owner: 0,
+            bawa_penggarap: bawaPenggarapLahan,
+            bawa_owner: bawaOwnerLahan,
             bawa_lain: 0,
             persen_owner: persenOwner,
-            persen_penggarap: 100 - persenOwner,
+            persen_penggarap: persenPenggarap,
             profit_bersih: profitBersihLahan,
-            profit_owner: profitOwnerLahan,
-            profit_penggarap: profitPenggarapLahan,
-            potongan_hutang: 0,
-            total_hutang_sebelum: 0,
-            sisa_hutang_sesudah: 0,
+            profit_owner: profitOwnerLahan + potonganHutangLahan,
+            profit_penggarap: profitPenggarapLahan - potonganHutangLahan,
+            potongan_hutang: potonganHutangLahan,
+            potongan_hutang_log: potonganLogLahan,
+            total_hutang_sebelum: totalHutangSebelum,
+            sisa_hutang_sesudah: totalHutangSesudah,
             catatan: catatan || `[PANEN-${metode === "proportional" ? "Proporsional" : "Rata"}]`,
             is_demo: false,
           })
@@ -380,9 +509,13 @@ export function PanenMultiKlien() {
         penggarap: penggarap?.nama || "?",
         jmlLahan: lahanTerpilih.length,
         totalHasil: hasilKg,
+        bawaPenggarapKg,
+        bawaOwnerKg,
         profitBersih,
-        profitOwner,
-        profitPenggarap,
+        profitOwner: profitOwnerFinal,
+        profitPenggarap: profitPenggarapFinal,
+        potonganHutang,
+        totalHutangSesudah,
         hasilPanen,
       });
 
@@ -468,6 +601,31 @@ export function PanenMultiKlien() {
                 </div>
               </div>
             </div>
+            {(sukses.bawaPenggarapKg > 0 ||
+              sukses.bawaOwnerKg > 0 ||
+              sukses.potonganHutang > 0) && (
+              <div className="mt-3 pt-3 border-t border-gray-200 space-y-1 text-xs">
+                {(sukses.bawaPenggarapKg > 0 ||
+                  sukses.bawaOwnerKg > 0) && (
+                  <div className="text-orange-700">
+                    🏠 Bawa pulang — Penggarap:{" "}
+                    {sukses.bawaPenggarapKg.toLocaleString("id-ID")} Kg ·
+                    Owner: {sukses.bawaOwnerKg.toLocaleString("id-ID")} Kg
+                  </div>
+                )}
+                {sukses.potonganHutang > 0 && (
+                  <div className="text-red-700">
+                    💸 Potong hutang otomatis:{" "}
+                    {formatRp(sukses.potonganHutang)}
+                    {sukses.totalHutangSesudah === 0
+                      ? " · Hutang lunas!"
+                      : ` · Sisa hutang: ${formatRp(
+                          sukses.totalHutangSesudah
+                        )}`}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <p className="text-xs text-green-700 italic text-center">
@@ -736,6 +894,13 @@ export function PanenMultiKlien() {
                       </div>
                     </div>
                   </div>
+                  {(p.bawaPenggarapLahan > 0 || p.bawaOwnerLahan > 0) && (
+                    <div className="text-[11px] text-orange-700 mt-1">
+                      🏠 Bawa: Penggarap{" "}
+                      {p.bawaPenggarapLahan.toLocaleString("id-ID")} Kg · Owner{" "}
+                      {p.bawaOwnerLahan.toLocaleString("id-ID")} Kg
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -818,6 +983,62 @@ export function PanenMultiKlien() {
           </div>
         </div>
 
+        <div className="bg-white border border-gray-200 rounded-xl p-5 space-y-4">
+          <div>
+            <div className="font-bold text-gray-900">
+              🏠 Hasil Panen Bawa Pulang
+            </div>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Total Kg untuk semua lahan. Dibagi otomatis proporsional sesuai
+              luas lahan. Bawa pulang tidak dijual, tapi ikut menyesuaikan
+              pembagian profit owner &amp; penggarap.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                👨‍🌾 Penggarap Bawa Pulang (Kg)
+              </label>
+              <input
+                type="number"
+                step="any"
+                min="0"
+                value={bawaPenggarap}
+                onChange={(e) => setBawaPenggarap(e.target.value)}
+                placeholder="0"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                👤 Owner Bawa Pulang (Kg)
+              </label>
+              <input
+                type="number"
+                step="any"
+                min="0"
+                value={bawaOwner}
+                onChange={(e) => setBawaOwner(e.target.value)}
+                placeholder="0"
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+              />
+            </div>
+          </div>
+          {bawaTotal > 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-xs text-orange-800">
+              Total bawa pulang:{" "}
+              <strong>{bawaTotal.toLocaleString("id-ID")} Kg</strong> · Yang
+              dijual:{" "}
+              <strong>{bobotDijual.toLocaleString("id-ID")} Kg</strong>
+              {bawaTotal > hasilKg && (
+                <div className="text-red-600 font-bold mt-1">
+                  ⚠️ Bawa pulang melebihi total hasil panen!
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {hasilKg > 0 && (
           <div className="bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300 rounded-xl p-5">
             <div className="font-bold text-green-900 mb-3 text-sm">
@@ -825,7 +1046,15 @@ export function PanenMultiKlien() {
             </div>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-600">Pendapatan Kotor</span>
+                <span className="text-gray-600">
+                  Pendapatan Kotor
+                  {bawaTotal > 0 && (
+                    <span className="text-[10px] text-gray-400">
+                      {" "}
+                      ({bobotDijual.toLocaleString("id-ID")} Kg dijual)
+                    </span>
+                  )}
+                </span>
                 <span className="font-bold text-green-700">
                   {formatRp(pendapatanTotal)}
                 </span>
@@ -850,6 +1079,44 @@ export function PanenMultiKlien() {
                   {formatRp(profitBersih)}
                 </span>
               </div>
+              {bawaTotal > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-2 text-[11px] text-orange-800 space-y-1">
+                  <div className="font-bold">🏠 Penyesuaian Bawa Pulang</div>
+                  {nilaiBawaPenggarap > 0 && (
+                    <div className="flex justify-between">
+                      <span>
+                        Penggarap bawa{" "}
+                        {bawaPenggarapKg.toLocaleString("id-ID")} Kg
+                      </span>
+                      <span className="font-mono">
+                        <span className="text-green-700">
+                          Owner +{formatRp(nilaiBawaPenggarap)}
+                        </span>
+                        {" · "}
+                        <span className="text-red-600">
+                          Penggarap −{formatRp(nilaiBawaPenggarap)}
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  {nilaiBawaOwner > 0 && (
+                    <div className="flex justify-between">
+                      <span>
+                        Owner bawa {bawaOwnerKg.toLocaleString("id-ID")} Kg
+                      </span>
+                      <span className="font-mono">
+                        <span className="text-green-700">
+                          Penggarap +{formatRp(nilaiBawaOwner)}
+                        </span>
+                        {" · "}
+                        <span className="text-red-600">
+                          Owner −{formatRp(nilaiBawaOwner)}
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-2 pt-2">
                 <div className="bg-white rounded-lg p-2 text-center border border-green-200">
                   <div className="text-[10px] text-green-700">

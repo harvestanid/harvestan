@@ -56,8 +56,8 @@ export function PanenMultiKlien() {
   const [komoditas, setKomoditas] = useState("padi");
   const [totalHasil, setTotalHasil] = useState("");
   
-  // STATE HARGA & BIAYA (UBAH KE STRING AGAR BISA FORMAT RUPIAH)
-  const [hargaJual, setHargaJual] = useState("5000");
+  // STATE HARGA & BIAYA (DEFAULT DIKOSONGKAN)
+  const [hargaJual, setHargaJual] = useState("");
   const [biayaPanen, setBiayaPanen] = useState("400");
   const [biayaTambahan, setBiayaTambahan] = useState("");
   
@@ -301,6 +301,10 @@ export function PanenMultiKlien() {
     }
     if (!hasilKg || hasilKg <= 0) {
       setError("Isi total hasil panen (Kg) dengan benar");
+      return;
+    }
+    if (!harga || harga <= 0) {
+      setError("Isi harga jual per Kg dengan benar");
       return;
     }
     if (komoditas === "cabai_rawit" && !selectedMusim) {
@@ -752,6 +756,7 @@ export function PanenMultiKlien() {
                 inputMode="numeric"
                 value={hargaJual}
                 onChange={handleHargaJualChange}
+                placeholder="0"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
               />
             </div>
